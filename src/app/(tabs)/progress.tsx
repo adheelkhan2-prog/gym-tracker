@@ -1,110 +1,204 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BodyModel, type PaintMap } from '../../components/body/BodyModel';
 import { LineChart } from '../../components/LineChart';
-import { Card, Chip, SectionLabel, Screen } from '../../components/ui';
+import { Badge, Card, Chip, Screen, SectionTitle } from '../../components/ui';
 import { EXERCISES } from '../../data/exercises';
-import { DAYS } from '../../data/program';
-import { exerciseHistory, formatDate, todayKey, useStore } from '../../store';
-import { C, R, font } from '../../theme';
+import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
+import { ALL_EXERCISE_IDS } from '../../data/program';
+import { exerciseHistory, formatDate, trainingStreak, useStore, weeklyMuscleSets, weekSummary } from '../../store';
+import { color, font, heat, radius, size, space, type } from '../../theme';
 
 type Metric = 'top' | 'e1rm';
 
+const heatColor = (n: number) => {
+  let c: string | null = null;
+  heat.thresholds.forEach((t, i) => {
+    if (n >= t) c = heat.steps[i];
+  });
+  return c;
+};
+
 export default function ProgressScreen() {
   const { state } = useStore();
+  const focused = useIsFocused();
   const unit = state.unit;
+  const week = weekSummary(state);
+  const streak = trainingStreak(state);
 
-  // Exercises in program order, de-duplicated.
-  const allIds = useMemo(() => [...new Set(DAYS.flatMap((d) => d.exercises.map((e) => e.exerciseId)))], []);
+  // ----- Muscle heat map -----
+  const muscleSets = useMemo(() => weeklyMuscleSets(state), [state]);
+  const paint: PaintMap = useMemo(() => {
+    const p: PaintMap = {};
+    for (const [m, n] of Object.entries(muscleSets) as [MuscleId, number][]) {
+      const c = heatColor(n);
+      if (c) p[m] = { color: c, glow: n >= heat.thresholds[3] ? 0.35 : 0.1 };
+    }
+    if (state.injured) for (const m of INJURY_REGIONS) p[m] = { color: color.muscleInjured };
+    return p;
+  }, [muscleSets, state.injured]);
+  const topMuscles = (Object.entries(muscleSets) as [MuscleId, number][]).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  // ----- Exercise charts -----
   const histories = useMemo(
-    () => Object.fromEntries(allIds.map((id) => [id, exerciseHistory(state.logs, id)])),
-    [state.logs, allIds],
+    () => Object.fromEntries(ALL_EXERCISE_IDS.map((id) => [id, exerciseHistory(state.logs, id)])),
+    [state.logs],
   );
-  const withData = allIds.filter((id) => histories[id].length > 0);
+  const withData = ALL_EXERCISE_IDS.filter((id) => histories[id].length > 0);
   const [picked, setPicked] = useState<string | null>(null);
   const id = picked && withData.includes(picked) ? picked : withData[0];
   const [metric, setMetric] = useState<Metric>('top');
-
-  // Headline numbers
-  const workoutDates = Object.keys(state.logs).filter((d) =>
-    Object.values(state.logs[d]).some((sets) => sets.some((x) => x.done)),
-  );
-  const now = new Date();
-  const weekAgo = todayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
-  const thisWeek = workoutDates.filter((d) => d >= weekAgo).length;
-  const totalSets = Object.values(state.logs).reduce(
-    (n, day) => n + Object.values(day).reduce((m, sets) => m + sets.filter((x) => x.done).length, 0),
-    0,
-  );
-
+  const kind = id ? EXERCISES[id].kind : 'weight_reps';
   const hist = id ? histories[id] : [];
+  const showE1rm = metric === 'e1rm' && kind === 'weight_reps';
+  const valueUnit = kind === 'reps' ? 'reps' : unit;
   const points = hist.map((h) => ({
     label: formatDate(h.date),
-    value: Math.round(metric === 'top' ? h.topWeight : h.e1rm),
-    detail: `${h.topWeight} ${unit} × ${h.topReps}`,
+    value: Math.round(showE1rm ? h.e1rm : h.top),
+    detail: kind === 'reps' ? `${h.topReps} reps` : `${h.top} ${unit} × ${h.topReps}${kind === 'weight_time' ? ' s' : ''}`,
   }));
-  const best = hist.length ? Math.max(...hist.map((h) => h.topWeight)) : 0;
-  const change = hist.length > 1 ? hist[hist.length - 1].topWeight - hist[0].topWeight : 0;
+  const best = hist.length ? Math.max(...hist.map((h) => h.top)) : 0;
+  const change = hist.length > 1 ? hist[hist.length - 1].top - hist[0].top : 0;
 
   return (
     <Screen>
-      <Text style={font.display}>Progress</Text>
+      <Text style={type.display} accessibilityRole="header">
+        Progress
+      </Text>
+      <Text style={[type.bodyMuted, { marginTop: space.xs }]}>This week so far</Text>
 
-      <View style={s.tiles}>
-        <Tile value={thisWeek} label="Workouts, last 7 days" />
-        <Tile value={workoutDates.length} label="Workouts total" />
-        <Tile value={totalSets} label="Sets logged" />
+      <View style={s.badges}>
+        <Badge
+          icon="calendar"
+          title={`${Math.min(week.trained, week.planned)}/${week.planned} days`}
+          sub={
+            week.trained > week.planned
+              ? `Full week + ${week.trained - week.planned} bonus day${week.trained - week.planned > 1 ? 's' : ''}`
+              : week.trained >= week.planned && week.planned > 0
+                ? 'Full week done!'
+                : 'Training days this week'
+          }
+          earned={week.planned > 0 && week.trained >= week.planned}
+          tint={color.lime}
+        />
+        <Badge
+          icon="trophy"
+          title={`${week.prs} PR${week.prs === 1 ? '' : 's'}`}
+          sub={week.prs >= 3 ? 'Record breaker' : 'Records this week'}
+          earned={week.prs >= 3}
+          tint={color.gold}
+        />
+      </View>
+      <View style={[s.badges, { marginTop: space.sm }]}>
+        <Badge
+          icon="flask"
+          title={`${week.supps}/${week.daysSoFar} days`}
+          sub={week.supps >= week.daysSoFar && week.daysSoFar > 0 ? 'Supps on point' : 'Supplements taken'}
+          earned={week.daysSoFar > 0 && week.supps >= week.daysSoFar}
+          tint={color.orange}
+        />
+        <Badge
+          icon="flame"
+          title={`${streak} day${streak === 1 ? '' : 's'}`}
+          sub={streak >= 5 ? 'On fire' : 'Training streak'}
+          earned={streak >= 5}
+          tint={color.orange}
+        />
       </View>
 
+      <SectionTitle>Muscle heat map</SectionTitle>
+      {focused ? (
+        <BodyModel
+          paint={paint}
+          height={380}
+          framing="full"
+          describe={(m) => {
+            if (state.injured && INJURY_REGIONS.has(m)) return `${MUSCLE_LABEL[m]} · resting (injury)`;
+            const n = muscleSets[m] ?? 0;
+            return `${MUSCLE_LABEL[m]} · ${n % 1 ? n.toFixed(1) : n} set${n === 1 ? '' : 's'} this week`;
+          }}
+        />
+      ) : (
+        <View style={{ height: 380 }} />
+      )}
+      <View style={s.legend}>
+        {heat.steps.map((c, i) => (
+          <View key={c} style={s.legendItem}>
+            <View style={[s.swatch, { backgroundColor: c }]} />
+            <Text style={s.legendText}>
+              {heat.thresholds[i]}
+              {i === heat.steps.length - 1 ? '+' : `–${heat.thresholds[i + 1] - 1}`}
+            </Text>
+          </View>
+        ))}
+        {state.injured && (
+          <View style={s.legendItem}>
+            <View style={[s.swatch, { backgroundColor: color.muscleInjured }]} />
+            <Text style={s.legendText}>Legs & abs: resting (injury)</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[type.small, { marginTop: space.sm }]}>
+        Sets per muscle this week. Secondary muscles count as half a set.
+        {topMuscles.length ? ` Most worked: ${topMuscles.map(([m]) => MUSCLE_LABEL[m]).join(', ')}.` : ''}
+      </Text>
+
+      <SectionTitle>Lifts</SectionTitle>
       {withData.length === 0 ? (
-        <Card style={{ marginTop: 24, alignItems: 'center', paddingVertical: 32 }}>
-          <Text style={[font.h2, { textAlign: 'center' }]}>No lifts logged yet</Text>
-          <Text style={s.empty}>
-            Tick off a set on the Train tab and your weights will start charting here.
+        <Card style={s.empty}>
+          <Ionicons name="trending-up" size={36} color={color.lime} />
+          <Text style={[type.h2, { textAlign: 'center' }]}>Your charts start here</Text>
+          <Text style={[type.bodyMuted, { textAlign: 'center' }]}>
+            Tick off a set on the Today tab and every lift gets its own progress line.
           </Text>
         </Card>
       ) : (
         <>
-          <SectionLabel>Exercise</SectionLabel>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }} style={{ flexGrow: 0 }}>
             {withData.map((x) => (
               <Chip key={x} label={EXERCISES[x].name} active={x === id} onPress={() => setPicked(x)} />
             ))}
           </ScrollView>
 
-          <Card style={{ marginTop: 16 }}>
+          <Card style={{ marginTop: space.md }}>
             <View style={s.chartHead}>
-              <Text style={font.label}>{metric === 'top' ? 'Heaviest set' : 'Estimated 1-rep max'}</Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <Chip label="Weight" active={metric === 'top'} onPress={() => setMetric('top')} />
-                <Chip label="1RM" active={metric === 'e1rm'} onPress={() => setMetric('e1rm')} />
-              </View>
+              <Text style={type.label}>{showE1rm ? 'Estimated 1-rep max' : kind === 'reps' ? 'Best set' : 'Heaviest set'}</Text>
+              {kind === 'weight_reps' && (
+                <View style={{ flexDirection: 'row', gap: space.xs }}>
+                  <Chip label="Weight" active={metric === 'top'} onPress={() => setMetric('top')} />
+                  <Chip label="1RM" active={metric === 'e1rm'} onPress={() => setMetric('e1rm')} />
+                </View>
+              )}
             </View>
-            <LineChart points={points} unit={unit} />
+            <LineChart points={points} unit={valueUnit} />
             <View style={s.summary}>
-              <Text style={s.summaryText}>
-                Best <Text style={s.summaryNum}>{best} {unit}</Text>
+              <Text style={type.small}>
+                Best <Text style={s.strong}>{best} {valueUnit}</Text>
               </Text>
               {hist.length > 1 && (
-                <Text style={s.summaryText}>
-                  Since first session{' '}
-                  <Text style={s.summaryNum}>
-                    {change >= 0 ? '+' : ''}
-                    {change} {unit}
+                <Text style={type.small}>
+                  Since first{' '}
+                  <Text style={[s.strong, { color: change > 0 ? color.lime : color.text }]}>
+                    {change > 0 ? '+' : ''}
+                    {change} {valueUnit}
                   </Text>
                 </Text>
               )}
             </View>
           </Card>
 
-          <SectionLabel>Sessions</SectionLabel>
-          <View style={{ gap: 6 }}>
-            {[...hist].reverse().map((h) => (
+          <View style={{ gap: space.sm, marginTop: space.md }}>
+            {[...hist].reverse().slice(0, 8).map((h) => (
               <View key={h.date} style={s.session}>
-                <Text style={s.sessionDate}>{formatDate(h.date)}</Text>
-                <Text style={[s.sessionVal, font.num]}>
-                  {h.topWeight} {unit} × {h.topReps}
+                <Text style={[type.small, { width: 64 }]}>{formatDate(h.date)}</Text>
+                <Text style={[type.num, { flex: 1, fontSize: size.body }]}>
+                  {kind === 'reps' ? `${h.topReps} reps` : `${h.top} ${unit} × ${h.topReps}${kind === 'weight_time' ? ' s' : ''}`}
                 </Text>
-                <Text style={[s.sessionVol, font.num]}>{Math.round(h.volume).toLocaleString()} vol</Text>
+                <Text style={[type.small, { fontVariant: ['tabular-nums'] }]}>
+                  {kind === 'weight_time' ? `${h.seconds} s total` : `${Math.round(h.volume).toLocaleString()} ${kind === 'reps' ? 'reps' : 'vol'}`}
+                </Text>
               </View>
             ))}
           </View>
@@ -114,27 +208,22 @@ export default function ProgressScreen() {
   );
 }
 
-function Tile({ value, label }: { value: number; label: string }) {
-  return (
-    <View style={s.tile}>
-      <Text style={[s.tileValue, font.num]}>{value}</Text>
-      <Text style={s.tileLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
-  tiles: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  tile: { flex: 1, backgroundColor: C.surface, borderRadius: R.md, padding: 14 },
-  tileValue: { color: C.text, fontSize: 28, fontWeight: '800' },
-  tileLabel: { color: C.muted, fontSize: 12, marginTop: 2, lineHeight: 16 },
-  empty: { color: C.muted, textAlign: 'center', marginTop: 8, lineHeight: 21 },
-  chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  summary: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 12 },
-  summaryText: { color: C.muted, fontSize: 13 },
-  summaryNum: { color: C.text, fontWeight: '700' },
-  session: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: R.sm, padding: 14 },
-  sessionDate: { color: C.muted, width: 70 },
-  sessionVal: { color: C.text, fontWeight: '700', flex: 1 },
-  sessionVol: { color: C.faint, fontSize: 13 },
+  badges: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.md },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  swatch: { width: 14, height: 14, borderRadius: radius.pill },
+  legendText: { fontFamily: font.bodySemi, fontSize: size.label, color: color.muted },
+  empty: { alignItems: 'center', gap: space.sm, paddingVertical: space.x3 },
+  chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm, gap: space.sm },
+  summary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: space.sm,
+    borderTopWidth: 1,
+    borderTopColor: color.line,
+    paddingTop: space.md,
+  },
+  strong: { fontFamily: font.bodyBold, color: color.text },
+  session: { flexDirection: 'row', alignItems: 'center', backgroundColor: color.surface, borderRadius: radius.md, padding: space.lg, gap: space.sm },
 });

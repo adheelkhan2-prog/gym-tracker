@@ -1,16 +1,72 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { todayKey, useStore } from '../store';
-import { C, R, font } from '../theme';
+import { haptic } from '../feedback';
+import { color, font, gradient, leading, motion, radius, size, space, touch, type } from '../theme';
 
-export function Screen({ children, padBottom = 32 }: { children: React.ReactNode; padBottom?: number }) {
+export type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const APressable = Animated.createAnimatedComponent(Pressable);
+
+/** Pressable that squishes down on press and springs back. */
+export function Press({
+  style,
+  children,
+  scaleTo = motion.pressScale,
+  onPressIn,
+  onPressOut,
+  ...rest
+}: PressableProps & { style?: StyleProp<ViewStyle>; children: React.ReactNode; scaleTo?: number }) {
+  const reduce = useReducedMotion();
+  const s = useSharedValue(1);
+  const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  return (
+    <APressable
+      {...rest}
+      onPressIn={(e) => {
+        if (!reduce) s.set(withTiming(scaleTo, { duration: 90 }));
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        if (!reduce) s.set(withSpring(1, motion.spring));
+        onPressOut?.(e);
+      }}
+      style={[style, a]}
+    >
+      {children}
+    </APressable>
+  );
+}
+
+export function Screen({
+  children,
+  padBottom = space.x4,
+  scroll = true,
+}: {
+  children: React.ReactNode;
+  padBottom?: number;
+  scroll?: boolean;
+}) {
   const insets = useSafeAreaInsets();
+  const pad = { paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: padBottom };
+  if (!scroll) return <View style={[{ flex: 1, backgroundColor: color.bg }, pad]}>{children}</View>;
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.bg }}
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: padBottom }}
+      style={{ flex: 1, backgroundColor: color.bg }}
+      contentContainerStyle={pad}
       keyboardShouldPersistTaps="handled"
     >
       {children}
@@ -18,117 +74,235 @@ export function Screen({ children, padBottom = 32 }: { children: React.ReactNode
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+/** Shown while saved data and fonts load, so nothing flashes as empty. */
+export function Loading({ label = 'Loading your log' }: { label?: string }) {
+  return (
+    <View style={s.loading} accessibilityRole="progressbar" accessibilityLabel={label}>
+      <ActivityIndicator color={color.lime} size="large" />
+    </View>
+  );
+}
+
+export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[s.card, style]}>{children}</View>;
 }
 
-export function SectionLabel({ children, right }: { children: string; right?: React.ReactNode }) {
+export function SectionTitle({ children, right }: { children: string; right?: React.ReactNode }) {
   return (
     <View style={s.sectionRow}>
-      <Text style={font.label}>{children}</Text>
+      <Text style={type.h2} accessibilityRole="header">
+        {children}
+      </Text>
       {right}
     </View>
   );
 }
 
-export function Chip({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
+export function Chip({
+  label,
+  active,
+  onPress,
+  icon,
+}: {
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+  icon?: IconName;
+}) {
   return (
-    <Pressable
-      onPress={onPress}
+    <Press
+      onPress={() => {
+        haptic.tap();
+        onPress?.();
+      }}
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
-      style={({ pressed }) => [s.chip, active && s.chipActive, pressed && { opacity: 0.7 }]}
+      style={[s.chip, active && s.chipActive]}
     >
-      <Text style={[s.chipText, active && { color: C.accentInk }]}>{label}</Text>
-    </Pressable>
+      {icon && <Ionicons name={icon} size={16} color={active ? color.ink : color.muted} />}
+      <Text style={[s.chipText, active && { color: color.ink }]}>{label}</Text>
+    </Press>
   );
 }
+
+type ButtonKind = 'energy' | 'lime' | 'orange' | 'ghost' | 'danger';
 
 export function Button({
   label,
   onPress,
-  kind = 'primary',
+  kind = 'lime',
   icon,
+  loading,
+  disabled,
+  big,
 }: {
   label: string;
   onPress: () => void;
-  kind?: 'primary' | 'ghost';
-  icon?: React.ComponentProps<typeof Ionicons>['name'];
+  kind?: ButtonKind;
+  icon?: IconName;
+  loading?: boolean;
+  disabled?: boolean;
+  big?: boolean;
 }) {
-  const primary = kind === 'primary';
+  const ink = kind === 'ghost' ? color.text : kind === 'danger' ? color.danger : color.ink;
+  const inner = (
+    <>
+      {loading ? (
+        <ActivityIndicator color={ink} />
+      ) : (
+        icon && <Ionicons name={icon} size={big ? 22 : 18} color={ink} />
+      )}
+      <Text style={[s.btnText, big && { fontSize: size.h3 }, { color: ink }]}>{label}</Text>
+    </>
+  );
+  const shape = [s.btn, big && { minHeight: touch.primary + 8 }, disabled && { opacity: 0.45 }];
   return (
-    <Pressable
-      onPress={onPress}
+    <Press
+      onPress={() => {
+        if (loading || disabled) return;
+        haptic.tap();
+        onPress();
+      }}
       accessibilityRole="button"
-      style={({ pressed }) => [s.btn, primary ? s.btnPrimary : s.btnGhost, pressed && { opacity: 0.75 }]}
+      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
+      style={{ borderRadius: radius.pill }}
     >
-      {icon && <Ionicons name={icon} size={18} color={primary ? C.accentInk : C.text} />}
-      <Text style={[s.btnText, { color: primary ? C.accentInk : C.text }]}>{label}</Text>
-    </Pressable>
+      {kind === 'energy' ? (
+        <LinearGradient colors={gradient.energy} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
+          {inner}
+        </LinearGradient>
+      ) : (
+        <View
+          style={[
+            shape,
+            kind === 'lime' && { backgroundColor: color.lime },
+            kind === 'orange' && { backgroundColor: color.orange },
+            (kind === 'ghost' || kind === 'danger') && { backgroundColor: color.surface2 },
+          ]}
+        >
+          {inner}
+        </View>
+      )}
+    </Press>
   );
 }
 
-/** Shown on the Train tab until today's supplements are ticked off. */
-export function SupplementNudge() {
-  const { state, update } = useStore();
-  const key = todayKey();
-  const taken = state.taken[key] ?? {};
-  const missing = state.supplements.filter((x) => !taken[x]);
-  if (!missing.length) return null;
-  const markAll = () =>
-    update((st) => ({
-      ...st,
-      taken: { ...st.taken, [key]: Object.fromEntries(st.supplements.map((x) => [x, true])) },
-    }));
+/** Round icon button, 48dp. */
+export function IconButton({
+  icon,
+  onPress,
+  label,
+  tone = 'surface',
+  iconSize = 22,
+}: {
+  icon: IconName;
+  onPress: () => void;
+  label: string;
+  tone?: 'surface' | 'scrim';
+  iconSize?: number;
+}) {
   return (
-    <Pressable onPress={() => router.navigate('/supplements')} style={s.nudge}>
-      <Ionicons name="flask" size={18} color={C.warn} />
-      <Text style={s.nudgeText} numberOfLines={1}>
-        {missing.join(' + ')} not taken yet
+    <Press
+      onPress={() => {
+        haptic.tap();
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={[s.iconBtn, { backgroundColor: tone === 'scrim' ? color.scrim : color.surface2 }]}
+    >
+      <Ionicons name={icon} size={iconSize} color={color.text} />
+    </Press>
+  );
+}
+
+/** Flame + count. Grey when the streak is zero. */
+export function Flame({ count, label, tint = color.orange }: { count: number; label: string; tint?: string }) {
+  const lit = count > 0;
+  return (
+    <View style={[s.flame, { backgroundColor: lit ? color.orangeDim : color.surface2 }]} accessibilityLabel={`${count} day ${label} streak`}>
+      <Ionicons name={lit ? 'flame' : 'flame-outline'} size={20} color={lit ? tint : color.subtle} />
+      <Text style={[type.num, { fontSize: size.h3, color: lit ? tint : color.subtle }]}>{count}</Text>
+    </View>
+  );
+}
+
+/** Small rounded badge used for weekly achievements. */
+export function Badge({ icon, title, sub, earned, tint }: { icon: IconName; title: string; sub: string; earned: boolean; tint: string }) {
+  return (
+    <View style={[s.badge, earned && { borderColor: tint }]} accessibilityLabel={`${title}, ${sub}${earned ? ', earned' : ''}`}>
+      <View style={[s.badgeIcon, { backgroundColor: earned ? tint : color.surface2 }]}>
+        <Ionicons name={icon} size={22} color={earned ? color.ink : color.subtle} />
+      </View>
+      <Text style={[s.badgeTitle, !earned && { color: color.muted }]} numberOfLines={1}>
+        {title}
       </Text>
-      <Pressable onPress={markAll} hitSlop={10} style={s.nudgeBtn} accessibilityRole="button">
-        <Text style={s.nudgeBtnText}>Taken</Text>
-      </Pressable>
-    </Pressable>
+      <Text style={s.badgeSub} numberOfLines={2}>
+        {sub}
+      </Text>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  card: { backgroundColor: C.surface, borderRadius: R.md, padding: 16 },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 10 },
+  loading: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' },
+  card: { backgroundColor: color.surface, borderRadius: radius.lg, padding: space.lg },
+  sectionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: space.x3,
+    marginBottom: space.md,
+    gap: space.md,
+  },
   chip: {
-    paddingHorizontal: 14,
-    minHeight: 36,
-    justifyContent: 'center',
-    borderRadius: 999,
-    backgroundColor: C.surface2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingHorizontal: space.lg,
+    minHeight: touch.min,
+    borderRadius: radius.pill,
+    backgroundColor: color.surface2,
   },
-  chipActive: { backgroundColor: C.accent },
-  chipText: { color: C.text, fontWeight: '600', fontSize: 14 },
+  chipActive: { backgroundColor: color.lime },
+  chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   btn: {
-    minHeight: 50,
-    borderRadius: R.md,
-    paddingHorizontal: 18,
+    minHeight: touch.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.xxl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: space.sm,
   },
-  btnPrimary: { backgroundColor: C.accent },
-  btnGhost: { backgroundColor: C.surface2 },
-  btnText: { fontSize: 16, fontWeight: '700' },
-  nudge: {
+  btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.2 },
+  iconBtn: {
+    width: touch.min,
+    height: touch.min,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flame: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#2A2110',
-    borderRadius: R.md,
-    paddingLeft: 14,
-    paddingRight: 6,
-    paddingVertical: 6,
-    marginTop: 16,
+    gap: space.xs,
+    paddingHorizontal: space.md,
+    minHeight: 40,
+    borderRadius: radius.pill,
   },
-  nudgeText: { flex: 1, color: C.warn, fontWeight: '600' },
-  nudgeBtn: { backgroundColor: C.warn, borderRadius: R.sm, paddingHorizontal: 14, paddingVertical: 9 },
-  nudgeBtnText: { color: C.accentInk, fontWeight: '800' },
+  badge: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: color.surface,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: color.surface,
+    padding: space.md,
+    gap: space.xs,
+  },
+  badgeIcon: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', marginBottom: space.xs },
+  badgeTitle: { fontFamily: font.display, fontSize: size.body, color: color.text },
+  badgeSub: { fontFamily: font.body, fontSize: size.label, lineHeight: leading.label, color: color.muted },
 });

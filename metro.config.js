@@ -1,9 +1,12 @@
-// Default Expo Metro config. When DEMO=1 (the single-page web demo build),
-// `expo-router` imports are pointed at a small in-memory stand-in.
+// Default Expo Metro config, plus:
+// - .glb files bundled as assets (the 3D muscle model).
+// - When DEMO=1 (the single-page web demo build), `expo-router` imports are
+//   pointed at a small in-memory stand-in.
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const config = getDefaultConfig(__dirname);
+config.resolver.assetExts.push('glb');
 
 if (process.env.DEMO === '1') {
   const shim = path.resolve(__dirname, 'demo/router-shim.tsx');

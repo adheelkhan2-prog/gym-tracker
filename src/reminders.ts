@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { todayKey, type State } from './store';
+import { color } from './theme';
 
 /*
  * How the supplement reminders work
@@ -45,7 +46,7 @@ export async function setupNotifications(): Promise<boolean> {
       // eslint-disable-next-line import/namespace -- exported at runtime; the lint parser misses it
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 150, 250],
-      lightColor: '#C6F432',
+      lightColor: color.lime,
     });
   }
   await Notifications.setNotificationCategoryAsync(CATEGORY, [
@@ -93,11 +94,11 @@ export async function syncReminders(state: State) {
       await Notifications.scheduleNotificationAsync({
         identifier: `${PREFIX}${key}-${slot}`,
         content: {
-          title: first ? 'Morning stack 💪' : 'Still need your supplements',
+          title: first ? 'Morning stack' : 'Still need your supplements',
           body: first ? `Time for your ${what}.` : `You haven't marked your ${what} as taken today.`,
           categoryIdentifier: CATEGORY,
           data: { date: key, slot },
-          ...(Platform.OS === 'android' ? { color: '#C6F432' } : {}),
+          ...(Platform.OS === 'android' ? { color: color.lime } : {}),
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when, channelId: CHANNEL },
       });

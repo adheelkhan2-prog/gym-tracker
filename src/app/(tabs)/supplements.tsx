@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
-import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { Button, Card, SectionLabel, Screen } from '../../components/ui';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { Confetti } from '../../components/celebrate';
+import { Button, Card, Flame, IconButton, Press, Screen, SectionTitle } from '../../components/ui';
+import { haptic } from '../../feedback';
 import { SUPPORTED } from '../../reminders';
-import { todayKey, useStore } from '../../store';
-import { C, R, fmtTime, font } from '../../theme';
+import { addDays, allTaken, dateFromKey, supplementStreak, todayKey, useStore } from '../../store';
+import { color, fmtTime, font, motion, radius, size, space, touch, type } from '../../theme';
 
 const SLOT_NAMES = ['Morning reminder', 'If not taken', 'Last call'];
 
@@ -15,159 +18,186 @@ const shift = (hhmm: string, minutes: number) => {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 };
 
+function SuppItem({ name, on, onPress }: { name: string; on: boolean; onPress: () => void }) {
+  const reduce = useReducedMotion();
+  const sc = useSharedValue(1);
+  const was = useRef(on);
+  useEffect(() => {
+    if (on && !was.current && !reduce) sc.value = withSequence(withTiming(0.6, { duration: 70 }), withSpring(1, motion.pop));
+    was.current = on;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [on]);
+  const st = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return (
+    <Press
+      onPress={onPress}
+      style={[s.item, on && s.itemOn]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={name}
+    >
+      <Animated.View style={[s.box, on && s.boxOn, st]}>
+        {on && <Ionicons name="checkmark-sharp" size={26} color={color.ink} />}
+      </Animated.View>
+      <View style={{ flex: 1 }}>
+        <Text style={[s.itemText, on && { color: color.lime }]}>{name}</Text>
+        <Text style={type.small}>{on ? 'Taken today' : 'Tap when you’ve had it'}</Text>
+      </View>
+      <Ionicons name={on ? 'flask' : 'flask-outline'} size={26} color={on ? color.lime : color.subtle} />
+    </Press>
+  );
+}
+
 export default function SupplementsScreen() {
   const { state, update } = useStore();
   const key = todayKey();
   const taken = state.taken[key] ?? {};
-  const allTaken = state.supplements.length > 0 && state.supplements.every((x) => taken[x]);
+  const done = allTaken(state, key);
+  const streak = supplementStreak(state);
   const [newItem, setNewItem] = useState('');
+  const [burst, setBurst] = useState(0);
+  const [testSent, setTestSent] = useState(false);
 
-  const toggle = (item: string) =>
-    update((s) => ({ ...s, taken: { ...s.taken, [key]: { ...s.taken[key], [item]: !s.taken[key]?.[item] } } }));
-  const markAll = () =>
-    update((s) => ({ ...s, taken: { ...s.taken, [key]: Object.fromEntries(s.supplements.map((x) => [x, true])) } }));
+  const setTaken = (next: Record<string, boolean>) => {
+    const willBeDone = state.supplements.length > 0 && state.supplements.every((x) => next[x]);
+    if (willBeDone && !done) {
+      haptic.pr();
+      setBurst((b) => b + 1);
+    } else haptic.setDone();
+    update((s) => ({ ...s, taken: { ...s.taken, [key]: next } }));
+  };
 
-  // Last 14 days of adherence.
-  const now = new Date();
   const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13 + i);
-    const k = todayKey(d);
-    const t = state.taken[k] ?? {};
-    return { k, d, full: state.supplements.length > 0 && state.supplements.every((x) => t[x]) };
+    const k = addDays(key, i - 13);
+    return { k, d: dateFromKey(k), full: allTaken(state, k) };
   });
-  let streak = 0;
-  for (let i = days.length - 1; i >= 0; i--) {
-    if (days[i].full) streak++;
-    else if (i === days.length - 1) continue; // today not done yet doesn't break the streak
-    else break;
-  }
 
   const sendTest = async () => {
     if (!SUPPORTED) return;
     await Notifications.scheduleNotificationAsync({
       identifier: `supp-${key}-test`,
       content: {
-        title: 'Morning stack 💪',
+        title: 'Morning stack',
         body: `Test reminder: time for your ${state.supplements.join(' + ').toLowerCase()}.`,
         categoryIdentifier: 'supplement',
         data: { date: key, slot: -1 },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: 'supplements' },
     });
-    Alert.alert('Test sent', 'Lock your phone. The reminder arrives in about 5 seconds.');
+    setTestSent(true);
   };
 
   return (
     <Screen>
-      <Text style={font.display}>Supplements</Text>
-      <Text style={s.sub}>{allTaken ? 'All done for today. Reminders are off until tomorrow.' : 'Tap each one once you’ve had it.'}</Text>
-
-      <View style={{ gap: 10, marginTop: 20 }}>
-        {state.supplements.map((item) => {
-          const on = !!taken[item];
-          return (
-            <Pressable
-              key={item}
-              onPress={() => toggle(item)}
-              style={[s.item, on && s.itemOn]}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-            >
-              <View style={[s.box, on && s.boxOn]}>
-                {on && <Ionicons name="checkmark" size={20} color={C.accentInk} />}
-              </View>
-              <Text style={[s.itemText, on && { color: C.accent }]}>{item}</Text>
-              <Text style={s.itemState}>{on ? 'Taken' : 'Not yet'}</Text>
-            </Pressable>
-          );
-        })}
+      <View style={s.head}>
+        <Text style={type.display} accessibilityRole="header">
+          Supps
+        </Text>
+        <Flame count={streak} label="supplement" />
       </View>
-      {!allTaken && state.supplements.length > 1 && (
-        <View style={{ marginTop: 12 }}>
-          <Button label="Mark all taken" icon="checkmark-done" onPress={markAll} />
+      <Text style={[type.bodyMuted, { marginTop: space.xs }]}>
+        {done ? 'All done for today. Reminders are off until tomorrow.' : 'Tap each one once you’ve had it.'}
+      </Text>
+
+      <View style={{ gap: space.sm, marginTop: space.xl }}>
+        {state.supplements.map((item) => (
+          <SuppItem key={item} name={item} on={!!taken[item]} onPress={() => setTaken({ ...taken, [item]: !taken[item] })} />
+        ))}
+        {state.supplements.length === 0 && (
+          <Card style={{ alignItems: 'center', gap: space.sm }}>
+            <Ionicons name="flask-outline" size={32} color={color.subtle} />
+            <Text style={[type.bodyMuted, { textAlign: 'center' }]}>Your stack is empty. Add a supplement below.</Text>
+          </Card>
+        )}
+      </View>
+      {!done && state.supplements.length > 1 && (
+        <View style={{ marginTop: space.md }}>
+          <Button label="Mark all taken" kind="lime" icon="checkmark-done" onPress={() => setTaken(Object.fromEntries(state.supplements.map((x) => [x, true])))} />
         </View>
       )}
 
-      <SectionLabel right={<Text style={[s.streak, font.num]}>{streak} day streak</Text>}>Last 14 days</SectionLabel>
+      <SectionTitle>Last 14 days</SectionTitle>
       <View style={s.dots}>
         {days.map((d) => (
           <View key={d.k} style={s.dotCol}>
-            <View style={[s.dot, d.full ? s.dotOn : d.k === key ? s.dotToday : null]} />
+            <View style={[s.dot, d.full ? s.dotOn : d.k === key ? s.dotToday : null]}>
+              {d.full && <Ionicons name="checkmark" size={12} color={color.ink} />}
+            </View>
             <Text style={s.dotLabel}>{d.d.toLocaleDateString(undefined, { weekday: 'narrow' })}</Text>
           </View>
         ))}
       </View>
 
-      <SectionLabel
+      <SectionTitle
         right={
           <Switch
             value={state.remindersOn}
             onValueChange={(v) => update((st) => ({ ...st, remindersOn: v }))}
-            trackColor={{ true: C.accent, false: C.surface2 }}
-            thumbColor={C.text}
+            trackColor={{ true: color.orange, false: color.surface3 }}
+            thumbColor={color.text}
+            {...{ activeThumbColor: color.text }}
             accessibilityLabel="Reminders on"
           />
         }
       >
         Reminders
-      </SectionLabel>
-      <Card style={{ padding: 0, opacity: state.remindersOn ? 1 : 0.45 }}>
+      </SectionTitle>
+      <Card style={{ padding: 0, opacity: state.remindersOn ? 1 : 0.5 }}>
         {state.reminderTimes.map((t, i) => (
-          <View key={i} style={[s.timeRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.line }]}>
+          <View key={i} style={[s.timeRow, i > 0 && s.divider]}>
             <View style={{ flex: 1 }}>
-              <Text style={s.timeName}>{SLOT_NAMES[i] ?? `Reminder ${i + 1}`}</Text>
-              <Text style={[s.time, font.num]}>{fmtTime(t)}</Text>
+              <Text style={type.small}>{SLOT_NAMES[i] ?? `Reminder ${i + 1}`}</Text>
+              <Text style={[type.num, { fontSize: size.h2 }]}>{fmtTime(t)}</Text>
             </View>
-            <Pressable
-              style={s.step}
+            <IconButton
+              icon="remove"
+              label={`${SLOT_NAMES[i]} 30 minutes earlier`}
               onPress={() => update((st) => ({ ...st, reminderTimes: st.reminderTimes.map((x, j) => (j === i ? shift(x, -30) : x)) }))}
-              accessibilityLabel={`${SLOT_NAMES[i]} 30 minutes earlier`}
-            >
-              <Ionicons name="remove" size={20} color={C.text} />
-            </Pressable>
-            <Pressable
-              style={s.step}
+            />
+            <IconButton
+              icon="add"
+              label={`${SLOT_NAMES[i]} 30 minutes later`}
               onPress={() => update((st) => ({ ...st, reminderTimes: st.reminderTimes.map((x, j) => (j === i ? shift(x, 30) : x)) }))}
-              accessibilityLabel={`${SLOT_NAMES[i]} 30 minutes later`}
-            >
-              <Ionicons name="add" size={20} color={C.text} />
-            </Pressable>
+            />
           </View>
         ))}
       </Card>
-      <Text style={s.explain}>
-        The morning reminder has <Text style={{ color: C.text }}>Taken</Text> and <Text style={{ color: C.text }}>Not yet</Text>{' '}
-        buttons. Tap Not yet (or ignore it) and you’ll be reminded again at {fmtTime(state.reminderTimes[1] ?? '13:00')} and{' '}
-        {fmtTime(state.reminderTimes[2] ?? '19:00')}. Once you tap Taken, the rest of today’s reminders are cancelled.
+      <Text style={[type.small, { marginTop: space.md }]}>
+        The morning reminder has <Text style={s.strong}>Taken</Text> and <Text style={s.strong}>Not yet</Text> buttons. Tap Not yet (or
+        ignore it) and you’ll be reminded again at {fmtTime(state.reminderTimes[1] ?? '13:00')} and{' '}
+        {fmtTime(state.reminderTimes[2] ?? '19:00')}. Tap Taken and the rest of today’s reminders are cancelled.
       </Text>
       {SUPPORTED ? (
-        <View style={{ marginTop: 12 }}>
-          <Button label="Send a test reminder" kind="ghost" icon="notifications-outline" onPress={sendTest} />
+        <View style={{ marginTop: space.md }}>
+          <Button
+            label={testSent ? 'Test sent: lock your phone' : 'Send a test reminder'}
+            kind="ghost"
+            icon={testSent ? 'checkmark' : 'notifications-outline'}
+            onPress={sendTest}
+          />
         </View>
       ) : (
-        <Text style={[s.explain, { color: C.warn }]}>Reminders only work in the phone app, not in a web browser.</Text>
+        <Text style={[type.small, { color: color.orangeSoft, marginTop: space.md }]}>Reminders only work in the Android app, not in a web browser.</Text>
       )}
 
-      <SectionLabel>Your stack</SectionLabel>
+      <SectionTitle>Your stack</SectionTitle>
       <Card style={{ padding: 0 }}>
         {state.supplements.map((item, i) => (
-          <View key={item} style={[s.timeRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.line }]}>
-            <Text style={[s.itemText, { flex: 1, fontSize: 16 }]}>{item}</Text>
-            <Pressable
-              style={s.step}
-              accessibilityLabel={`Remove ${item}`}
+          <View key={item} style={[s.timeRow, i > 0 && s.divider]}>
+            <Text style={[type.h3, { flex: 1 }]}>{item}</Text>
+            <IconButton
+              icon="trash-outline"
+              label={`Remove ${item}`}
               onPress={() => update((st) => ({ ...st, supplements: st.supplements.filter((x) => x !== item) }))}
-            >
-              <Ionicons name="trash-outline" size={18} color={C.muted} />
-            </Pressable>
+            />
           </View>
         ))}
-        <View style={[s.timeRow, { borderTopWidth: state.supplements.length ? 1 : 0, borderTopColor: C.line }]}>
+        <View style={[s.timeRow, state.supplements.length > 0 && s.divider]}>
           <TextInput
             value={newItem}
             onChangeText={setNewItem}
             placeholder="Add a supplement (e.g. Fish oil)"
-            placeholderTextColor={C.faint}
+            placeholderTextColor={color.subtle}
             style={s.addInput}
             onSubmitEditing={() => {
               const v = newItem.trim();
@@ -175,40 +205,46 @@ export default function SupplementsScreen() {
               setNewItem('');
             }}
             returnKeyType="done"
+            accessibilityLabel="New supplement name"
           />
         </View>
       </Card>
+      <Confetti burst={burst} />
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  sub: { color: C.muted, fontSize: 16, marginTop: 4 },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: C.surface,
-    borderRadius: R.md,
-    padding: 16,
-    minHeight: 72,
+    gap: space.lg,
+    backgroundColor: color.surface,
+    borderRadius: radius.xl,
+    padding: space.lg,
+    minHeight: 84,
   },
-  itemOn: { backgroundColor: '#1E2611' },
-  box: { width: 32, height: 32, borderRadius: 10, borderWidth: 2, borderColor: C.faint, alignItems: 'center', justifyContent: 'center' },
-  boxOn: { backgroundColor: C.accent, borderColor: C.accent },
-  itemText: { color: C.text, fontSize: 18, fontWeight: '700' },
-  itemState: { marginLeft: 'auto', color: C.muted, fontWeight: '600' },
-  streak: { color: C.accent, fontWeight: '700' },
+  itemOn: { backgroundColor: color.limeDim },
+  box: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    borderWidth: 3,
+    borderColor: color.subtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: { backgroundColor: color.lime, borderColor: color.lime },
+  itemText: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   dots: { flexDirection: 'row', justifyContent: 'space-between' },
-  dotCol: { alignItems: 'center', gap: 6 },
-  dot: { width: 16, height: 16, borderRadius: 8, backgroundColor: C.surface2 },
-  dotOn: { backgroundColor: C.accent },
-  dotToday: { borderWidth: 2, borderColor: C.warn, backgroundColor: 'transparent' },
-  dotLabel: { color: C.faint, fontSize: 10, fontWeight: '600' },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, minHeight: 60 },
-  timeName: { color: C.muted, fontSize: 13 },
-  time: { color: C.text, fontSize: 20, fontWeight: '800', marginTop: 2 },
-  step: { width: 44, height: 44, borderRadius: R.sm, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' },
-  explain: { color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 12 },
-  addInput: { flex: 1, color: C.text, fontSize: 16, minHeight: 44 },
+  dotCol: { alignItems: 'center', gap: space.xs },
+  dot: { width: 20, height: 20, borderRadius: radius.pill, backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },
+  dotOn: { backgroundColor: color.lime },
+  dotToday: { borderWidth: 2, borderColor: color.orange, backgroundColor: color.bg },
+  dotLabel: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm, minHeight: 72 },
+  divider: { borderTopWidth: 1, borderTopColor: color.line },
+  strong: { fontFamily: font.bodyBold, color: color.text },
+  addInput: { flex: 1, fontFamily: font.body, color: color.text, fontSize: size.body, minHeight: touch.min },
 });

@@ -1,0 +1,12 @@
+import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
+
+// Haptics are a no-op on web.
+const on = Platform.OS !== 'web';
+
+export const haptic = {
+  tap: () => on && Haptics.selectionAsync().catch(() => {}),
+  setDone: () => on && Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}),
+  timerEnd: () => on && Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}),
+  pr: () => on && Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}),
+};

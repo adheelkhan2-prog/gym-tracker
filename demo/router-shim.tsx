@@ -2,23 +2,43 @@
 // Navigation is kept in memory instead of in the URL.
 import { createContext, useContext } from 'react';
 
-type Route = { name: 'tabs'; tab: string } | { name: 'exercise'; params: Record<string, string> };
-type Nav = { push: (r: Route) => void; back: () => void; tab: (t: string) => void };
+export type Route =
+  | { name: 'tabs'; tab: string }
+  | { name: 'exercise'; params: Record<string, string> }
+  | { name: 'complete'; params: Record<string, string> };
+type Nav = { push: (r: Route) => void; replace: (r: Route) => void; back: () => void; tab: (t: string) => void };
 
 let nav: Nav | null = null;
 export const setNav = (n: Nav) => {
   nav = n;
 };
 export const ParamsContext = createContext<Record<string, string>>({});
+export const FocusContext = createContext(true);
 
 type Href = string | { pathname: string; params?: Record<string, string> };
-const go = (href: Href) => {
+const toRoute = (href: Href): Route => {
   const path = typeof href === 'string' ? href : href.pathname;
-  if (path.startsWith('/exercise')) nav?.push({ name: 'exercise', params: typeof href === 'string' ? {} : href.params ?? {} });
-  else nav?.tab(path.replace('/', '') || 'index');
+  const params = typeof href === 'string' ? {} : (href.params ?? {});
+  if (path.startsWith('/exercise')) return { name: 'exercise', params };
+  if (path.startsWith('/complete')) return { name: 'complete', params };
+  return { name: 'tabs', tab: path.replace('/', '') || 'index' };
+};
+const go = (href: Href) => {
+  const r = toRoute(href);
+  if (r.name === 'tabs') nav?.tab(r.tab);
+  else nav?.push(r);
 };
 
-export const router = { push: go, navigate: go, replace: go, back: () => nav?.back() };
+export const router = {
+  push: go,
+  navigate: go,
+  replace: (href: Href) => nav?.replace(toRoute(href)),
+  back: () => nav?.back(),
+  dismissTo: () => nav?.tab('index'),
+};
 export function useLocalSearchParams<T>() {
   return useContext(ParamsContext) as T;
+}
+export function useIsFocused() {
+  return useContext(FocusContext);
 }

@@ -1,12 +1,16 @@
-// 5-day Push / Pull / Legs / Upper / Lower split.
-// Each muscle group is trained about twice a week. Heavy compound lifts first,
-// then accessories at higher reps.
+// Mon–Fri upper-body split. Sat and Sun are rest days. No leg or ab exercises (injury).
+
+import { EXERCISES } from './exercises';
 
 export type PlannedExercise = {
-  exerciseId: string;
+  /** Stable key for this slot in the day (used for variant choices). */
+  slot: string;
+  /** One exercise, or the options of an "X OR Y" slot. */
+  options: string[];
   sets: number;
-  reps: string; // target rep range, e.g. "6-8"
-  rest: number; // rest between sets, seconds
+  /** Target, e.g. "8-10", "max", "30-40". Unit comes from the exercise's log kind. */
+  target: string;
+  note?: string;
 };
 
 export type WorkoutDay = {
@@ -14,81 +18,112 @@ export type WorkoutDay = {
   name: string;
   focus: string;
   exercises: PlannedExercise[];
+  /** Shown on pressing exercises of this day. */
+  pressNote?: string;
 };
+
+const one = (slot: string, id: string, sets: number, target: string, note?: string): PlannedExercise => ({
+  slot,
+  options: [id],
+  sets,
+  target,
+  note,
+});
 
 export const DAYS: WorkoutDay[] = [
   {
-    id: 'push',
-    name: 'Push',
-    focus: 'Chest · Shoulders · Triceps',
+    id: 'mon',
+    name: 'Chest, Biceps & Shoulders',
+    focus: 'Push hard on presses, pump the arms',
     exercises: [
-      { exerciseId: 'Barbell_Bench_Press_-_Medium_Grip', sets: 4, reps: '6-8', rest: 150 },
-      { exerciseId: 'Incline_Dumbbell_Press', sets: 3, reps: '8-10', rest: 120 },
-      { exerciseId: 'Seated_Dumbbell_Press', sets: 3, reps: '8-10', rest: 120 },
-      { exerciseId: 'Side_Lateral_Raise', sets: 3, reps: '12-15', rest: 60 },
-      { exerciseId: 'Cable_Crossover', sets: 3, reps: '12-15', rest: 60 },
-      { exerciseId: 'Triceps_Pushdown_-_Rope_Attachment', sets: 3, reps: '10-12', rest: 60 },
-      { exerciseId: 'Cable_Rope_Overhead_Triceps_Extension', sets: 3, reps: '10-12', rest: 60 },
+      one('mon-1', 'flat_bench', 3, '8-10'),
+      one('mon-2', 'incline_db_press', 3, '8-12'),
+      one('mon-3', 'cable_fly', 3, '12-15'),
+      one('mon-4', 'incline_db_curl', 3, '10-12'),
+      one('mon-5', 'ez_curl', 3, '8-12'),
+      one('mon-6', 'front_raise', 2, '12-15'),
+      one('mon-7', 'lateral_raise', 4, '12-20'),
     ],
   },
   {
-    id: 'pull',
-    name: 'Pull',
-    focus: 'Back · Rear delts · Biceps',
+    id: 'tue',
+    name: 'Back & Triceps',
+    focus: 'Pull wide, squeeze every row',
     exercises: [
-      { exerciseId: 'Wide-Grip_Lat_Pulldown', sets: 4, reps: '8-10', rest: 120 },
-      { exerciseId: 'Bent_Over_Barbell_Row', sets: 3, reps: '6-8', rest: 150 },
-      { exerciseId: 'Seated_Cable_Rows', sets: 3, reps: '10-12', rest: 90 },
-      { exerciseId: 'Face_Pull', sets: 3, reps: '12-15', rest: 60 },
-      { exerciseId: 'Dumbbell_Shrug', sets: 3, reps: '10-12', rest: 60 },
-      { exerciseId: 'Barbell_Curl', sets: 3, reps: '8-10', rest: 90 },
-      { exerciseId: 'Hammer_Curls', sets: 3, reps: '10-12', rest: 60 },
+      one('tue-1', 'lat_pulldown', 3, '8-12'),
+      one('tue-2', 'seated_cable_row', 3, '8-12'),
+      one('tue-3', 'single_arm_db_row', 3, '10-12'),
+      one('tue-4', 'rear_raise', 3, '12-15'),
+      one('tue-5', 'db_shrug', 3, '12-15'),
+      one('tue-6', 'triceps_pushdown', 3, '10-15'),
+      one('tue-7', 'overhead_db_ext', 3, '10-15'),
     ],
   },
   {
-    id: 'legs',
-    name: 'Legs',
-    focus: 'Quads · Hamstrings · Calves',
+    id: 'wed',
+    name: 'Chest & Forearms',
+    focus: 'Moderate presses, crush the grip work',
+    pressNote: 'Keep press weights moderate: shoulders and triceps are trained tomorrow.',
     exercises: [
-      { exerciseId: 'Barbell_Squat', sets: 4, reps: '6-8', rest: 180 },
-      { exerciseId: 'Romanian_Deadlift', sets: 3, reps: '8-10', rest: 150 },
-      { exerciseId: 'Leg_Press', sets: 3, reps: '10-12', rest: 120 },
-      { exerciseId: 'Lying_Leg_Curls', sets: 3, reps: '10-12', rest: 90 },
-      { exerciseId: 'Leg_Extensions', sets: 3, reps: '12-15', rest: 60 },
-      { exerciseId: 'Standing_Calf_Raises', sets: 4, reps: '12-15', rest: 60 },
+      one('wed-1', 'incline_bb_press', 3, '6-10'),
+      one('wed-2', 'machine_chest_press', 3, '10-12'),
+      { slot: 'wed-3', options: ['pec_deck', 'cable_crossover'], sets: 3, target: '12-15' },
+      one('wed-4', 'push_ups', 2, 'max', 'Max clean reps. Stop 1–2 reps before failure.'),
+      one('wed-5', 'wrist_curl', 3, '15'),
+      one('wed-6', 'reverse_wrist_curl', 3, '15'),
+      one('wed-7', 'bb_reverse_curl', 3, '12-15'),
+      one('wed-8', 'farmers_walk', 3, '30-40'),
     ],
   },
   {
-    id: 'upper',
-    name: 'Upper',
-    focus: 'Chest · Back · Arms',
+    id: 'thu',
+    name: 'Shoulders & Arms',
+    focus: 'Big delts, full arm day',
     exercises: [
-      { exerciseId: 'Dumbbell_Bench_Press', sets: 3, reps: '8-10', rest: 120 },
-      { exerciseId: 'Pullups', sets: 3, reps: '6-10', rest: 120 },
-      { exerciseId: 'T-Bar_Row_with_Handle', sets: 3, reps: '8-10', rest: 120 },
-      { exerciseId: 'Side_Lateral_Raise', sets: 3, reps: '12-15', rest: 60 },
-      { exerciseId: 'Dips_-_Chest_Version', sets: 3, reps: '8-12', rest: 90 },
-      { exerciseId: 'Preacher_Curl', sets: 3, reps: '10-12', rest: 60 },
+      one('thu-1', 'db_shoulder_press', 3, '8-12'),
+      one('thu-2', 'lateral_raise', 3, '15-20'),
+      one('thu-3', 'rear_delt_fly', 3, '12-15'),
+      one('thu-4', 'close_grip_bench', 3, '8-10'),
+      one('thu-5', 'rope_pushdown', 3, '10-15'),
+      one('thu-6', 'hammer_curl', 3, '10-12'),
+      one('thu-7', 'concentration_curl', 3, '10-12'),
     ],
   },
   {
-    id: 'lower',
-    name: 'Lower',
-    focus: 'Glutes · Hamstrings · Core',
+    id: 'fri',
+    name: 'Back & Chest',
+    focus: 'Finish the week strong',
     exercises: [
-      { exerciseId: 'Barbell_Deadlift', sets: 3, reps: '5', rest: 180 },
-      { exerciseId: 'Front_Barbell_Squat', sets: 3, reps: '8', rest: 150 },
-      { exerciseId: 'Barbell_Walking_Lunge', sets: 3, reps: '10 / leg', rest: 90 },
-      { exerciseId: 'Barbell_Hip_Thrust', sets: 3, reps: '8-12', rest: 90 },
-      { exerciseId: 'Seated_Calf_Raise', sets: 4, reps: '15', rest: 60 },
-      { exerciseId: 'Hanging_Leg_Raise', sets: 3, reps: '10-15', rest: 60 },
+      { slot: 'fri-1', options: ['wide_pulldown', 'pull_ups'], sets: 3, target: '8-12' },
+      { slot: 'fri-2', options: ['bb_bent_row', 'db_bent_row'], sets: 3, target: '8-10' },
+      one('fri-3', 'seated_cable_row', 3, '10-12'),
+      one('fri-4', 'straight_arm_pulldown', 3, '12-15'),
+      one('fri-5', 'flat_db_press', 3, '10-12'),
+      one('fri-6', 'cable_crossover', 3, '12-15'),
     ],
   },
 ];
 
-// Weekday (0 = Sunday) -> day id, or null for a rest day.
-export const DEFAULT_WEEK: (string | null)[] = [null, 'push', 'pull', 'legs', null, 'upper', 'lower'];
+/** Weekday (0 = Sunday) -> day id, or null for rest. */
+export const DEFAULT_WEEK: (string | null)[] = [null, 'mon', 'tue', 'wed', 'thu', 'fri', null];
 
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export const dayById = (id: string) => DAYS.find((d) => d.id === id);
+export const dayById = (id: string | null | undefined) => DAYS.find((d) => d.id === id);
+
+/** Rest between sets: 2 min on heavy compounds, 90 s otherwise. */
+export const restFor = (exerciseId: string) => (EXERCISES[exerciseId]?.heavy ? 120 : 90);
+
+/** Top of the rep/time range ("8-12" -> 12, "15" -> 15, "max" -> null). */
+export const targetTop = (target: string) => {
+  const n = target.match(/\d+/g);
+  return n ? Math.max(...n.map(Number)) : null;
+};
+
+/** The exercise used for a slot, given the remembered variant choices. */
+export const pickOption = (p: PlannedExercise, variants: Record<string, string>) =>
+  p.options.includes(variants[p.slot]) ? variants[p.slot] : p.options[0];
+
+/** Every exercise id that appears anywhere in the program. */
+export const ALL_EXERCISE_IDS = [...new Set(DAYS.flatMap((d) => d.exercises.flatMap((e) => e.options)))];

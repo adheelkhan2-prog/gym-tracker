@@ -38,7 +38,9 @@
         {
           "color": "#C6F432"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "scheme": "gymtracker",
     "backgroundColor": "#0D0E10"
