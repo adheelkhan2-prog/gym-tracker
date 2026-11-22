@@ -1,7 +1,23 @@
 // Helpers that combine the program with what was logged.
-import { EXERCISES } from './data/exercises';
+import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { pickOption, targetTop, type PlannedExercise, type WorkoutDay } from './data/program';
-import { doneSets, num, type ExerciseLog, type SetEntry, type State } from './store';
+import { dayTitle } from './theme';
+import { fmtKg, platesText, type Gym, type Unit } from './load';
+import { doneSets, kgOf, num, type ExerciseLog, type SetEntry, type State } from './store';
+
+/** The exercise actually done for a slot: a remembered swap, else the plan's own pick. */
+export const exerciseFor = (state: Pick<State, 'swaps' | 'variants'>, plan: PlannedExercise) => {
+  const sw = state.swaps?.[plan.slot];
+  return sw && EXERCISES[sw] ? sw : pickOption(plan, state.variants);
+};
+
+/** Slots shown for a day. With injury mode on, anything loading legs or abs is hidden. */
+export const visiblePlans = (state: State, day: WorkoutDay) =>
+  day.exercises.filter((p) => !(state.injured && loadsInjury(exerciseFor(state, p))));
+
+/** Big title for a day: the original split keeps its punchy names. */
+export const titleOf = (day: WorkoutDay) => dayTitle[day.id] ?? day.name;
+export const subtitleOf = (day: WorkoutDay) => (dayTitle[day.id] ? day.name : day.focus);
 
 export type SlotStatus = {
   plan: PlannedExercise;
@@ -12,8 +28,8 @@ export type SlotStatus = {
 };
 
 export function slotStatuses(state: State, day: WorkoutDay, date: string): SlotStatus[] {
-  return day.exercises.map((plan) => {
-    const exerciseId = pickOption(plan, state.variants);
+  return visiblePlans(state, day).map((plan) => {
+    const exerciseId = exerciseFor(state, plan);
     const log = state.logs[date]?.[exerciseId];
     const done = doneSets(log, EXERCISES[exerciseId].kind).length;
     const skipped = !!log?.skipped;
@@ -39,6 +55,28 @@ export function hitTopOfRange(sets: SetEntry[], plan: PlannedExercise) {
 
 export function emptySets(n: number): SetEntry[] {
   return Array.from({ length: n }, () => ({ weight: '', reps: '', done: false }));
+}
+
+/** Colour names for a colour-plate set, e.g. "red + blue". */
+export const colorNames = (ids: string[], gym: Gym) =>
+  ids.map((c) => gym.colors.find((x) => x.id === c)?.name.toLowerCase() ?? c).join(' + ');
+
+/** The load part of a set: "Pin 7 · 49 kg", "2×20 + bar · 60 kg", "50 kg". */
+export function loadText(s: SetEntry, unit: Unit, gym: Gym) {
+  const kg = kgOf(s);
+  const w = kg !== null ? fmtKg(kg, unit) : '';
+  const l = s.load;
+  if (l?.t === 'stack' && l.pin !== undefined) return w ? `Pin ${l.pin} · ${w}` : `Pin ${l.pin}`;
+  if (l?.t === 'plates' && l.plates) return `${platesText(l.plates, l.bar ?? 0)} · ${w}`;
+  if (l?.t === 'colors' && l.colors) return `${l.colors.length ? colorNames(l.colors, gym) : 'empty'}${l.bar ? ' + bar' : ''} · ${w}`;
+  return w;
+}
+
+/** A whole set as text: "Pin 7 · 49 kg × 10", "12 reps", "45 s". */
+export function setText(s: SetEntry, kind: LogKind, unit: Unit, gym: Gym) {
+  if (kind === 'reps') return `${s.reps} reps`;
+  if (kind === 'time') return `${s.reps} s`;
+  return `${loadText(s, unit, gym)} × ${s.reps}${kind === 'weight_time' ? ' s' : ''}`;
 }
 
 export const logFor = (state: State, date: string, id: string): ExerciseLog | undefined => state.logs[date]?.[id];

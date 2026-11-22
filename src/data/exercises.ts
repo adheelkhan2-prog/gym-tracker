@@ -1,4 +1,5 @@
-import type { MuscleId } from './muscles';
+import { MORE } from './exercises-more';
+import { INJURY_REGIONS, type MuscleId } from './muscles';
 
 /**
  * How a set is logged:
@@ -6,7 +7,62 @@ import type { MuscleId } from './muscles';
  * - reps: reps only (push-ups)
  * - weight_time: weight × seconds (farmer's walk)
  */
-export type LogKind = 'weight_reps' | 'reps' | 'weight_time';
+export type LogKind = 'weight_reps' | 'reps' | 'weight_time' | 'time';
+
+export type Equipment =
+  | 'barbell'
+  | 'dumbbell'
+  | 'cable'
+  | 'machine'
+  | 'plate_loaded'
+  | 'smith'
+  | 'ez_bar'
+  | 'trap_bar'
+  | 'bodyweight';
+
+export const EQUIPMENT_LABEL: Record<Equipment, string> = {
+  barbell: 'Barbell',
+  dumbbell: 'Dumbbell',
+  cable: 'Cable',
+  machine: 'Machine',
+  plate_loaded: 'Plate-loaded',
+  smith: 'Smith machine',
+  ez_bar: 'EZ bar',
+  trap_bar: 'Trap bar',
+  bodyweight: 'Bodyweight',
+};
+
+/** Movement pattern, used to find swaps for exercises without a researched list. */
+export type Pattern =
+  | 'h_press'
+  | 'incline_press'
+  | 'v_press'
+  | 'fly'
+  | 'dip'
+  | 'v_pull'
+  | 'h_pull'
+  | 'pullover'
+  | 'shrug'
+  | 'lat_raise'
+  | 'front_raise'
+  | 'rear_delt'
+  | 'tri_ext'
+  | 'tri_overhead'
+  | 'curl'
+  | 'hammer'
+  | 'wrist_flex'
+  | 'wrist_ext'
+  | 'carry'
+  | 'squat'
+  | 'lunge'
+  | 'hinge'
+  | 'knee_ext'
+  | 'knee_flex'
+  | 'hip_ext'
+  | 'calf'
+  | 'core_flex'
+  | 'core_hip'
+  | 'core_brace';
 
 export type ExerciseInfo = {
   id: string;
@@ -19,13 +75,17 @@ export type ExerciseInfo = {
   primary: MuscleId[];
   secondary: MuscleId[];
   steps: string[];
+  equipment: Equipment;
+  pattern: Pattern;
 };
+
+type Base = Omit<ExerciseInfo, 'equipment' | 'pattern'> & Partial<Pick<ExerciseInfo, 'equipment' | 'pattern'>>;
 
 const TRICEPS: MuscleId[] = ['triceps_lateral', 'triceps_medial', 'triceps_long'];
 const PECS: MuscleId[] = ['pec_major_upper', 'pec_major_lower'];
 const LATS: MuscleId[] = ['upper_lats', 'lower_lats'];
 
-const list: ExerciseInfo[] = [
+const list: Base[] = [
   // ---------- Chest ----------
   {
     id: 'flat_bench',
@@ -476,4 +536,53 @@ const list: ExerciseInfo[] = [
   },
 ];
 
-export const EXERCISES: Record<string, ExerciseInfo> = Object.fromEntries(list.map((e) => [e.id, e]));
+// Equipment and movement pattern for the original upper-body exercises.
+const META: Record<string, [Equipment, Pattern]> = {
+  flat_bench: ['barbell', 'h_press'],
+  incline_db_press: ['dumbbell', 'incline_press'],
+  incline_bb_press: ['barbell', 'incline_press'],
+  machine_chest_press: ['machine', 'h_press'],
+  flat_db_press: ['dumbbell', 'h_press'],
+  cable_fly: ['cable', 'fly'],
+  cable_crossover: ['cable', 'fly'],
+  pec_deck: ['machine', 'fly'],
+  push_ups: ['bodyweight', 'h_press'],
+  db_shoulder_press: ['dumbbell', 'v_press'],
+  lateral_raise: ['dumbbell', 'lat_raise'],
+  front_raise: ['dumbbell', 'front_raise'],
+  rear_raise: ['dumbbell', 'rear_delt'],
+  rear_delt_fly: ['machine', 'rear_delt'],
+  lat_pulldown: ['cable', 'v_pull'],
+  wide_pulldown: ['cable', 'v_pull'],
+  pull_ups: ['bodyweight', 'v_pull'],
+  seated_cable_row: ['cable', 'h_pull'],
+  single_arm_db_row: ['dumbbell', 'h_pull'],
+  bb_bent_row: ['barbell', 'h_pull'],
+  db_bent_row: ['dumbbell', 'h_pull'],
+  straight_arm_pulldown: ['cable', 'pullover'],
+  db_shrug: ['dumbbell', 'shrug'],
+  triceps_pushdown: ['cable', 'tri_ext'],
+  rope_pushdown: ['cable', 'tri_ext'],
+  overhead_db_ext: ['dumbbell', 'tri_overhead'],
+  close_grip_bench: ['barbell', 'h_press'],
+  incline_db_curl: ['dumbbell', 'curl'],
+  ez_curl: ['ez_bar', 'curl'],
+  hammer_curl: ['dumbbell', 'hammer'],
+  concentration_curl: ['dumbbell', 'curl'],
+  wrist_curl: ['barbell', 'wrist_flex'],
+  reverse_wrist_curl: ['barbell', 'wrist_ext'],
+  bb_reverse_curl: ['barbell', 'hammer'],
+  farmers_walk: ['dumbbell', 'carry'],
+};
+
+export const EXERCISES: Record<string, ExerciseInfo> = Object.fromEntries(
+  [...list, ...MORE].map((e) => {
+    const m = META[e.id];
+    return [e.id, { ...e, equipment: e.equipment ?? m?.[0] ?? 'machine', pattern: e.pattern ?? m?.[1] ?? 'h_press' } as ExerciseInfo];
+  }),
+);
+
+export const EXERCISE_LIST = Object.values(EXERCISES);
+
+/** Trains legs or abs as a main muscle: hidden while injury mode is on. */
+export const loadsInjury = (id: string) => (EXERCISES[id]?.primary ?? []).some((m) => INJURY_REGIONS.has(m));

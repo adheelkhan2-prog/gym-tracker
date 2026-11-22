@@ -22,8 +22,10 @@ import { FINISH, FINISH_PR, line } from '../copy';
 import { EXERCISES } from '../data/exercises';
 import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../data/muscles';
 import { haptic } from '../feedback';
-import { bestBefore, doneSets, formatDate, prSetsOn, todayKey, trainingStreak, useStore } from '../store';
-import { color, dayTitle, font, leading, motion, radius, size, space, type } from '../theme';
+import { fmtKg, fromKg, round1 } from '../load';
+import { bestBefore, dayById, doneSets, formatDate, prSetsOn, todayKey, trainingStreak, useStore } from '../store';
+import { titleOf } from '../workout';
+import { color, font, leading, motion, radius, size, space, type } from '../theme';
 import { levelFor, pctChange, previousSameDay, rankFor, totalXp, volumeOn, xpOn } from '../xp';
 
 // Choreography (ms after open). One tap anywhere jumps to the end.
@@ -56,14 +58,22 @@ export default function CompleteScreen() {
     const muscles = (Object.entries(load) as [MuscleId, number][])
       .filter(([m]) => !(state.injured && INJURY_REGIONS.has(m)))
       .sort((a, b) => b[1] - a[1]);
-    const volume = volumeOn(state, date);
+    // Volume is summed in kg, shown in your unit.
+    const volume = Math.round(fromKg(volumeOn(state, date), state.unit));
     const prevDate = dayId ? previousSameDay(state, date, dayId) : null;
-    const change = prevDate ? pctChange(volume, volumeOn(state, prevDate)) : null;
+    const change = prevDate ? pctChange(volume, Math.round(fromKg(volumeOn(state, prevDate), state.unit))) : null;
     const prs = prSetsOn(state.logs, date).map((p) => {
       const kind = EXERCISES[p.exerciseId].kind;
       const before = bestBefore(state.logs, p.exerciseId, date);
-      const u = kind === 'reps' ? 'reps' : state.unit;
-      return { name: EXERCISES[p.exerciseId].name, value: `${p.value} ${u}`, delta: `+${Math.round((p.value - before) * 10) / 10} ${u} vs last best` };
+      if (kind === 'reps' || kind === 'time') {
+        const u = kind === 'reps' ? 'reps' : 's';
+        return { name: EXERCISES[p.exerciseId].name, value: `${p.value} ${u}`, delta: `+${p.value - before} ${u} vs last best` };
+      }
+      return {
+        name: EXERCISES[p.exerciseId].name,
+        value: fmtKg(p.value, state.unit),
+        delta: `+${round1(fromKg(p.value - before, state.unit))} ${state.unit} vs last best`,
+      };
     });
     const mins = session?.startedAt && session.finishedAt ? Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60000)) : null;
     const xpNow = totalXp(state);
@@ -196,7 +206,7 @@ export default function CompleteScreen() {
       >
         <View style={s.pad}>
           <View style={s.topRow}>
-            <Badge label={`${dayTitle[data.dayId] ?? 'Workout'} · done`} icon="check" />
+            <Badge label={`${(dayById(state, data.dayId) ? titleOf(dayById(state, data.dayId)!) : 'Workout')} · done`} icon="check" />
             {!skipped && <Text style={s.skipHint}>Tap to skip</Text>}
           </View>
         </View>
@@ -245,7 +255,7 @@ export default function CompleteScreen() {
                       {up ? '+' : ''}
                       {data.change}%
                     </Text>{' '}
-                    vs last {dayTitle[data.dayId] ?? 'session'} ({formatDate(data.prevDate!)})
+                    vs last {(dayById(state, data.dayId) ? titleOf(dayById(state, data.dayId)!) : 'session')} ({formatDate(data.prevDate!)})
                   </Text>
                 </View>
               )}
@@ -359,7 +369,7 @@ export default function CompleteScreen() {
         <ShareSheet
           onClose={() => setShare(null)}
           data={{
-            title: dayTitle[data.dayId] ?? 'Workout',
+            title: (dayById(state, data.dayId) ? titleOf(dayById(state, data.dayId)!) : 'Workout'),
             date: formatDate(date),
             volume: data.volume.toLocaleString(),
             unit: state.unit,

@@ -29,6 +29,8 @@ export type IconName =
   | 'alert'
   | 'moon'
   | 'swap'
+  | 'search'
+  | 'edit'
   | 'trash'
   | 'home'
   | 'hand'
@@ -151,6 +153,13 @@ const G: Record<IconName, Glyph> = {
   ),
   moon: (c, f) => <Path d="M19.5 14.6A8 8 0 019.4 4.5 8 8 0 1019.5 14.6z" {...st(c)} fill={fillOr(c, f)} />,
   swap: (c) => <Path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4" {...st(c)} />,
+  search: (c) => (
+    <>
+      <Circle cx={10.5} cy={10.5} r={6.5} {...st(c)} />
+      <Path d="M15.5 15.5L20 20" {...st(c)} />
+    </>
+  ),
+  edit: (c) => <Path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16zM13.5 6.5l4 4" {...st(c)} />,
   trash: (c) => <Path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5a1.8 1.8 0 001.8 1.5h5.4a1.8 1.8 0 001.8-1.5l1-12.5M10 11v6M14 11v6" {...st(c)} />,
   home: (c, f) => <Path d="M3.5 11L12 3.8l8.5 7.2V19a1.8 1.8 0 01-1.8 1.8h-3.9v-5.6H9.2v5.6H5.3A1.8 1.8 0 013.5 19z" {...st(c)} fill={fillOr(c, f)} />,
   hand: (c) => (

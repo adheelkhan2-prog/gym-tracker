@@ -1,4 +1,4 @@
-// Mon–Fri upper-body split. Sat and Sun are rest days. No leg or ab exercises (injury).
+// The original Mon–Fri upper-body split ("Upper Body 5-Day (Injury)"). Sat and Sun are rest days.
 
 import { EXERCISES } from './exercises';
 
@@ -11,6 +11,8 @@ export type PlannedExercise = {
   /** Target, e.g. "8-10", "max", "30-40". Unit comes from the exercise's log kind. */
   target: string;
   note?: string;
+  /** Rest between sets in seconds; falls back to 2 min heavy / 90 s. */
+  rest?: number;
 };
 
 export type WorkoutDay = {
@@ -110,10 +112,10 @@ export const DEFAULT_WEEK: (string | null)[] = [null, 'mon', 'tue', 'wed', 'thu'
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export const dayById = (id: string | null | undefined) => DAYS.find((d) => d.id === id);
 
-/** Rest between sets: 2 min on heavy compounds, 90 s otherwise. */
-export const restFor = (exerciseId: string) => (EXERCISES[exerciseId]?.heavy ? 120 : 90);
+/** Rest between sets: the plan's own value, else 2 min on heavy compounds and 90 s otherwise. */
+export const restFor = (exerciseId: string, plan?: { rest?: number }) =>
+  plan?.rest ?? (EXERCISES[exerciseId]?.heavy ? 120 : 90);
 
 /** Top of the rep/time range ("8-12" -> 12, "15" -> 15, "max" -> null). */
 export const targetTop = (target: string) => {
@@ -121,9 +123,6 @@ export const targetTop = (target: string) => {
   return n ? Math.max(...n.map(Number)) : null;
 };
 
-/** The exercise used for a slot, given the remembered variant choices. */
+/** The exercise the plan itself picks for a slot (ignoring swaps), given remembered variant choices. */
 export const pickOption = (p: PlannedExercise, variants: Record<string, string>) =>
   p.options.includes(variants[p.slot]) ? variants[p.slot] : p.options[0];
-
-/** Every exercise id that appears anywhere in the program. */
-export const ALL_EXERCISE_IDS = [...new Set(DAYS.flatMap((d) => d.exercises.flatMap((e) => e.options)))];

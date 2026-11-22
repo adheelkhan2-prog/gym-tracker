@@ -2,11 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { EXERCISES, type LogKind } from './data/exercises';
 import { INJURY_REGIONS, type MuscleId } from './data/muscles';
-import { DAYS, DEFAULT_WEEK } from './data/program';
+import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
+import { PROGRAMS, type Program } from './data/programs';
+import { DEFAULT_GYM, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
-export type Unit = 'kg' | 'lb';
-/** One set. `reps` holds seconds for timed exercises; `weight` is empty for reps-only ones. */
-export type SetEntry = { weight: string; reps: string; done: boolean };
+export type { Unit } from './load';
+/**
+ * One set. `reps` holds seconds for timed exercises; `weight` is empty for reps-only ones.
+ * `weight` is in the set's own unit `u` (kg or lb), so switching units never rewrites history.
+ * `load` keeps the pin / plates / colours the set was logged with.
+ */
+export type SetEntry = { weight: string; reps: string; done: boolean; u?: Unit; load?: LoadInfo };
 export type ExerciseLog = { sets: SetEntry[]; skipped?: boolean };
 export type DayLog = Record<string, ExerciseLog>; // exerciseId -> log
 export type Session = { dayId: string; startedAt?: number; finishedAt?: number };
@@ -26,6 +32,19 @@ export type State = {
   remindersOn: boolean;
   reminderTimes: string[]; // 'HH:MM'; first is the morning reminder, the rest are follow-ups
   taken: Record<string, Record<string, boolean>>; // date -> supplement -> taken
+  /** Active program. `week` above is its weekday -> day mapping. */
+  programId: string;
+  /** A switch confirmed for a later date (e.g. "from Monday"). */
+  pending: { programId: string; week: (string | null)[]; from: string } | null;
+  customPrograms: Program[];
+  /** Program slot -> exercise actually done instead of the planned one. */
+  swaps: Record<string, string>;
+  loadTypes: Record<string, LoadType>;
+  machines: Record<string, MachineSetup>;
+  gym: Gym;
+  /** Date injury mode was turned off: shows the "ease in" card for two weeks. */
+  easeInFrom: string | null;
+  easeInDismissed: boolean;
 };
 
 export const DEFAULT_STATE: State = {
@@ -42,9 +61,19 @@ export const DEFAULT_STATE: State = {
   remindersOn: true,
   reminderTimes: ['08:00', '13:00', '19:00'],
   taken: {},
+  programId: 'upper5',
+  pending: null,
+  customPrograms: [],
+  swaps: {},
+  loadTypes: {},
+  machines: {},
+  gym: DEFAULT_GYM,
+  easeInFrom: null,
+  easeInDismissed: false,
 };
 
-export const STORAGE_KEY = 'gym-tracker/state/v2';
+export const STORAGE_KEY = 'gym-tracker/state/v3';
+const V2_KEY = 'gym-tracker/state/v2';
 const OLD_KEY = 'gym-tracker/state/v1';
 
 // Exercises from the first version of the app that still exist in the new program.
@@ -67,26 +96,60 @@ const OLD_IDS: Record<string, string> = {
 /** Turn a saved state from any version into the current shape. */
 export function migrate(raw: unknown, fromOld: boolean): State {
   const r = (raw ?? {}) as Partial<State> & { logs?: Record<string, Record<string, unknown>> };
+  // Sets saved before v3 have no unit of their own: they were typed in the unit chosen at the time.
+  const legacyUnit: Unit = r.unit === 'kg' ? 'kg' : 'lb';
   const logs: State['logs'] = {};
   for (const [date, day] of Object.entries(r.logs ?? {})) {
     const out: DayLog = {};
     for (const [id, v] of Object.entries(day ?? {})) {
       const newId = fromOld ? OLD_IDS[id] : id;
       if (!newId || !EXERCISES[newId]) continue;
-      out[newId] = Array.isArray(v) ? { sets: v as SetEntry[] } : (v as ExerciseLog);
+      const log = Array.isArray(v) ? { sets: v as SetEntry[] } : (v as ExerciseLog);
+      out[newId] = { ...log, sets: (log.sets ?? []).map((st) => (st.u ? st : { ...st, u: legacyUnit })) };
     }
     if (Object.keys(out).length) logs[date] = out;
   }
+  const merged = { ...DEFAULT_STATE, ...(r as Partial<State>) };
+  const program = programById(merged, merged.programId) ?? PROGRAMS[0];
   const validWeek =
-    Array.isArray(r.week) && r.week.length === 7 && r.week.every((d) => d === null || DAYS.some((x) => x.id === d));
+    Array.isArray(r.week) && r.week.length === 7 && r.week.every((d) => d === null || program.days.some((x) => x.id === d));
   return {
-    ...DEFAULT_STATE,
-    ...(r as Partial<State>),
-    week: validWeek ? (r.week as State['week']) : DEFAULT_WEEK,
+    ...merged,
+    programId: program.id,
+    week: validWeek ? (r.week as State['week']) : program.week,
     logs,
     sessions: fromOld ? {} : (r.sessions ?? {}),
     variants: r.variants ?? {},
+    gym: { ...DEFAULT_GYM, ...(r.gym ?? {}) },
   };
+}
+
+// ---------- Programs ----------
+
+export const allPrograms = (state: Pick<State, 'customPrograms'>) => [...PROGRAMS, ...(state.customPrograms ?? [])];
+
+export const programById = (state: Pick<State, 'customPrograms'>, id: string | undefined) =>
+  allPrograms(state).find((p) => p.id === id);
+
+export const activeProgram = (state: State) => programById(state, state.programId) ?? PROGRAMS[0];
+
+/** Find a workout day in any program, so old sessions still resolve after a switch. */
+export function dayById(state: State, id: string | null | undefined): WorkoutDay | undefined {
+  if (!id) return undefined;
+  const active = activeProgram(state).days.find((d) => d.id === id);
+  if (active) return active;
+  for (const p of allPrograms(state)) {
+    const d = p.days.find((x) => x.id === id);
+    if (d) return d;
+  }
+  return undefined;
+}
+
+/** Apply a pending program switch once its start date arrives. */
+export function applyPending(state: State, today = todayKey()): State {
+  const p = state.pending;
+  if (!p || p.from > today || !programById(state, p.programId)) return state;
+  return { ...state, programId: p.programId, week: p.week, pending: null };
 }
 
 export const todayKey = (d = new Date()) => {
@@ -116,8 +179,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setState(migrate(JSON.parse(raw), false));
+        const raw = (await AsyncStorage.getItem(STORAGE_KEY)) ?? (await AsyncStorage.getItem(V2_KEY));
+        if (raw) setState(applyPending(migrate(JSON.parse(raw), false)));
         else {
           const old = await AsyncStorage.getItem(OLD_KEY);
           if (old) setState(migrate(JSON.parse(old), true));
@@ -156,15 +219,26 @@ export const num = (s: string | undefined) => {
 
 export const kindOf = (exerciseId: string): LogKind => EXERCISES[exerciseId]?.kind ?? 'weight_reps';
 
+/** Kilograms lifted on a set, or null when it isn't known (e.g. a pin on a machine that isn't set up). */
+export const kgOf = (s: SetEntry) => {
+  const w = num(s.weight);
+  return w === null ? null : toKg(w, s.u ?? 'lb');
+};
+
+const weighted = (kind: LogKind) => kind === 'weight_reps' || kind === 'weight_time';
+
 /** A finished set with every number its exercise needs. */
 export const isComplete = (s: SetEntry, kind: LogKind) =>
-  s.done && num(s.reps) !== null && (kind === 'reps' || num(s.weight) !== null);
+  s.done && num(s.reps) !== null && (!weighted(kind) || num(s.weight) !== null || s.load?.pin !== undefined);
 
 export const doneSets = (log: ExerciseLog | undefined, kind: LogKind) =>
   (log?.sets ?? []).filter((s) => isComplete(s, kind));
 
-/** The number a PR is judged on: weight for loaded lifts, reps for push-ups. */
-export const prMetric = (s: SetEntry, kind: LogKind) => (kind === 'reps' ? num(s.reps)! : num(s.weight)!);
+/**
+ * The number a PR is judged on: kg for loaded lifts, reps (or seconds) otherwise.
+ * Pin-only sets have no kg, so they score 0 here and are charted by pin instead.
+ */
+export const prMetric = (s: SetEntry, kind: LogKind) => (weighted(kind) ? (kgOf(s) ?? 0) : num(s.reps)!);
 
 /** Epley estimated one-rep max. */
 export const est1RM = (w: number, r: number) => (r <= 1 ? w : w * (1 + r / 30));
@@ -222,7 +296,16 @@ export function prCountsByDate(logs: State['logs']) {
   return out;
 }
 
-export type HistoryPoint = { date: string; top: number; topReps: number; e1rm: number; volume: number; seconds: number };
+/** `top` is kg (or reps/seconds); `pin` is set when the exercise was only logged by machine pin. */
+export type HistoryPoint = {
+  date: string;
+  top: number;
+  topReps: number;
+  e1rm: number;
+  volume: number;
+  seconds: number;
+  pin?: number;
+};
 
 export function exerciseHistory(logs: State['logs'], exerciseId: string): HistoryPoint[] {
   const kind = kindOf(exerciseId);
@@ -235,16 +318,20 @@ export function exerciseHistory(logs: State['logs'], exerciseId: string): Histor
       let e1rm = 0;
       let volume = 0;
       let seconds = 0;
+      let pin = 0;
       for (const s of sets) {
-        const w = num(s.weight) ?? 0;
+        const w = kgOf(s) ?? 0;
         const r = num(s.reps)!;
-        if (kind === 'weight_time') seconds += r;
+        if (kind === 'weight_time' || kind === 'time') seconds += r;
         else volume += kind === 'reps' ? r : w * r;
         const better = prMetric(s, kind) > prMetric(top, kind) || (prMetric(s, kind) === prMetric(top, kind) && r > num(top.reps)!);
         if (better) top = s;
         if (kind === 'weight_reps') e1rm = Math.max(e1rm, est1RM(w, r));
+        if (s.load?.pin !== undefined && kgOf(s) === null) pin = Math.max(pin, s.load.pin);
       }
-      return [{ date, top: prMetric(top, kind), topReps: num(top.reps)!, e1rm, volume, seconds }];
+      const point: HistoryPoint = { date, top: prMetric(top, kind), topReps: num(top.reps)!, e1rm, volume, seconds };
+      if (point.top === 0 && pin > 0) point.pin = pin;
+      return [point];
     });
 }
 
@@ -302,6 +389,12 @@ export function weeklyMuscleSets(state: State, keys = weekKeys()) {
   }
   if (state.injured) for (const m of INJURY_REGIONS) delete out[m];
   return out;
+}
+
+/** Show the "welcome back, ease in" card for the first two weeks after injury mode goes off. */
+export function easingIn(state: State, today = todayKey()) {
+  if (state.injured || !state.easeInFrom || state.easeInDismissed) return false;
+  return today < addDays(state.easeInFrom, 14);
 }
 
 export function weekSummary(state: State, today = todayKey()) {
