@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EXERCISES } from '../../data/exercises';
 import { dayById } from '../../data/program';
@@ -18,6 +18,7 @@ const buzz = (kind: 'light' | 'success') => {
 export default function ExerciseScreen() {
   const { id, day: dayId } = useLocalSearchParams<{ id: string; day?: string }>();
   const insets = useSafeAreaInsets();
+  const { width: screenW } = useWindowDimensions();
   const { state, update } = useStore();
   const ex = EXERCISES[id];
   const plan = dayById(dayId ?? '')?.exercises.find((e) => e.exerciseId === id);
@@ -100,7 +101,7 @@ export default function ExerciseScreen() {
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 140 }}>
         <Pressable onPress={() => setAnimate((a) => !a)} accessibilityLabel="Exercise demonstration. Tap to pause.">
-          <Image source={ex.images[frame]} style={s.hero} resizeMode="cover" />
+          <Image source={ex.images[frame]} style={[s.hero, { height: Math.round(Math.min(screenW, 700) / 1.5) }]} resizeMode="cover" />
           <View style={s.heroTag}>
             <Text style={s.heroTagText}>{frame === 0 ? 'START' : 'FINISH'}</Text>
             <Ionicons name={animate ? 'pause' : 'play'} size={12} color={C.text} />
@@ -263,7 +264,7 @@ export default function ExerciseScreen() {
 }
 
 const s = StyleSheet.create({
-  hero: { width: '100%', aspectRatio: 1.5, backgroundColor: '#fff' },
+  hero: { width: '100%', backgroundColor: '#fff' },
   heroTag: {
     position: 'absolute',
     right: 12,
