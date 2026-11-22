@@ -1,20 +1,33 @@
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
-import { Button, Chip, Flame, Press, Screen, SectionTitle } from '../../components/ui';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+import { Glass } from '../../components/glass';
+import { Icon } from '../../components/icons';
+import { CountUp, Pulse } from '../../components/motion';
+import { SwipeDeck, type DeckItem } from '../../components/SwipeDeck';
+import { Badge, Button, Flame, Press, Ring, Screen } from '../../components/ui';
+import { GREETING, REST_DAY, line } from '../../copy';
 import { EXERCISES } from '../../data/exercises';
-import { DAYS, dayById, WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
+import { MUSCLE_LABEL } from '../../data/muscles';
+import { dayById, WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
 import { haptic } from '../../feedback';
-import { allTaken, num, previousSession, supplementStreak, todayKey, trainingStreak, useStore } from '../../store';
-import { color, font, gradient, leading, radius, size, space, touch, type } from '../../theme';
+import { allTaken, num, previousSession, todayKey, trainedOn, trainingStreak, useStore, weekKeys } from '../../store';
+import { color, dayTitle, font, leading, motion, radius, size, space, touch, type } from '../../theme';
 import { WARMUP, dayProgress } from '../../workout';
+import { levelFor, rankFor, totalXp } from '../../xp';
 
 export default function TodayScreen() {
   const { state, update } = useStore();
   const reduce = useReducedMotion();
+  const { width, height } = useWindowDimensions();
   const now = new Date();
   const date = todayKey(now);
   const scheduled = state.week[now.getDay()];
@@ -24,16 +37,77 @@ export default function TodayScreen() {
   const progress = day ? dayProgress(state, day, date) : null;
   const started = !!progress && progress.done > 0;
   const finished = !!state.sessions[date]?.finishedAt;
-  const nextTraining = (() => {
-    for (let i = 1; i <= 7; i++) {
-      const id = state.week[(now.getDay() + i) % 7];
-      if (id) return { when: i === 1 ? 'Tomorrow' : WEEKDAY_LONG[(now.getDay() + i) % 7], day: dayById(id)! };
-    }
-    return null;
-  })();
+  const lvl = levelFor(totalXp(state));
+  const rank = rankFor(lvl.level);
+  // The deck opens on the next unfinished exercise; swiping moves it within the current day.
+  const nextIdx = progress ? Math.max(0, progress.statuses.findIndex((x) => !x.complete)) : 0;
+  const [deck, setDeck] = useState<{ day?: string; i: number }>({ i: 0 });
+  const deckIndex = deck.day === day?.id ? deck.i : nextIdx;
+  const setDeckIndex = (i: number) => setDeck({ day: day?.id, i });
 
+  const items: DeckItem[] = !day || !progress
+    ? []
+    : progress.statuses.map((st, i) => {
+      const ex = EXERCISES[st.exerciseId];
+      const prev = previousSession(state.logs, st.exerciseId, date);
+      const top = prev?.sets.reduce((a, b) => {
+        const dw = (num(b.weight) ?? 0) - (num(a.weight) ?? 0);
+        return dw > 0 || (dw === 0 && (num(b.reps) ?? 0) > (num(a.reps) ?? 0)) ? b : a;
+      });
+      const unit = ex.kind === 'weight_time' ? ' s' : ex.kind === 'reps' ? ' reps' : '';
+      const paint: DeckItem['paint'] = {};
+      for (const m of ex.secondary) paint[m] = { color: color.muscleSecondary };
+      for (const m of ex.primary) paint[m] = { color: color.musclePrimary, glow: 0.15 };
+      return {
+        key: st.plan.slot,
+        index: i,
+        total: progress.statuses.length,
+        name: ex.name,
+        target: `${st.plan.sets} × ${st.plan.target}${unit}`,
+        last: top ? (ex.kind === 'reps' ? `Last ${top.reps} reps` : `Last ${top.weight} ${state.unit} × ${top.reps}${ex.kind === 'weight_time' ? 's' : ''}`) : 'First time: set the bar',
+        status: st.skipped ? 'skipped' : st.complete ? 'done' : st.done > 0 ? 'partial' : 'todo',
+        progress: `${st.done}/${st.plan.sets}`,
+        paint,
+        muscles: ex.primary.map((m) => MUSCLE_LABEL[m]).join(' · '),
+      };
+    });
+
+  // ----- Card → exercise expand transition (hand-built shared element) -----
+  const deckRef = useRef<React.ComponentRef<typeof View>>(null);
+  const [expand, setExpand] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const ex = useSharedValue(0);
+  const expandStyle = useAnimatedStyle(() => {
+    if (!expand) return { opacity: 0 };
+    const p = ex.value;
+    return {
+      opacity: 1,
+      left: expand.x * (1 - p),
+      top: expand.y * (1 - p),
+      width: expand.w + (width - expand.w) * p,
+      height: expand.h + (height - expand.h) * p,
+      borderRadius: radius.xxl * (1 - p),
+    };
+  });
   const open = (exerciseId: string, slot: string) =>
     router.push({ pathname: '/exercise/[id]', params: { id: exerciseId, day: day!.id, slot } });
+
+  const startCard = (item: DeckItem) => {
+    const st = progress!.statuses[item.index];
+    const go = () => {
+      open(st.exerciseId, st.plan.slot);
+      // Clear the expanding panel once the exercise screen is on top.
+      setTimeout(() => {
+        setExpand(null);
+        ex.set(0);
+      }, 450);
+    };
+    if (reduce || !deckRef.current) return go();
+    deckRef.current.measureInWindow((x: number, y: number, w: number, h: number) => {
+      setExpand({ x, y, w, h: h - space.x3 });
+      ex.set(0);
+      ex.set(withSpring(1, motion.swipe, (fin) => fin && scheduleOnRN(go)));
+    });
+  };
 
   const finish = () => {
     // eslint-disable-next-line react-hooks/purity -- runs in the tap handler, not during render
@@ -45,284 +119,259 @@ export default function TodayScreen() {
     router.push({ pathname: '/complete', params: { date } });
   };
 
+  const nextTraining = (() => {
+    for (let i = 1; i <= 7; i++) {
+      const id = state.week[(now.getDay() + i) % 7];
+      if (id) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(now.getDay() + i) % 7]}`, id };
+    }
+    return null;
+  })();
+
   const warmDone = !!state.warmups[date];
   const suppsDone = allTaken(state, date);
+  // Battle pass: one tile per weekday that has a workout in your day order (Mon-first).
+  const pass = weekKeys(date)
+    .map((d) => ({ d, wd: new Date(d.replace(/-/g, '/')).getDay() }))
+    .filter((x) => state.week[x.wd])
+    .map((x) => ({ ...x, id: state.week[x.wd]! }));
+  const ringSize = Math.min(150, width * 0.36);
 
   return (
-    <Screen>
-      <View style={s.top}>
-        <Text style={s.date}>{now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Flame count={trainingStreak(state)} label="training" />
-          <Flame count={supplementStreak(state)} label="supplement" tint={color.lime} />
-        </View>
-      </View>
-
-      {day && progress ? (
-        <Animated.View entering={reduce ? undefined : FadeInDown.duration(260)}>
-          <LinearGradient colors={gradient.heroCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
-            <Text style={s.heroTitle}>{day.name}</Text>
-            <Text style={s.heroFocus}>{day.focus}</Text>
-            <View style={s.heroBarTrack}>
-              <View style={[s.heroBarFill, { width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }]} />
-            </View>
-            <View style={s.heroRow}>
-              <Text style={s.heroCount}>
-                {progress.done}
-                <Text style={s.heroCountOf}> / {progress.total} sets</Text>
+    <View style={{ flex: 1 }}>
+      <Screen padBottom={140}>
+        {/* Header: rotating line, rank, streaks */}
+        <View style={s.head}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.date}>{now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+            <Text style={s.greet} numberOfLines={2}>
+              {line(day ? GREETING : REST_DAY, date)}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: space.xs }}>
+            <Flame count={trainingStreak(state)} label="training" />
+            <View style={s.rank} accessibilityLabel={`Level ${lvl.level}, ${rank.name}`}>
+              <Icon name="bolt" size={14} color={color.lime} filled />
+              <Text style={s.rankText}>
+                {rank.name} · L{lvl.level}
               </Text>
-              <Text style={s.heroMeta}>{day.exercises.length} exercises</Text>
             </View>
-            {!finished && (
-              <Press
-                onPress={() => {
-                  haptic.tap();
-                  if (progress.next) open(progress.next.exerciseId, progress.next.plan.slot);
-                  else finish();
-                }}
-                style={s.heroBtn}
-                accessibilityRole="button"
-              >
-                <Text style={s.heroBtnText}>
-                  {progress.allDone ? 'Finish workout' : started ? `Continue: ${EXERCISES[progress.next!.exerciseId].name}` : 'Start workout'}
-                </Text>
-                <Ionicons name="arrow-forward" size={20} color={color.lime} />
-              </Press>
-            )}
-            {finished && (
-              <View style={s.heroDone}>
-                <Ionicons name="checkmark-circle" size={22} color={color.ink} />
-                <Text style={s.heroDoneText}>Workout complete. Nice work.</Text>
+          </View>
+        </View>
+
+        {/* Hero: day name huge, ring breaking out of the card's corner */}
+        {day && progress ? (
+          <Animated.View entering={reduce ? undefined : FadeInDown.springify().damping(16)} style={{ marginTop: space.xxl }}>
+            <Glass strong glow={color.lime} r={radius.xxl} style={s.hero}>
+              <Text style={s.dayTag}>{WEEKDAY_SHORT[state.week.indexOf(day.id)] ?? ''}</Text>
+              <Text style={s.dayTitle}>{dayTitle[day.id]}</Text>
+              <Text style={s.focus} numberOfLines={2}>
+                {day.name}
+              </Text>
+              <View style={{ marginTop: space.xl, alignSelf: 'flex-start' }}>
+                {finished ? (
+                  <Badge label="Workout complete" icon="check" />
+                ) : (
+                  <Button
+                    label={progress.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout'}
+                    iconRight="arrowRight"
+                    onPress={() => (progress.allDone ? finish() : progress.next && open(progress.next.exerciseId, progress.next.plan.slot))}
+                  />
+                )}
               </View>
-            )}
-          </LinearGradient>
-        </Animated.View>
-      ) : (
-        <View style={s.restCard}>
-          <Ionicons name="bed" size={34} color={color.orange} />
-          <Text style={type.title}>Rest day</Text>
-          <Text style={type.bodyMuted}>
-            Muscles grow while you recover. Take your supplements
-            {nextTraining ? `, and get ready for ${nextTraining.day.name} ${nextTraining.when.toLowerCase() === 'tomorrow' ? 'tomorrow' : `on ${nextTraining.when}`}.` : '.'}
+            </Glass>
+            <View style={[s.ringWrap, { width: ringSize, height: ringSize }]} pointerEvents="none">
+              <Ring progress={progress.total ? progress.done / progress.total : 0} size={ringSize} stroke={12}>
+                <CountUp to={progress.done} style={s.ringNum} />
+                <Text style={s.ringOf}>of {progress.total} sets</Text>
+              </Ring>
+            </View>
+          </Animated.View>
+        ) : (
+          <Glass strong r={radius.xxl} style={[s.hero, { marginTop: space.xxl }]}>
+            <Icon name="moon" size={36} color={color.lime} filled />
+            <Text style={s.dayTitle}>Rest Day</Text>
+            <Text style={s.focus}>
+              {nextTraining ? `${dayTitle[nextTraining.id]} is ${nextTraining.when}.` : 'Recover and refuel.'}
+            </Text>
+          </Glass>
+        )}
+
+        {/* Battle pass: 5 training days fill in as you complete them */}
+        <View style={s.passHead}>
+          <Text style={type.h2}>This week</Text>
+          <Text style={s.passCount}>
+            {pass.filter((x) => trainedOn(state, x.d)).length}/{pass.length}
           </Text>
         </View>
-      )}
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.days} contentContainerStyle={{ gap: space.sm }}>
-        {DAYS.map((d) => {
-          const wd = state.week.indexOf(d.id);
-          return (
-            <Chip
-              key={d.id}
-              label={wd >= 0 ? WEEKDAY_SHORT[wd] : d.name.split(' ')[0]}
-              icon={d.id === scheduled ? 'today' : undefined}
-              active={d.id === day?.id}
-              onPress={() => setPicked(d.id)}
-            />
-          );
-        })}
-      </ScrollView>
-
-      {!suppsDone && (
-        <Press onPress={() => router.navigate('/supplements')} style={s.nudge} accessibilityRole="button">
-          <Ionicons name="flask" size={20} color={color.orange} />
-          <Text style={s.nudgeText}>
-            {state.supplements.filter((x) => !state.taken[date]?.[x]).join(' + ')} not taken yet
-          </Text>
-          <Press
-            onPress={() => {
-              haptic.setDone();
-              update((st) => ({ ...st, taken: { ...st.taken, [date]: Object.fromEntries(st.supplements.map((x) => [x, true])) } }));
-            }}
-            style={s.nudgeBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Mark supplements taken"
-          >
-            <Text style={s.nudgeBtnText}>Taken</Text>
-          </Press>
-        </Press>
-      )}
-
-      {day && progress && (
-        <>
-          <View style={[s.warm, warmDone && { backgroundColor: color.limeDim }]}>
-            <View style={s.warmHead}>
-              <Ionicons name={warmDone ? 'checkmark-circle' : 'flame-outline'} size={24} color={warmDone ? color.lime : color.orange} />
-              <View style={{ flex: 1 }}>
-                <Text style={type.h3}>5-minute warm-up</Text>
-                <Text style={type.small}>{warmDone ? 'Done. Joints are ready.' : 'Shoulders, elbows and wrists first.'}</Text>
-              </View>
+        <View style={s.pass}>
+          {pass.map(({ d, wd, id }, i) => {
+            const done = trainedOn(state, d);
+            const isToday = d === date;
+            const tile = (
               <Press
-                onPress={() => {
-                  haptic.tap();
-                  update((st) => ({ ...st, warmups: { ...st.warmups, [date]: !warmDone } }));
-                }}
-                style={[s.warmBtn, warmDone && { backgroundColor: color.surface3 }]}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: warmDone }}
-                accessibilityLabel="Warm-up done"
+                key={d}
+                onPress={() => setPicked(id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${WEEKDAY_SHORT[wd]}: ${done ? 'done' : isToday ? 'today' : 'not done'}`}
+                style={[s.passTile, done && s.passDone, isToday && !done && s.passToday, id === day?.id && s.passSel]}
               >
-                <Text style={[s.warmBtnText, warmDone && { color: color.text }]}>{warmDone ? 'Undo' : 'Done'}</Text>
+                {done ? <Icon name="check" size={22} color={color.ink} /> : <Text style={[s.passNum, isToday && { color: color.lime }]}>{i + 1}</Text>}
+                <Text style={[s.passDay, done && { color: color.ink }]}>{WEEKDAY_SHORT[wd]}</Text>
               </Press>
-            </View>
-            {!warmDone &&
-              WARMUP.map((w) => (
-                <View key={w.text} style={s.warmRow}>
-                  <Ionicons name={w.icon} size={16} color={color.muted} />
-                  <Text style={[type.small, { flex: 1, color: color.text }]}>{w.text}</Text>
+            );
+            return isToday && !done ? (
+              <Pulse key={d} scale={1.06}>
+                {tile}
+              </Pulse>
+            ) : (
+              tile
+            );
+          })}
+        </View>
+
+        {!suppsDone && (
+          <Press onPress={() => router.navigate('/supplements')} style={s.nudge} accessibilityRole="button" glow={color.pink}>
+            <Icon name="flask" size={20} color={color.pink} filled />
+            <Text style={s.nudgeText} numberOfLines={1}>
+              {state.supplements.filter((x) => !state.taken[date]?.[x]).join(' + ')} not taken yet
+            </Text>
+            <Press
+              onPress={() => {
+                haptic.setDone();
+                update((st) => ({ ...st, taken: { ...st.taken, [date]: Object.fromEntries(st.supplements.map((x) => [x, true])) } }));
+              }}
+              style={s.nudgeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Mark supplements taken"
+            >
+              <Text style={s.nudgeBtnText}>Taken</Text>
+            </Press>
+          </Press>
+        )}
+
+        {day && progress && (
+          <>
+            <Glass style={s.warm} r={radius.xl}>
+              <View style={s.warmHead}>
+                <Icon name={warmDone ? 'checkCircle' : 'flame'} size={26} color={color.lime} filled={warmDone} />
+                <View style={{ flex: 1 }}>
+                  <Text style={type.h3}>5-minute warm-up</Text>
+                  <Text style={type.small}>{warmDone ? 'Joints are ready. Go get it.' : 'Shoulders, elbows and wrists first.'}</Text>
                 </View>
-              ))}
-          </View>
-
-          {day.pressNote && (
-            <View style={s.note}>
-              <Ionicons name="alert-circle" size={20} color={color.orange} />
-              <Text style={[type.small, { flex: 1, color: color.orangeSoft }]}>{day.pressNote}</Text>
-            </View>
-          )}
-
-          <SectionTitle>The plan</SectionTitle>
-          <View style={{ gap: space.sm }}>
-            {progress.statuses.map((st, i) => {
-              const ex = EXERCISES[st.exerciseId];
-              const prev = previousSession(state.logs, st.exerciseId, date);
-              const top = prev?.sets.reduce((a, b) => {
-                const dw = (num(b.weight) ?? 0) - (num(a.weight) ?? 0);
-                return dw > 0 || (dw === 0 && (num(b.reps) ?? 0) > (num(a.reps) ?? 0)) ? b : a;
-              });
-              const alt = st.plan.options.length > 1 ? st.plan.options.find((o) => o !== st.exerciseId) : null;
-              const unitLabel = ex.kind === 'weight_time' ? 's' : ex.kind === 'reps' ? ' reps' : '';
-              const last = top
-                ? ex.kind === 'reps'
-                  ? `last ${top.reps} reps`
-                  : `last ${top.weight} ${state.unit} × ${top.reps}${ex.kind === 'weight_time' ? 's' : ''}`
-                : 'first time';
-              return (
-                <Press
-                  key={st.plan.slot}
-                  onPress={() => open(st.exerciseId, st.plan.slot)}
-                  style={[s.row, st.complete && !st.skipped && s.rowDone]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${ex.name}, ${st.plan.sets} sets of ${st.plan.target}${unitLabel}${st.complete ? ', done' : ''}`}
-                >
-                  <View style={[s.idx, st.complete && !st.skipped && { backgroundColor: color.lime }]}>
-                    {st.complete && !st.skipped ? (
-                      <Ionicons name="checkmark" size={20} color={color.ink} />
-                    ) : st.skipped ? (
-                      <Ionicons name="bandage" size={18} color={color.muted} />
-                    ) : (
-                      <Text style={s.idxText}>{i + 1}</Text>
-                    )}
+                <Button
+                  size="sm"
+                  variant={warmDone ? 'secondary' : 'default'}
+                  label={warmDone ? 'Undo' : 'Done'}
+                  accessibilityLabel="Warm-up done"
+                  onPress={() => update((st) => ({ ...st, warmups: { ...st.warmups, [date]: !warmDone } }))}
+                />
+              </View>
+              {!warmDone &&
+                WARMUP.map((w) => (
+                  <View key={w.text} style={s.warmRow}>
+                    <View style={s.warmDot} />
+                    <Text style={[type.small, { flex: 1, color: color.text }]}>{w.text}</Text>
                   </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[s.name, st.skipped && { color: color.muted, textDecorationLine: 'line-through' }]} numberOfLines={1}>
-                      {ex.name}
-                    </Text>
-                    <Text style={s.meta} numberOfLines={1}>
-                      <Text style={s.metaStrong}>
-                        {st.plan.sets} × {st.plan.target}
-                        {unitLabel}
-                      </Text>
-                      {'  ·  '}
-                      {st.skipped ? 'skipped (joint pain)' : last}
-                    </Text>
-                    {alt && <Text style={s.alt}>or {EXERCISES[alt].name}</Text>}
-                  </View>
-                  {!st.complete && st.done > 0 ? (
-                    <Text style={s.partial}>
-                      {st.done}/{st.plan.sets}
-                    </Text>
-                  ) : (
-                    <Ionicons name="chevron-forward" size={22} color={color.subtle} />
-                  )}
-                </Press>
-              );
-            })}
-          </View>
+                ))}
+            </Glass>
 
-          {started && !finished && (
-            <View style={{ marginTop: space.xxl }}>
-              <Button label={progress.allDone ? 'Finish workout' : 'Finish early'} kind={progress.allDone ? 'energy' : 'ghost'} icon="flag" big onPress={finish} />
+            {day.pressNote && (
+              <Glass style={s.note} r={radius.lg}>
+                <Icon name="alert" size={22} color={color.pink} />
+                <Text style={[type.small, { flex: 1, color: color.text }]}>{day.pressNote}</Text>
+              </Glass>
+            )}
+
+            <View style={s.passHead}>
+              <Text style={type.h2}>Swipe to train</Text>
+              <Text style={type.small}>→ start · ← next</Text>
             </View>
-          )}
-        </>
-      )}
-    </Screen>
+            <View ref={deckRef} collapsable={false}>
+              <SwipeDeck items={items} index={deckIndex} onIndex={setDeckIndex} onStart={startCard} />
+            </View>
+            <View style={s.deckBtns}>
+              <Button variant="secondary" icon="next" label="Next" onPress={() => setDeckIndex((deckIndex + 1) % items.length)} />
+              <View style={{ flex: 1 }}>
+                <Button label={`Start ${items[deckIndex]?.name ?? ''}`} iconRight="arrowRight" onPress={() => items[deckIndex] && startCard(items[deckIndex])} />
+              </View>
+            </View>
+
+            {started && !finished && !progress.allDone && (
+              <View style={{ marginTop: space.lg }}>
+                <Button variant="ghost" icon="flag" label="Finish early" onPress={finish} />
+              </View>
+            )}
+          </>
+        )}
+      </Screen>
+      {expand && <Animated.View pointerEvents="none" style={[s.expand, expandStyle]} />}
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.lg, gap: space.sm },
-  date: { fontFamily: font.bodyBold, fontSize: size.small, color: color.muted, flexShrink: 1 },
-  hero: { borderRadius: radius.xl, padding: space.xl, gap: space.sm },
-  heroTitle: { fontFamily: font.display, fontSize: size.hero, lineHeight: leading.hero, letterSpacing: -1, color: color.ink },
-  heroFocus: { fontFamily: font.bodySemi, fontSize: size.body, color: color.ink, opacity: 0.8 },
-  heroBarTrack: { height: 10, borderRadius: radius.pill, backgroundColor: color.inkTrack, marginTop: space.md, overflow: 'hidden' },
-  heroBarFill: { height: '100%', borderRadius: radius.pill, backgroundColor: color.ink },
-  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  heroCount: { fontFamily: font.display, fontSize: size.title, color: color.ink, fontVariant: ['tabular-nums'] },
-  heroCountOf: { fontFamily: font.bodyBold, fontSize: size.body, color: color.ink },
-  heroMeta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.ink, opacity: 0.8 },
-  heroBtn: {
-    marginTop: space.sm,
-    minHeight: touch.primary,
-    borderRadius: radius.pill,
-    backgroundColor: color.ink,
+  head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
+  date: { ...type.label, color: color.lime },
+  greet: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.text, marginTop: space.xs },
+  rank: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.xl,
+    gap: space.xs,
+    backgroundColor: color.limeDim,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
   },
-  heroBtnText: { fontFamily: font.bodyBlack, fontSize: size.body, color: color.lime, flexShrink: 1 },
-  heroDone: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm },
-  heroDoneText: { fontFamily: font.bodyBlack, fontSize: size.body, color: color.ink },
-  restCard: { backgroundColor: color.surface, borderRadius: radius.xl, padding: space.xl, gap: space.sm },
-  days: { marginTop: space.lg, flexGrow: 0 },
+  rankText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.lime },
+  hero: { padding: space.xxl, paddingTop: space.x4, minHeight: 260 },
+  dayTag: { ...type.label, color: color.lime },
+  dayTitle: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, letterSpacing: -2, color: color.text, marginTop: space.xs, maxWidth: '62%' },
+  focus: { ...type.bodyMuted, marginTop: space.sm, maxWidth: '62%' },
+  ringWrap: { position: 'absolute', right: -space.sm, top: -space.xxl },
+  ringNum: { fontFamily: font.display, fontSize: size.hero, color: color.text, fontVariant: ['tabular-nums'] },
+  ringOf: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.muted },
+  passHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: space.x4, marginBottom: space.md },
+  passCount: { fontFamily: font.display, fontSize: size.h2, color: color.lime },
+  pass: { flexDirection: 'row', gap: space.sm },
+  passTile: {
+    flex: 1,
+    aspectRatio: 0.8,
+    minHeight: touch.min,
+    borderRadius: radius.lg,
+    backgroundColor: color.glassSolid,
+    borderWidth: 1,
+    borderColor: color.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xs,
+  },
+  passDone: { backgroundColor: color.lime, borderColor: color.lime },
+  passToday: { borderColor: color.lime, borderWidth: 2 },
+  passSel: { borderColor: color.text, borderWidth: 2 },
+  passNum: { fontFamily: font.display, fontSize: size.h2, color: color.text },
+  passDay: { fontFamily: font.bodyBlack, fontSize: size.tiny, color: color.muted },
   nudge: {
     marginTop: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    backgroundColor: color.orangeDim,
-    borderRadius: radius.lg,
+    backgroundColor: color.pinkDim,
+    borderWidth: 1,
+    borderColor: color.pinkGlow,
+    borderRadius: radius.xl,
     paddingLeft: space.lg,
     paddingRight: space.sm,
     minHeight: 64,
   },
-  nudgeText: { flex: 1, fontFamily: font.bodyBold, fontSize: size.small, color: color.orangeSoft },
-  nudgeBtn: { backgroundColor: color.orange, borderRadius: radius.pill, paddingHorizontal: space.xl, minHeight: touch.min, justifyContent: 'center' },
+  nudgeText: { flex: 1, fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
+  nudgeBtn: { backgroundColor: color.pink, borderRadius: radius.pill, paddingHorizontal: space.xl, minHeight: touch.min, justifyContent: 'center' },
   nudgeBtnText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.ink },
-  warm: { marginTop: space.lg, backgroundColor: color.surface, borderRadius: radius.lg, padding: space.lg, gap: space.sm },
+  warm: { marginTop: space.lg, padding: space.lg, gap: space.sm },
   warmHead: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  warmBtn: { backgroundColor: color.lime, borderRadius: radius.pill, minHeight: touch.min, paddingHorizontal: space.xl, justifyContent: 'center' },
-  warmBtnText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.ink },
-  warmRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingLeft: space.xs, minHeight: 28 },
-  note: {
-    marginTop: space.md,
-    flexDirection: 'row',
-    gap: space.md,
-    alignItems: 'center',
-    backgroundColor: color.orangeDim,
-    borderRadius: radius.lg,
-    padding: space.lg,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    backgroundColor: color.surface,
-    borderRadius: radius.lg,
-    paddingVertical: space.md,
-    paddingHorizontal: space.lg,
-    minHeight: 76,
-  },
-  rowDone: { backgroundColor: color.limeDim },
-  idx: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },
-  idxText: { fontFamily: font.display, fontSize: size.h3, color: color.text },
-  name: { fontFamily: font.display, fontSize: size.h3, color: color.text },
-  meta: { fontFamily: font.body, fontSize: size.small, color: color.muted, marginTop: space.xxs },
-  metaStrong: { fontFamily: font.bodyBold, color: color.text },
-  alt: { fontFamily: font.bodySemi, fontSize: size.label, color: color.subtle, marginTop: space.xxs },
-  partial: { fontFamily: font.display, fontSize: size.h3, color: color.lime, fontVariant: ['tabular-nums'] },
+  warmRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingLeft: space.sm, minHeight: 26 },
+  warmDot: { width: 6, height: 6, borderRadius: radius.pill, backgroundColor: color.lime },
+  note: { marginTop: space.md, flexDirection: 'row', gap: space.md, alignItems: 'center', padding: space.lg },
+  deckBtns: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
+  expand: { position: 'absolute', backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.glassBorder },
 });
+

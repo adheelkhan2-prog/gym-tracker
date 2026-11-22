@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Loading } from '../components/ui';
 import { onReminderResponse, setupNotifications, syncReminders } from '../reminders';
@@ -67,8 +68,8 @@ function Gate() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: color.bg },
-          animation: 'slide_from_right',
-          animationDuration: 220,
+          animation: 'fade',
+          animationDuration: 200,
         }}
       >
         <Stack.Screen name="complete" options={{ animation: 'fade_from_bottom', gestureEnabled: false }} />
@@ -79,11 +80,13 @@ function Gate() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider style={{ backgroundColor: color.bg }}>
-      <StoreProvider>
-        <StatusBar style="light" />
-        <Gate />
-      </StoreProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
+      <SafeAreaProvider style={{ backgroundColor: color.bg }}>
+        <StoreProvider>
+          <StatusBar style="light" />
+          <Gate />
+        </StoreProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

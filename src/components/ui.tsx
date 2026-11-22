@@ -1,6 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+// Core components. APIs follow react-native-reusables (shadcn for React Native, MIT,
+// https://github.com/founded-labs/react-native-reusables): Button variants/sizes, Card
+// parts, Badge, Progress, Switch. Styling comes from src/theme.ts (no NativeWind).
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,67 +12,88 @@ import {
   View,
   type PressableProps,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { haptic } from '../feedback';
-import { color, font, gradient, leading, motion, radius, size, space, touch, type } from '../theme';
+import { color, font, gradient, motion, radius, size, space, touch, type } from '../theme';
+import { Backdrop, Glass } from './glass';
+import { Icon, type IconName } from './icons';
 
-export type IconName = React.ComponentProps<typeof Ionicons>['name'];
+export type { IconName };
 
 const APressable = Animated.createAnimatedComponent(Pressable);
 
-/** Pressable that squishes down on press and springs back. */
+/**
+ * Every tappable thing: springs down on press, lights a glow ring and gives a haptic tick.
+ * Interruptible: a new press simply retargets the spring.
+ */
 export function Press({
   style,
   children,
   scaleTo = motion.pressScale,
+  glow = color.lime,
+  tick = true,
   onPressIn,
   onPressOut,
   ...rest
-}: PressableProps & { style?: StyleProp<ViewStyle>; children: React.ReactNode; scaleTo?: number }) {
+}: PressableProps & {
+  style?: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+  scaleTo?: number;
+  glow?: string;
+  tick?: boolean;
+}) {
   const reduce = useReducedMotion();
   const s = useSharedValue(1);
+  const g = useSharedValue(0);
   const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  const ring = useAnimatedStyle(() => ({ opacity: g.value }));
+  const r = (StyleSheet.flatten(style)?.borderRadius as number | undefined) ?? radius.md;
   return (
     <APressable
       {...rest}
       onPressIn={(e) => {
-        if (!reduce) s.set(withTiming(scaleTo, { duration: 90 }));
+        if (tick) haptic.tap();
+        if (!reduce) s.set(withSpring(scaleTo, motion.spring));
+        g.set(withSpring(1, motion.spring));
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
         if (!reduce) s.set(withSpring(1, motion.spring));
+        g.set(withSpring(0, motion.gentle));
         onPressOut?.(e);
       }}
       style={[style, a]}
     >
       {children}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: r, borderWidth: 2, borderColor: glow }, ring]} />
     </APressable>
   );
 }
 
-export function Screen({
-  children,
-  padBottom = space.x4,
-  scroll = true,
-}: {
-  children: React.ReactNode;
-  padBottom?: number;
-  scroll?: boolean;
-}) {
+/** Screen scaffold: drifting glow backdrop + scroll view with safe-area padding. */
+export function Screen({ children, padBottom = space.x5 }: { children: React.ReactNode; padBottom?: number }) {
   const insets = useSafeAreaInsets();
-  const pad = { paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: padBottom };
-  if (!scroll) return <View style={[{ flex: 1, backgroundColor: color.bg }, pad]}>{children}</View>;
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: color.bg }}
-      contentContainerStyle={pad}
-      keyboardShouldPersistTaps="handled"
-    >
-      {children}
-    </ScrollView>
+    <Backdrop>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: padBottom }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    </Backdrop>
   );
 }
 
@@ -81,10 +104,6 @@ export function Loading({ label = 'Loading your log' }: { label?: string }) {
       <ActivityIndicator color={color.lime} size="large" />
     </View>
   );
-}
-
-export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[s.card, style]}>{children}</View>;
 }
 
 export function SectionTitle({ children, right }: { children: string; right?: React.ReactNode }) {
@@ -98,184 +117,299 @@ export function SectionTitle({ children, right }: { children: string; right?: Re
   );
 }
 
-export function Chip({
+// ---------- Card (reusables: Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter) ----------
+
+export function Card({
+  children,
+  style,
+  glow,
+  strong,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  glow?: string;
+  strong?: boolean;
+}) {
+  return (
+    <Glass style={[s.card, style]} glow={glow} strong={strong}>
+      {children}
+    </Glass>
+  );
+}
+export const CardHeader = ({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) => (
+  <View style={[{ gap: space.xs }, style]}>{children}</View>
+);
+export const CardTitle = ({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) => (
+  <Text style={[type.h2, style]} accessibilityRole="header">
+    {children}
+  </Text>
+);
+export const CardDescription = ({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) => (
+  <Text style={[type.small, style]}>{children}</Text>
+);
+export const CardContent = ({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) => (
+  <View style={[{ marginTop: space.md }, style]}>{children}</View>
+);
+export const CardFooter = ({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) => (
+  <View style={[{ marginTop: space.lg, flexDirection: 'row', gap: space.sm, alignItems: 'center' }, style]}>{children}</View>
+);
+
+// ---------- Button (reusables variants: default | secondary | outline | ghost | destructive | link; sizes: sm | default | lg | icon) ----------
+
+type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
+type ButtonSize = 'sm' | 'default' | 'lg' | 'icon';
+
+export function Button({
   label,
-  active,
   onPress,
+  variant = 'default',
+  size: sz = 'default',
+  icon,
+  iconRight,
+  loading,
+  disabled,
+  accessibilityLabel,
+}: {
+  label?: string;
+  onPress: () => void;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: IconName;
+  iconRight?: IconName;
+  loading?: boolean;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+}) {
+  const fg =
+    variant === 'default' ? color.ink : variant === 'destructive' ? color.danger : variant === 'link' ? color.lime : color.text;
+  const h = sz === 'sm' ? touch.min : sz === 'lg' ? touch.primary + space.sm : touch.primary;
+  const shape: StyleProp<ViewStyle> = [
+    s.btn,
+    { minHeight: h, paddingHorizontal: sz === 'icon' ? 0 : sz === 'sm' ? space.lg : space.xxl, width: sz === 'icon' ? h : undefined },
+    variant === 'secondary' && { backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
+    variant === 'outline' && { borderWidth: 1.5, borderColor: color.lime },
+    variant === 'destructive' && { backgroundColor: color.surface2 },
+    disabled && { opacity: 0.45 },
+  ];
+  const inner = (
+    <>
+      {loading ? <ActivityIndicator color={fg} /> : icon && <Icon name={icon} size={sz === 'lg' ? 22 : 20} color={fg} />}
+      {label ? <Text style={[s.btnText, sz === 'lg' && { fontSize: size.h3 }, sz === 'sm' && { fontSize: size.small }, { color: fg }]}>{label}</Text> : null}
+      {iconRight && <Icon name={iconRight} size={20} color={fg} />}
+    </>
+  );
+  return (
+    <Press
+      onPress={() => !loading && !disabled && onPress()}
+      glow={variant === 'default' ? color.limeSoft : color.lime}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
+      style={{ borderRadius: radius.pill }}
+    >
+      {variant === 'default' ? (
+        <LinearGradient colors={gradient.lime} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
+          {inner}
+        </LinearGradient>
+      ) : (
+        <View style={shape}>{inner}</View>
+      )}
+    </Press>
+  );
+}
+
+/** Round icon button, 48dp (reusables Button size="icon"). */
+export function IconButton({
+  icon,
+  onPress,
+  label,
+  tint = color.text,
+  filled,
+}: {
+  icon: IconName;
+  onPress: () => void;
+  label: string;
+  tint?: string;
+  filled?: boolean;
+}) {
+  return (
+    <Press onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={s.iconBtn}>
+      <Icon name={icon} size={22} color={tint} filled={filled} />
+    </Press>
+  );
+}
+
+// ---------- Badge (reusables variants + 'pr') ----------
+
+export function Badge({
+  label,
+  variant = 'default',
   icon,
 }: {
   label: string;
-  active?: boolean;
-  onPress?: () => void;
+  variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'pr';
   icon?: IconName;
 }) {
+  const fg = variant === 'default' || variant === 'pr' ? color.ink : variant === 'destructive' ? color.danger : color.text;
   return (
-    <Press
-      onPress={() => {
-        haptic.tap();
-        onPress?.();
-      }}
-      accessibilityRole="button"
-      accessibilityState={{ selected: !!active }}
-      style={[s.chip, active && s.chipActive]}
+    <View
+      style={[
+        s.badge,
+        variant === 'default' && { backgroundColor: color.lime },
+        variant === 'pr' && { backgroundColor: color.pink },
+        variant === 'secondary' && { backgroundColor: color.glassSolid, borderColor: color.glassBorder, borderWidth: 1 },
+        variant === 'outline' && { borderColor: color.glassBorder, borderWidth: 1 },
+      ]}
     >
-      {icon && <Ionicons name={icon} size={16} color={active ? color.ink : color.muted} />}
+      {icon && <Icon name={icon} size={14} color={fg} filled={variant === 'pr'} />}
+      <Text style={[s.badgeText, { color: fg }]}>{label}</Text>
+    </View>
+  );
+}
+
+// ---------- Chip (toggle) ----------
+
+export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
+  return (
+    <Press onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: !!active }} style={[s.chip, active && s.chipOn]}>
+      {icon && <Icon name={icon} size={16} color={active ? color.ink : color.muted} filled={active} />}
       <Text style={[s.chipText, active && { color: color.ink }]}>{label}</Text>
     </Press>
   );
 }
 
-type ButtonKind = 'energy' | 'lime' | 'orange' | 'ghost' | 'danger';
+// ---------- Progress (reusables Progress: value 0..100) ----------
 
-export function Button({
-  label,
-  onPress,
-  kind = 'lime',
-  icon,
-  loading,
-  disabled,
-  big,
-}: {
-  label: string;
-  onPress: () => void;
-  kind?: ButtonKind;
-  icon?: IconName;
-  loading?: boolean;
-  disabled?: boolean;
-  big?: boolean;
-}) {
-  const ink = kind === 'ghost' ? color.text : kind === 'danger' ? color.danger : color.ink;
-  const inner = (
-    <>
-      {loading ? (
-        <ActivityIndicator color={ink} />
-      ) : (
-        icon && <Ionicons name={icon} size={big ? 22 : 18} color={ink} />
-      )}
-      <Text style={[s.btnText, big && { fontSize: size.h3 }, { color: ink }]}>{label}</Text>
-    </>
-  );
-  const shape = [s.btn, big && { minHeight: touch.primary + 8 }, disabled && { opacity: 0.45 }];
+export function Progress({ value, tint = color.lime, height = 10 }: { value: number; tint?: string; height?: number }) {
+  const reduce = useReducedMotion();
+  const w = useSharedValue(reduce ? value : 0);
+  useEffect(() => {
+    w.set(reduce ? value : withSpring(value, motion.gentle));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, reduce]);
+  const st = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(100, w.value))}%` }));
   return (
-    <Press
-      onPress={() => {
-        if (loading || disabled) return;
-        haptic.tap();
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
-      style={{ borderRadius: radius.pill }}
+    <View
+      style={[s.track, { height, borderRadius: height }]}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(value) }}
     >
-      {kind === 'energy' ? (
-        <LinearGradient colors={gradient.energy} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
-          {inner}
-        </LinearGradient>
-      ) : (
-        <View
-          style={[
-            shape,
-            kind === 'lime' && { backgroundColor: color.lime },
-            kind === 'orange' && { backgroundColor: color.orange },
-            (kind === 'ghost' || kind === 'danger') && { backgroundColor: color.surface2 },
-          ]}
-        >
-          {inner}
-        </View>
-      )}
-    </Press>
-  );
-}
-
-/** Round icon button, 48dp. */
-export function IconButton({
-  icon,
-  onPress,
-  label,
-  tone = 'surface',
-  iconSize = 22,
-}: {
-  icon: IconName;
-  onPress: () => void;
-  label: string;
-  tone?: 'surface' | 'scrim';
-  iconSize?: number;
-}) {
-  return (
-    <Press
-      onPress={() => {
-        haptic.tap();
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={4}
-      style={[s.iconBtn, { backgroundColor: tone === 'scrim' ? color.scrim : color.surface2 }]}
-    >
-      <Ionicons name={icon} size={iconSize} color={color.text} />
-    </Press>
-  );
-}
-
-/** Flame + count. Grey when the streak is zero. */
-export function Flame({ count, label, tint = color.orange }: { count: number; label: string; tint?: string }) {
-  const lit = count > 0;
-  return (
-    <View style={[s.flame, { backgroundColor: lit ? color.orangeDim : color.surface2 }]} accessibilityLabel={`${count} day ${label} streak`}>
-      <Ionicons name={lit ? 'flame' : 'flame-outline'} size={20} color={lit ? tint : color.subtle} />
-      <Text style={[type.num, { fontSize: size.h3, color: lit ? tint : color.subtle }]}>{count}</Text>
+      <Animated.View style={[{ height: '100%', borderRadius: height, backgroundColor: tint }, st]} />
     </View>
   );
 }
 
-/** Small rounded badge used for weekly achievements. */
-export function Badge({ icon, title, sub, earned, tint }: { icon: IconName; title: string; sub: string; earned: boolean; tint: string }) {
+// ---------- Switch (reusables Switch: checked / onCheckedChange) ----------
+
+export function Switch({
+  checked,
+  onCheckedChange,
+  label,
+}: {
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+  label: string;
+}) {
+  const reduce = useReducedMotion();
+  const x = useSharedValue(checked ? 1 : 0);
+  useEffect(() => {
+    x.set(reduce ? (checked ? 1 : 0) : withSpring(checked ? 1 : 0, motion.spring));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checked, reduce]);
+  const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * 24 }] }));
+  const fill = useAnimatedStyle(() => ({ opacity: x.value }));
   return (
-    <View style={[s.badge, earned && { borderColor: tint }]} accessibilityLabel={`${title}, ${sub}${earned ? ', earned' : ''}`}>
-      <View style={[s.badgeIcon, { backgroundColor: earned ? tint : color.surface2 }]}>
-        <Ionicons name={icon} size={22} color={earned ? color.ink : color.subtle} />
+    <Press
+      onPress={() => onCheckedChange(!checked)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+      style={s.switchHit}
+      scaleTo={0.92}
+    >
+      <View style={s.switchTrack}>
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color.lime, borderRadius: radius.pill }, fill]} />
+        <Animated.View style={[s.switchThumb, thumb]} />
       </View>
-      <Text style={[s.badgeTitle, !earned && { color: color.muted }]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={s.badgeSub} numberOfLines={2}>
-        {sub}
-      </Text>
+    </Press>
+  );
+}
+
+// ---------- Streak flame (pink) ----------
+
+export function Flame({ count, label }: { count: number; label: string }) {
+  const lit = count > 0;
+  return (
+    <View style={[s.flame, lit && { backgroundColor: color.pinkDim, borderColor: color.pinkGlow }]} accessibilityLabel={`${count} day ${label} streak`}>
+      <Icon name="flame" size={18} color={lit ? color.pink : color.subtle} filled={lit} />
+      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.pink : color.subtle }]}>{count}</Text>
+    </View>
+  );
+}
+
+// ---------- Ring ----------
+
+const ACircle = Animated.createAnimatedComponent(Circle);
+
+/** Animated progress ring with spring fill. `progress` is 0..1. */
+export function Ring({
+  progress,
+  size: d = 180,
+  stroke = 14,
+  tint = color.lime,
+  track = color.glassBorder,
+  children,
+}: {
+  progress: number;
+  size?: number;
+  stroke?: number;
+  tint?: string;
+  track?: string;
+  children?: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  const r = (d - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const p = useSharedValue(reduce ? progress : 0);
+  useEffect(() => {
+    p.set(reduce ? progress : withSpring(progress, motion.gentle));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress, reduce]);
+  const props = useAnimatedProps(() => ({ strokeDashoffset: c * (1 - Math.max(0, Math.min(1, p.value))) }));
+  return (
+    <View style={{ width: d, height: d, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={d} height={d} style={StyleSheet.absoluteFill}>
+        <Circle cx={d / 2} cy={d / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
+        <ACircle
+          cx={d / 2}
+          cy={d / 2}
+          r={r}
+          stroke={tint}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${c} ${c}`}
+          animatedProps={props}
+          transform={`rotate(-90 ${d / 2} ${d / 2})`}
+        />
+      </Svg>
+      {children}
     </View>
   );
 }
 
 const s = StyleSheet.create({
   loading: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' },
-  card: { backgroundColor: color.surface, borderRadius: radius.lg, padding: space.lg },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: space.x3,
+    marginTop: space.x4,
     marginBottom: space.md,
     gap: space.md,
   },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-    paddingHorizontal: space.lg,
-    minHeight: touch.min,
-    borderRadius: radius.pill,
-    backgroundColor: color.surface2,
-  },
-  chipActive: { backgroundColor: color.lime },
-  chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
-  btn: {
-    minHeight: touch.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.xxl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.sm,
-  },
+  card: { padding: space.xl },
+  btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
   btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.2 },
   iconBtn: {
     width: touch.min,
@@ -283,7 +417,37 @@ const s = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: color.glassSolid,
+    borderWidth: 1,
+    borderColor: color.glassBorder,
   },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    alignSelf: 'flex-start',
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + space.xxs,
+    borderRadius: radius.pill,
+  },
+  badgeText: { fontFamily: font.bodyBlack, fontSize: size.label, letterSpacing: 0.4 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingHorizontal: space.lg,
+    minHeight: touch.min,
+    borderRadius: radius.pill,
+    backgroundColor: color.glassSolid,
+    borderWidth: 1,
+    borderColor: color.glassBorder,
+  },
+  chipOn: { backgroundColor: color.lime, borderColor: color.lime },
+  chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
+  track: { width: '100%', backgroundColor: color.glassBorder, overflow: 'hidden' },
+  switchHit: { width: touch.min + space.md, height: touch.min, borderRadius: radius.pill, justifyContent: 'center', alignItems: 'center' },
+  switchTrack: { width: 54, height: 30, borderRadius: radius.pill, backgroundColor: color.surface3, padding: 3 },
+  switchThumb: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: color.text },
   flame: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,18 +455,8 @@ const s = StyleSheet.create({
     paddingHorizontal: space.md,
     minHeight: 40,
     borderRadius: radius.pill,
+    backgroundColor: color.glassSolid,
+    borderWidth: 1,
+    borderColor: color.glassBorder,
   },
-  badge: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: color.surface,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: color.surface,
-    padding: space.md,
-    gap: space.xs,
-  },
-  badgeIcon: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', marginBottom: space.xs },
-  badgeTitle: { fontFamily: font.display, fontSize: size.body, color: color.text },
-  badgeSub: { fontFamily: font.body, fontSize: size.label, lineHeight: leading.label, color: color.muted },
 });

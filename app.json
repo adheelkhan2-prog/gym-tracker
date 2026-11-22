@@ -36,11 +36,19 @@
       [
         "expo-notifications",
         {
-          "color": "#C6F432"
+          "color": "#C8FF2E"
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-sharing",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "scheme": "gymtracker",
     "backgroundColor": "#0D0E10"

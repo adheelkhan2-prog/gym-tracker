@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -13,41 +12,57 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CONTEXT_NODES, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { color, font, radius, size, space } from '../../theme';
-import { Canvas, MODEL_SRC, useFrame, useLoader, useThree } from './fiber';
+import { Icon } from '../icons';
+import { Canvas, MODEL_SRC, snapshotGL, useFrame, useLoader, useThree } from './fiber';
 
 export type Paint = { color: string; glow?: number };
 export type PaintMap = Partial<Record<MuscleId, Paint>>;
+/** Muscle -> time (ms, Date.now) its glow pulse started. */
+export type PulseMap = Partial<Record<MuscleId, number>>;
+export type Snapshot = () => Promise<string | null>;
 
 type Controls = { yaw: number; pitch: number; zoom: number; lastTouch: number };
 
 const FRAMING = {
   upper: { target: new THREE.Vector3(0, 0.38, 0), distance: 1.7 },
   full: { target: new THREE.Vector3(0, 0.05, 0), distance: 3.6 },
+  torso: { target: new THREE.Vector3(0, 0.3, 0), distance: 2.3 },
 };
+
+const PULSE_MS = 900;
+const INTRO_MS = 1400;
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
 // ---------- Scene ----------
 
 function Body({
   paint,
+  pulses,
   idle,
   onPick,
   onReady,
   controls,
   framing,
   autoRotate,
+  intro,
+  snapshotRef,
 }: {
   paint: PaintMap;
+  pulses?: PulseMap;
   idle: string;
   onPick: (m: MuscleId) => void;
   onReady: () => void;
   controls: React.RefObject<Controls>;
   framing: keyof typeof FRAMING;
   autoRotate: boolean;
+  intro: boolean;
+  snapshotRef?: React.RefObject<Snapshot | null>;
 }) {
   // useLoader caches by source, so the model is downloaded and parsed once and reused by every screen.
   const gltf = useLoader(GLTFLoader, MODEL_SRC as string);
   const group = useRef<THREE.Group>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
+  const born = useRef(0);
 
   // Each screen gets its own copy of the scene graph with its own materials; geometry is shared.
   const { root, materials } = useMemo(() => {
@@ -57,12 +72,13 @@ function Body({
       const isSkin = region.name === 'context_skin';
       const mat = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.62,
-        metalness: 0.04,
+        roughness: 0.48,
+        metalness: 0.02,
         transparent: isSkin,
         opacity: isSkin ? 0.18 : 1,
         depthWrite: !isSkin,
       });
+      mat.userData.baseGlow = 0;
       materials.set(region.name, mat);
       region.traverse((o) => {
         const mesh = o as THREE.Mesh;
@@ -81,14 +97,20 @@ function Body({
       if (CONTEXT_NODES.has(name)) {
         mat.color.set(color.muscleContext);
         mat.emissive.set(color.noGlow);
+        mat.userData.baseGlow = 0;
         return;
       }
       const p = paint[name as MuscleId];
       mat.color.set(p?.color ?? idle);
-      mat.emissive.set(p?.glow ? p.color : color.noGlow);
-      mat.emissiveIntensity = p?.glow ?? 0;
+      mat.emissive.set(p?.color ?? color.noGlow);
+      mat.userData.baseGlow = p?.glow ?? 0;
+      mat.emissiveIntensity = mat.userData.baseGlow;
     });
   }, [paint, idle, materials]);
+
+  useEffect(() => {
+    if (snapshotRef) snapshotRef.current = () => snapshotGL(gl as never);
+  }, [gl, snapshotRef]);
 
   useEffect(onReady, [onReady]);
 
@@ -98,13 +120,34 @@ function Body({
     const c = controls.current;
     const g = group.current;
     if (!c || !g) return;
-    if (autoRotate && Date.now() - c.lastTouch > 2500) c.yaw += delta * 0.4;
-    g.rotation.y = c.yaw;
+    const now = Date.now();
+    if (!born.current) born.current = now;
+    let zoom = c.zoom;
+    let yaw = c.yaw;
+    if (intro) {
+      // Spin in: a turn and a half while zooming from far away.
+      const t = Math.min(1, (now - born.current) / INTRO_MS);
+      const e = easeOutCubic(t);
+      yaw = c.yaw - (1 - e) * Math.PI * 3;
+      zoom = c.zoom * (0.45 + 0.55 * e);
+    }
+    if (autoRotate && now - c.lastTouch > 2500 && (!intro || now - born.current > INTRO_MS)) c.yaw += delta * 0.4;
+    g.rotation.y = yaw;
     g.rotation.x = c.pitch;
     const f = FRAMING[framing];
-    const d = f.distance / c.zoom;
+    const d = f.distance / zoom;
     camera.position.set(f.target.x, f.target.y + 0.05, f.target.z + d);
     camera.lookAt(f.target);
+    // Glow pulses: a bright flash that settles back to the muscle's steady glow.
+    if (pulses) {
+      for (const [m, t0] of Object.entries(pulses)) {
+        const mat = materials.get(m);
+        if (!mat || !t0) continue;
+        const k = (now - t0) / PULSE_MS;
+        const extra = k < 0 || k > 1 ? 0 : Math.sin(Math.PI * Math.min(1, k * 1.4)) * 1.4 * (1 - k);
+        mat.emissiveIntensity = mat.userData.baseGlow + extra;
+      }
+    }
   });
   /* eslint-enable react-hooks/immutability */
 
@@ -131,7 +174,7 @@ class GLBoundary extends Component<{ children: React.ReactNode }, { failed: bool
     if (this.state.failed)
       return (
         <View style={s.center}>
-          <Ionicons name="body-outline" size={40} color={color.subtle} />
+          <Icon name="body" size={40} color={color.subtle} />
           <Text style={s.msg}>3D view isn’t available on this device.</Text>
         </View>
       );
@@ -139,18 +182,18 @@ class GLBoundary extends Component<{ children: React.ReactNode }, { failed: bool
   }
 }
 
-function LoadingPulse() {
+function LoadingPulse({ tint }: { tint: string }) {
   const reduce = useReducedMotion();
   const o = useSharedValue(0.4);
   useEffect(() => {
-    if (!reduce) o.value = withRepeat(withSequence(withTiming(1, { duration: 600 }), withTiming(0.4, { duration: 600 })), -1);
+    if (!reduce) o.set(withRepeat(withSequence(withTiming(1, { duration: 600 }), withTiming(0.4, { duration: 600 })), -1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ scale: 0.9 + o.value * 0.1 }] }));
   return (
     <View style={[StyleSheet.absoluteFill, s.center]} pointerEvents="none" accessibilityLabel="Loading 3D muscles">
       <Animated.View style={st}>
-        <Ionicons name="body" size={56} color={color.lime} />
+        <Icon name="body" size={56} color={tint} filled />
       </Animated.View>
       <Text style={s.msg}>Warming up the muscles…</Text>
     </View>
@@ -161,25 +204,42 @@ function LoadingPulse() {
 
 /**
  * Interactive 3D muscle model. Drag to rotate, pinch to zoom, tap a muscle for its name.
- * `paint` colours muscles; everything else uses `idle`.
+ * `paint` colours muscles; everything else uses `idle`. `pulses` flashes muscles.
  */
 export function BodyModel({
   paint,
+  pulses,
   idle = color.muscleIdle,
   height = 320,
   framing = 'upper',
   autoRotate = true,
+  intro = false,
   describe,
   startYaw = 0,
+  tint = color.lime,
+  background = 'transparent',
+  showHint = true,
+  interactive = true,
+  snapshotRef,
 }: {
   paint: PaintMap;
+  pulses?: PulseMap;
   idle?: string;
   height?: number;
   framing?: keyof typeof FRAMING;
   autoRotate?: boolean;
+  /** Spin and zoom in when first shown. */
+  intro?: boolean;
   /** Text shown when a muscle is tapped. */
   describe?: (m: MuscleId) => string;
   startYaw?: number;
+  tint?: string;
+  background?: string;
+  showHint?: boolean;
+  /** False inside swipe cards: no drag/pinch/tap, so the card's swipe always wins. */
+  interactive?: boolean;
+  /** Receives a function that returns a PNG of the current frame. */
+  snapshotRef?: React.RefObject<Snapshot | null>;
 }) {
   const reduce = useReducedMotion();
   const controls = useRef<Controls>({ yaw: startYaw, pitch: 0, zoom: 1, lastTouch: 0 });
@@ -224,31 +284,35 @@ export function BodyModel({
   /* eslint-enable react-hooks/refs, react-hooks/purity */
 
   return (
-    <View style={[s.wrap, { height }]} {...responder.panHandlers}>
+    <View style={[s.wrap, { height, backgroundColor: background }]} {...(interactive ? responder.panHandlers : {})} pointerEvents={interactive ? 'auto' : 'none'}>
       <GLBoundary>
         <Canvas
           camera={{ fov: 30, near: 0.05, far: 20, position: [0, 0.4, 1.7] }}
-          gl={{ antialias: true }}
+          gl={{ antialias: true, preserveDrawingBuffer: !!snapshotRef }}
           style={{ flex: 1 }}
           onPointerMissed={() => setPicked(null)}
         >
-          <ambientLight intensity={0.75} />
-          <directionalLight position={[2, 3, 4]} intensity={1.9} />
-          <directionalLight position={[-3, 1.5, -2]} intensity={0.9} color={color.orangeSoft} />
-          <directionalLight position={[0, -2, 3]} intensity={0.35} color={color.limeSoft} />
+          <ambientLight intensity={0.55} />
+          <hemisphereLight args={[color.text, color.bg, 0.6]} />
+          <directionalLight position={[2, 3, 4]} intensity={2.2} />
+          <directionalLight position={[-3, 1.5, -2]} intensity={1.2} color={tint} />
+          <directionalLight position={[0, -2, 3]} intensity={0.3} />
           <Suspense fallback={null}>
             <Body
               paint={paint}
+              pulses={pulses}
               idle={idle}
               onPick={(m) => setPicked(m)}
               onReady={onReady}
               controls={controls}
               framing={framing}
               autoRotate={autoRotate && !reduce}
+              intro={intro && !reduce}
+              snapshotRef={snapshotRef}
             />
           </Suspense>
         </Canvas>
-        {!ready && <LoadingPulse />}
+        {!ready && <LoadingPulse tint={tint} />}
       </GLBoundary>
       {picked && (
         <View style={s.tag} pointerEvents="none" accessibilityLiveRegion="polite">
@@ -256,16 +320,18 @@ export function BodyModel({
           <Text style={s.tagText}>{describe ? describe(picked) : MUSCLE_LABEL[picked]}</Text>
         </View>
       )}
-      <View style={s.hint} pointerEvents="none">
-        <Ionicons name="hand-left-outline" size={14} color={color.subtle} />
-        <Text style={s.hintText}>Drag · pinch · tap a muscle</Text>
-      </View>
+      {showHint && interactive && (
+        <View style={s.hint} pointerEvents="none">
+          <Icon name="hand" size={14} color={color.subtle} />
+          <Text style={s.hintText}>Drag · pinch · tap a muscle</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { width: '100%', overflow: 'hidden', borderRadius: radius.xl, backgroundColor: color.surface },
+  wrap: { width: '100%', overflow: 'hidden', borderRadius: radius.xl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md, padding: space.xxl },
   msg: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted, textAlign: 'center' },
   tag: {

@@ -19,6 +19,9 @@ export type State = {
   variants: Record<string, string>; // program slot -> chosen exercise
   warmups: Record<string, boolean>; // date -> warm-up done
   injured: boolean;
+  restSound: boolean;
+  /** Frosted blur on glass panels (off = tinted see-through panels, lighter on the GPU). */
+  blur: boolean;
   supplements: string[];
   remindersOn: boolean;
   reminderTimes: string[]; // 'HH:MM'; first is the morning reminder, the rest are follow-ups
@@ -33,6 +36,8 @@ export const DEFAULT_STATE: State = {
   variants: {},
   warmups: {},
   injured: true,
+  restSound: true,
+  blur: true,
   supplements: ['Creatine', 'Protein'],
   remindersOn: true,
   reminderTimes: ['08:00', '13:00', '19:00'],
@@ -193,6 +198,26 @@ export function prSetsOn(logs: State['logs'], date: string) {
     if (best <= 0) continue; // first time is a baseline, not a record
     const top = Math.max(0, ...doneSets(log, kind).map((s) => prMetric(s, kind)));
     if (top > best) out.push({ exerciseId: id, value: top });
+  }
+  return out;
+}
+
+/** PRs per date in one chronological pass (running best per exercise). */
+export function prCountsByDate(logs: State['logs']) {
+  const best: Record<string, number> = {};
+  const out: Record<string, number> = {};
+  for (const date of Object.keys(logs).sort()) {
+    let n = 0;
+    const tops: [string, number][] = [];
+    for (const [id, log] of Object.entries(logs[date])) {
+      const kind = kindOf(id);
+      const top = Math.max(0, ...doneSets(log, kind).map((s) => prMetric(s, kind)));
+      if (!top) continue;
+      if ((best[id] ?? 0) > 0 && top > best[id]) n++;
+      tops.push([id, top]);
+    }
+    for (const [id, top] of tops) best[id] = Math.max(best[id] ?? 0, top);
+    out[date] = n;
   }
   return out;
 }

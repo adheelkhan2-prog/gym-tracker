@@ -4,12 +4,14 @@ import { Figtree_500Medium } from '@expo-google-fonts/figtree/500Medium';
 import { Figtree_600SemiBold } from '@expo-google-fonts/figtree/600SemiBold';
 import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
 import { Figtree_800ExtraBold } from '@expo-google-fonts/figtree/800ExtraBold';
-import { Ionicons } from '@expo/vector-icons';
 import { registerRootComponent } from 'expo';
 import { useFonts } from 'expo-font';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Glass } from '../src/components/glass';
+import { Icon, type IconName } from '../src/components/icons';
 import ProgressScreen from '../src/app/(tabs)/progress';
 import SettingsScreen from '../src/app/(tabs)/settings';
 import SupplementsScreen from '../src/app/(tabs)/supplements';
@@ -82,12 +84,12 @@ function seedExampleData() {
 }
 seedExampleData();
 
-const TABS = [
+const TABS: { id: string; title: string; icon: IconName; C: () => React.ReactNode }[] = [
   { id: 'index', title: 'Today', icon: 'barbell', C: TodayScreen },
-  { id: 'progress', title: 'Progress', icon: 'trending-up', C: ProgressScreen },
+  { id: 'progress', title: 'Progress', icon: 'chart', C: ProgressScreen },
   { id: 'supplements', title: 'Supps', icon: 'flask', C: SupplementsScreen },
-  { id: 'settings', title: 'Settings', icon: 'options', C: SettingsScreen },
-] as const;
+  { id: 'settings', title: 'Settings', icon: 'sliders', C: SettingsScreen },
+];
 
 function Demo() {
   const { ready } = useStore();
@@ -99,6 +101,7 @@ function Demo() {
     Figtree_700Bold,
     Figtree_800ExtraBold,
   });
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<string>('index');
   const [stack, setStack] = useState<Route[]>([]);
   const [example] = useState(() => {
@@ -157,16 +160,20 @@ function Demo() {
               </View>
             ))}
           </View>
-          <View style={s.bar} accessibilityRole="tablist">
-            {TABS.map((t) => {
-              const on = t.id === tab;
-              return (
-                <Press key={t.id} onPress={() => setTab(t.id)} style={s.tab} accessibilityRole="tab" accessibilityState={{ selected: on }}>
-                  <Ionicons name={on ? t.icon : (`${t.icon}-outline` as never)} size={24} color={on ? color.lime : color.subtle} />
-                  <Text style={[s.tabText, { color: on ? color.lime : color.subtle }]}>{t.title}</Text>
-                </Press>
-              );
-            })}
+          <View style={[s.barWrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none">
+            <Glass r={999} style={{ padding: space.xs }}>
+              <View style={{ flexDirection: 'row' }} accessibilityRole="tablist">
+                {TABS.map((t) => {
+                  const on = t.id === tab;
+                  return (
+                    <Press key={t.id} onPress={() => setTab(t.id)} style={[s.tab, on && { backgroundColor: color.lime }]} accessibilityRole="tab" accessibilityState={{ selected: on }}>
+                      <Icon name={t.icon} size={22} color={on ? color.ink : color.muted} filled={on} />
+                      <Text style={[s.tabText, { color: on ? color.ink : color.muted }]}>{t.title}</Text>
+                    </Press>
+                  );
+                })}
+              </View>
+            </Glass>
           </View>
       </View>
     </View>
@@ -175,11 +182,13 @@ function Demo() {
 
 function Root() {
   return (
-    <SafeAreaProvider style={{ backgroundColor: color.bg }}>
-      <StoreProvider>
-        <Demo />
-      </StoreProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
+      <SafeAreaProvider style={{ backgroundColor: color.bg }}>
+        <StoreProvider>
+          <Demo />
+        </StoreProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -188,9 +197,9 @@ const s = StyleSheet.create({
   bannerText: { flex: 1, fontFamily: font.body, fontSize: size.label, lineHeight: 16, color: color.muted },
   bannerBtn: { borderWidth: 1, borderColor: color.line, borderRadius: 999, paddingHorizontal: space.lg, minHeight: 40, justifyContent: 'center' },
   bannerBtnText: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
-  bar: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: color.line, backgroundColor: color.bg },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: space.sm, gap: 2, minHeight: 64 },
-  tabText: { fontFamily: font.bodyBold, fontSize: size.tiny },
+  barWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 60, borderRadius: 999 },
+  tabText: { fontFamily: font.bodyBlack, fontSize: size.tiny },
 });
 
 registerRootComponent(Root);
