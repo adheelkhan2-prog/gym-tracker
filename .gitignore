@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# generated native Android folder (rebuilt by expo prebuild)
+/android
