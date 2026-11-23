@@ -108,6 +108,7 @@ export default function ExerciseScreen() {
     restCarry.endsAt && restCarry.endsAt > Date.now() ? restCarry.endsAt : null,
   );
   const [restTotal, setRestTotal] = useState(restCarry.total);
+  const [switchBlocked, setSwitchBlocked] = useState(false);
   // A rest carried over from the previous exercise arrives as the slim bar, not full screen.
   const [carriedEnd] = useState(restEnd);
   // Each finished set starts a fresh rest (full screen); +15s keeps the current one.
@@ -170,6 +171,9 @@ export default function ExerciseScreen() {
   const idx = plan ? plans.indexOf(plan) : -1;
   const nextPlan = idx >= 0 ? plans[idx + 1] : undefined;
   const doneCount = sets.filter((x) => x.done).length;
+  // Sets are stored per exercise, so switching version or swapping after logging would strand
+  // today's sets under the old exercise. Block it (with a note) until they're cleared.
+  const canSwitch = doneCount === 0;
   const allSetsDone = doneCount >= targetSets;
   const nextSetIdx = sets.findIndex((x) => !x.done);
   // Never offer an exercise another slot already uses today: logs are kept per exercise, so two slots would share one log.
@@ -361,7 +365,7 @@ export default function ExerciseScreen() {
             </View>
             {plan && (
               <View style={s.swapRow}>
-                <Button size="sm" variant="outline" icon="swap" label="Swap" accessibilityLabel={`Swap ${ex.name}`} onPress={() => setSheet({ kind: 'swap' })} />
+                <Button size="sm" variant="outline" icon="swap" label="Swap" accessibilityLabel={`Swap ${ex.name}`} onPress={() => (canSwitch ? setSheet({ kind: 'swap' }) : setSwitchBlocked(true))} />
                 {swapped && (
                   <Text style={s.swappedText} numberOfLines={2}>
                     Swapped from {EXERCISES[original].name}.{' '}
@@ -416,12 +420,25 @@ export default function ExerciseScreen() {
                   <Text style={[type.small, { color: color.text }]}>Pick your version (remembered)</Text>
                   <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
                     {plan.options.map((o) => (
-                      <Chip key={o} label={EXERCISES[o].name} active={o === id} onPress={() => update((st) => ({ ...st, variants: { ...st.variants, [plan.slot]: o } }))} />
+                      <Chip
+                        key={o}
+                        label={EXERCISES[o].name}
+                        active={o === id}
+                        onPress={() => (o === id ? undefined : canSwitch ? update((st) => ({ ...st, variants: { ...st.variants, [plan.slot]: o } })) : setSwitchBlocked(true))}
+                      />
                     ))}
                   </View>
                 </View>
               )}
 
+              {switchBlocked && !canSwitch && (
+                <Glass r={radius.lg} style={s.callout}>
+                  <Icon name="info" size={22} color={color.muted} />
+                  <Text style={s.calloutText} accessibilityLiveRegion="polite">
+                    You&apos;ve logged sets on {ex.name} today. Untick them to switch exercise, or keep going and switch next time.
+                  </Text>
+                </Glass>
+              )}
               {isPress && (
                 <Glass r={radius.lg} style={s.callout}>
                   <Icon name="alert" size={22} color={color.pink} />

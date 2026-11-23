@@ -293,7 +293,7 @@ export default function TodayScreen() {
           })}
         </View>
 
-        {!suppsDone && (
+        {state.supplements.length > 0 && !suppsDone && (
           <Press onPress={() => router.navigate('/supplements')} style={s.nudge} accessibilityRole="button" glow={color.pink}>
             <Icon name="flask" size={20} color={color.pink} filled />
             <Text style={s.nudgeText} numberOfLines={1}>

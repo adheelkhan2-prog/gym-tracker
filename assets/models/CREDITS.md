@@ -9,5 +9,5 @@ via the Gymmetry muscle map model by kalibismail
 - BodyParts3D: https://dbarchive.biosciencedbc.jp/en/bodyparts3d/ (CC BY-SA 2.1 Japan)
 - Licence of this file: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/
 
-Changes made here: deduplicated and welded vertices, quantized positions, normals and
-vertex colours (KHR_mesh_quantization) with gltf-transform. Muscle regions unchanged.
+Changes: deduplicated and welded vertices; quantised positions, normals and vertex colours
+for mobile (KHR_mesh_quantization, with gltf-transform); muscle regions unchanged.

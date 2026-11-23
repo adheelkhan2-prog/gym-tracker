@@ -225,6 +225,9 @@ export const kgOf = (s: SetEntry) => {
   return w === null ? null : toKg(w, s.u ?? 'lb');
 };
 
+/** kg for a set, also converting a pin-only set once its machine has kg per plate set up. */
+export const setKg = (s: SetEntry, machine?: MachineSetup) => kgOf(s) ?? (s.load?.pin !== undefined ? stackKg(s.load.pin, machine) : null);
+
 const weighted = (kind: LogKind) => kind === 'weight_reps' || kind === 'weight_time';
 
 /** A finished set with every number its exercise needs. */
@@ -313,7 +316,7 @@ export type HistoryPoint = {
  */
 export function exerciseHistory(logs: State['logs'], exerciseId: string, machine?: MachineSetup): HistoryPoint[] {
   const kind = kindOf(exerciseId);
-  const kgFor = (s: SetEntry) => kgOf(s) ?? (s.load?.pin !== undefined ? stackKg(s.load.pin, machine) : null);
+  const kgFor = (s: SetEntry) => setKg(s, machine);
   const metric = (s: SetEntry) => (kind === 'weight_reps' || kind === 'weight_time' ? (kgFor(s) ?? 0) : num(s.reps)!);
   return Object.keys(logs)
     .sort()

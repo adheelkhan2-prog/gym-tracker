@@ -65,20 +65,18 @@ const atTime = (dateKey: string, hhmm: string) => {
   return new Date(y, m - 1, d, hh, mm, 0, 0);
 };
 
-/** Rebuild every scheduled supplement reminder from the current state. */
-export async function syncReminders(state: State) {
-  if (!SUPPORTED) return;
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter((n) => n.identifier.startsWith(PREFIX))
-      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
-  );
+export type PlannedReminder = { id: string; when: Date; title: string; body: string; date: string; slot: number };
 
-  if (!state.remindersOn || !state.supplements.length) return;
-  const now = new Date();
+/**
+ * The reminders that should be scheduled right now (pure, so it is unit-tested).
+ * For today and the next DAYS_AHEAD - 1 days: one per reminder time that is still in the future,
+ * skipping any day whose supplements are all marked taken. The first time of the day is the
+ * morning reminder; later ones are the "still need them" follow-ups.
+ */
+export function planReminders(state: Pick<State, 'remindersOn' | 'supplements' | 'taken' | 'reminderTimes'>, now: Date): PlannedReminder[] {
+  if (!state.remindersOn || !state.supplements.length) return [];
+  const out: PlannedReminder[] = [];
   const list = state.supplements.join(' + ').toLowerCase();
-
   for (let i = 0; i < DAYS_AHEAD; i++) {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
     const key = todayKey(day);
@@ -86,24 +84,57 @@ export async function syncReminders(state: State) {
     const missing = state.supplements.filter((s) => !takenToday[s]);
     if (!missing.length) continue;
     const what = (i === 0 ? missing.join(' + ') : list).toLowerCase();
-
-    for (const [slot, time] of state.reminderTimes.entries()) {
+    state.reminderTimes.forEach((time, slot) => {
       const when = atTime(key, time);
-      if (when <= now) continue;
+      if (when <= now) return;
       const first = slot === 0;
+      out.push({
+        id: `${PREFIX}${key}-${slot}`,
+        when,
+        date: key,
+        slot,
+        title: first ? 'Morning stack' : 'Still need your supplements',
+        body: first ? `Time for your ${what}.` : `You haven't marked your ${what} as taken today.`,
+      });
+    });
+  }
+  return out;
+}
+
+// Syncs run one at a time, and a sync that a newer one has overtaken stops before scheduling
+// anything, so ticking two supplements quickly can never leave a stale follow-up behind.
+let generation = 0;
+let queue: Promise<void> = Promise.resolve();
+
+/** Rebuild every scheduled supplement reminder from the current state. */
+export function syncReminders(state: State): Promise<void> {
+  if (!SUPPORTED) return Promise.resolve();
+  const gen = ++generation;
+  const run = async () => {
+    if (gen !== generation) return;
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => n.identifier.startsWith(PREFIX))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+    for (const r of planReminders(state, new Date())) {
+      if (gen !== generation) return;
       await Notifications.scheduleNotificationAsync({
-        identifier: `${PREFIX}${key}-${slot}`,
+        identifier: r.id,
         content: {
-          title: first ? 'Morning stack' : 'Still need your supplements',
-          body: first ? `Time for your ${what}.` : `You haven't marked your ${what} as taken today.`,
+          title: r.title,
+          body: r.body,
           categoryIdentifier: CATEGORY,
-          data: { date: key, slot },
+          data: { date: r.date, slot: r.slot },
           ...(Platform.OS === 'android' ? { color: color.lime } : {}),
         },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when, channelId: CHANNEL },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.when, channelId: CHANNEL },
       });
     }
-  }
+  };
+  queue = queue.then(run, run);
+  return queue;
 }
 
 /** Listen for taps on reminder notifications / their buttons. */

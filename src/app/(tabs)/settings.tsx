@@ -7,7 +7,7 @@ import { Icon, type IconName } from '../../components/icons';
 import { WeekMapper } from '../../components/ProgramParts';
 import { Button, Chip, Press, Screen, SectionTitle, Switch } from '../../components/ui';
 import { EXERCISES } from '../../data/exercises';
-import { pickOption } from '../../data/program';
+import { exerciseFor } from '../../workout';
 import { DEFAULT_GYM, fmtPlate, type PlateColor } from '../../load';
 import { activeProgram, easingIn, todayKey, useStore } from '../../store';
 import { color, font, leading, radius, size, space, touch, type } from '../../theme';
@@ -19,11 +19,13 @@ const SWATCHES = ['#E5322D', '#2F6BFF', '#F5C518', '#2DBE60', '#F2F2F2', '#1A1A1
 const CREDITS: { title: string; note: string; links: { label: string; url: string }[] }[] = [
   {
     title: '3D muscle model (Muscles tab)',
-    note: 'Adapted from Z-Anatomy, based on BodyParts3D, via the Gymmetry muscle map. Changes: compressed and quantised for mobile; muscle regions unchanged. Shared under CC BY-SA 4.0.',
+    note: 'Adapted from Z-Anatomy, based on BodyParts3D, via the Gymmetry muscle map. Changes: deduplicated and welded vertices; quantised positions, normals and vertex colours for mobile; muscle regions unchanged. Shared under CC BY-SA 4.0.',
     links: [
       { label: 'Z-Anatomy, Gauthier Kervyn (CC BY-SA 4.0)', url: 'https://github.com/Z-Anatomy/Models-of-human-anatomy' },
-      { label: 'BodyParts3D, © The Database Center for Life Science (CC BY-SA 2.1 JP)', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
+      { label: 'BodyParts3D, Kousaku Okubo, © The Database Center for Life Science (CC BY-SA 2.1 JP)', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
       { label: 'Gymmetry muscle map model, kalibismail (CC BY-SA 4.0)', url: 'https://github.com/kalibismail/gymmetry-muscle-model' },
+      { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+      { label: 'Licence: CC BY-SA 2.1 JP (BodyParts3D)', url: 'https://creativecommons.org/licenses/by-sa/2.1/jp/' },
     ],
   },
   {
@@ -73,7 +75,8 @@ export default function SettingsScreen() {
   const gym = state.gym;
   const setGym = (patch: Partial<typeof gym>) => update((st) => ({ ...st, gym: { ...st.gym, ...patch } }));
   const setColor = (i: number, patch: Partial<PlateColor>) => setGym({ colors: gym.colors.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
-  const machines = Object.entries(state.machines).filter(([id, m]) => EXERCISES[id] && (m.perPlate || m.start || m.bar !== undefined));
+  // Every machine you've set up stays listed, even while a field is cleared to type a new value.
+  const machines = Object.entries(state.machines).filter(([id]) => EXERCISES[id]);
 
   return (
     <Screen padBottom={140}>
@@ -149,13 +152,26 @@ export default function SettingsScreen() {
       {slots.length > 0 && <SectionTitle>Exercise choices</SectionTitle>}
       <View style={{ gap: space.md }}>
         {slots.map(({ day, plan }) => {
-          const current = pickOption(plan, state.variants);
+          // What the workout actually uses: a swap made during a workout wins over the version picked here.
+          const current = exerciseFor(state, plan);
+          const swapped = !plan.options.includes(current);
           return (
             <Glass key={plan.slot} r={radius.xl} style={{ gap: space.sm, padding: space.lg }}>
               <Text style={type.label}>{day.name}</Text>
+              {swapped && <Text style={type.small}>Swapped to {EXERCISES[current].name}. Pick a version to switch back.</Text>}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
                 {plan.options.map((o) => (
-                  <Chip key={o} label={EXERCISES[o].name} active={o === current} onPress={() => update((st) => ({ ...st, variants: { ...st.variants, [plan.slot]: o } }))} />
+                  <Chip
+                    key={o}
+                    label={EXERCISES[o].name}
+                    active={o === current}
+                    onPress={() =>
+                      update((st) => {
+                        const { [plan.slot]: _drop, ...swaps } = st.swaps;
+                        return { ...st, variants: { ...st.variants, [plan.slot]: o }, swaps };
+                      })
+                    }
+                  />
                 ))}
               </View>
             </Glass>
@@ -257,7 +273,7 @@ export default function SettingsScreen() {
             <Text style={s.creditTitle}>{g.title}</Text>
             <Text style={type.small}>{g.note}</Text>
             {g.links.map((c) => (
-              <Press key={c.url} onPress={() => Linking.openURL(c.url)} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
+              <Press key={c.url} onPress={() => Linking.openURL(c.url).catch(() => {})} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
                 <Icon name="link" size={16} color={color.lime} />
                 <Text style={s.creditText}>{c.label}</Text>
               </Press>

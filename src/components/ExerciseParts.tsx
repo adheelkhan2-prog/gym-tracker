@@ -296,13 +296,21 @@ export function NumberField({
   label: string;
   placeholder?: string;
 }) {
-  const [text, setText] = useState(value === undefined ? '' : String(value));
-  // Keep what's being typed ("2." etc.) while it still means the same number; otherwise follow the prop.
-  const parsed = text === '' ? undefined : parseFloat(text);
-  const shown = parsed === value || (parsed !== undefined && Number.isNaN(parsed) && value === undefined) ? text : value === undefined ? '' : String(value);
+  const asText = value === undefined ? '' : String(value);
+  const [text, setText] = useState(asText);
+  const [focused, setFocused] = useState(false);
+  // While typing, show exactly what's typed (an empty field or "2." included), so a value can be
+  // cleared and retyped. Otherwise follow the prop; a field that needs a number gets its last
+  // value back on blur if it was left empty.
+  const shown = focused ? text : asText;
   return (
     <TextInput
       value={shown}
+      onFocus={() => {
+        setText(asText);
+        setFocused(true);
+      }}
+      onBlur={() => setFocused(false)}
       onChangeText={(t) => {
         const clean = t.replace(/[^0-9.,]/g, '').replace(',', '.');
         setText(clean);
