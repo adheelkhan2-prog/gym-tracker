@@ -80,6 +80,33 @@ def _vgroup_indices(vg, name):
 CACHE = os.path.join(HERE, '..', 'cache')
 
 
+def _belly_corrective(body):
+    """'belly_flat' shape key: when the hips bend (sitting, reclining) skinning pushes the lower
+    abdomen forward into a bulge. This key pulls it back into a flat, lean stomach; pose() drives
+    it from the hip angle."""
+    body.shape_key_add(name='Basis')
+    key = body.shape_key_add(name='belly_flat', from_mix=False)
+    for v in body.data.vertices:
+        p = v.co
+        if p.y > -0.02 or abs(p.x) > 0.17 or not (-0.06 < p.z < 0.26):
+            continue
+        wz = max(0.0, 1 - ((p.z - 0.07) / 0.17) ** 2)
+        wx = max(0.0, 1 - (abs(p.x) / 0.17) ** 2)
+        w = (wz * wx) ** 0.8
+        key.data[v.index].co = p + Vector((0, 0.04 * w, 0.006 * w))
+    key.value = 0.0
+
+
+def _hip_flexion(rig):
+    """0 standing .. 1 deep sit, from the angle between torso and thighs."""
+    pb = rig.pose.bones
+    torso = (pb['spine05'].tail - pb['spine05'].head).normalized()
+    thigh = (pb['upperleg02.L'].tail - pb['upperleg01.L'].head).normalized()
+    import math
+    ang = math.degrees(torso.angle(thigh))  # ~180 standing, ~90 seated
+    return max(0.0, min(1.0, (180 - ang - 25) / 70))
+
+
 def _load_bake(body):
     """Attach the cached muscle-region ids (render/prepare_figure.py) as a `region` attribute."""
     path = os.path.join(CACHE, 'regions.json')
@@ -189,6 +216,7 @@ def build():
     mod.object = rig
     body.parent = rig
     _load_bake(body)
+    _belly_corrective(body)
     sub = body.modifiers.new('Subdivide', 'SUBSURF')
     sub.levels = 1
     sub.render_levels = 2
@@ -233,6 +261,10 @@ def pose(rig, dirs, aim):
             v = dirs[name]
             for bone in CHAINS[name]:
                 aim(rig, bone, v[:3], v[3] if len(v) > 3 else 0.0)
+    # Flatten the lower belly as the hips bend.
+    body = next((c for c in rig.children if c.type == 'MESH'), None)
+    if body is not None and body.data.shape_keys and 'belly_flat' in body.data.shape_keys.key_blocks:
+        body.data.shape_keys.key_blocks['belly_flat'].value = _hip_flexion(rig)
     # Fold the fingers away: the sculpted clay fist (scene.fist) wraps the handle instead.
     for s in ('L', 'R'):
         for f in FINGERS + ['finger1-1']:

@@ -1,0 +1,123 @@
+{
+ "setup": "standing",
+ "base": {
+  "pelvis": [
+   0,
+   0.02,
+   1
+  ],
+  "spine": [
+   0,
+   0.02,
+   1
+  ],
+  "chest": [
+   0,
+   0,
+   1
+  ],
+  "neck": [
+   0,
+   -0.03,
+   1
+  ],
+  "head": [
+   0,
+   -0.03,
+   1
+  ],
+  "thigh_L": [
+   0.2,
+   -1,
+   -0.05
+  ],
+  "shin_L": [
+   0.05,
+   -0.1,
+   -1
+  ],
+  "foot_L": [
+   0.08,
+   -1,
+   -0.3
+  ]
+ },
+ "frames": {
+  "start": {
+   "upper_L": [
+    0.85,
+    0.45,
+    -0.15
+   ],
+   "fore_L": [
+    0.02,
+    -1,
+    0.05
+   ],
+   "hand_L": [
+    0.02,
+    -1,
+    0.05
+   ]
+  },
+  "end": {
+   "upper_L": [
+    0.32,
+    -1,
+    -0.05
+   ],
+   "fore_L": [
+    0.04,
+    -1,
+    0
+   ],
+   "hand_L": [
+    0.04,
+    -1,
+    0
+   ]
+  }
+ },
+ "camera": {
+  "azimuth": 35,
+  "elevation": 14,
+  "distance": 3.0,
+  "lens": 50
+ },
+ "hips": [
+  0,
+  0,
+  0.55
+ ],
+ "equipment": [
+  {
+   "type": "seat",
+   "back": true
+  },
+  {
+   "type": "line",
+   "from": {
+    "at": "@grip_L",
+    "off": [
+     0.05,
+     0.55,
+     0
+    ]
+   },
+   "to": "@grip_L"
+  },
+  {
+   "type": "line",
+   "from": {
+    "at": "@grip_R",
+    "off": [
+     -0.05,
+     0.55,
+     0
+    ]
+   },
+   "to": "@grip_R"
+  }
+ ],
+ "id": "machine_chest_press"
+}

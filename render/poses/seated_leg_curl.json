@@ -1,0 +1,101 @@
+{
+ "setup": "standing",
+ "base": {
+  "pelvis": [
+   0,
+   0.02,
+   1
+  ],
+  "spine": [
+   0,
+   0.02,
+   1
+  ],
+  "chest": [
+   0,
+   0,
+   1
+  ],
+  "neck": [
+   0,
+   -0.03,
+   1
+  ],
+  "head": [
+   0,
+   -0.03,
+   1
+  ],
+  "thigh_L": [
+   0.2,
+   -1,
+   -0.05
+  ],
+  "shin_L": [
+   0.05,
+   -0.1,
+   -1
+  ],
+  "foot_L": [
+   0.08,
+   -1,
+   -0.3
+  ]
+ },
+ "frames": {
+  "start": {
+   "shin_L": [
+    0.05,
+    -1,
+    -0.2
+   ]
+  },
+  "end": {
+   "shin_L": [
+    0.05,
+    0.35,
+    -0.94
+   ]
+  }
+ },
+ "camera": {
+  "azimuth": 80,
+  "elevation": 10,
+  "distance": 3.4,
+  "lens": 50
+ },
+ "hips": [
+  0,
+  0,
+  0.55
+ ],
+ "equipment": [
+  {
+   "type": "seat",
+   "back": true
+  },
+  {
+   "type": "roller",
+   "at": {
+    "at": "@ankles",
+    "off": [
+     0,
+     0.05,
+     0.02
+    ]
+   }
+  },
+  {
+   "type": "roller",
+   "at": {
+    "at": "@knees",
+    "off": [
+     0,
+     0.15,
+     0.1
+    ]
+   }
+  }
+ ],
+ "id": "seated_leg_curl"
+}

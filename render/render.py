@@ -45,6 +45,136 @@ def grip(rig, side):
     return makehuman.hand_basis(rig, side)[4]
 
 
+def anchor(rig, body, v, floor_z=0.0):
+    """Resolve a position: [x, y, z], "@name", or {"at": "@name", "off": [dx, dy, dz]}.
+    Names: grip, grip_L, grip_R, ankle_L, ankle_R, ankles, knees, hips, chest, neck, head."""
+    if isinstance(v, dict):
+        return anchor(rig, body, v['at'], floor_z) + Vector(v.get('off', (0, 0, 0)))
+    if not isinstance(v, str):
+        return Vector(v)
+    mw = rig.matrix_world
+    pb = rig.pose.bones
+    name = v[1:]
+    if name == 'grip':
+        return (grip(rig, 'L') + grip(rig, 'R')) / 2
+    if name in ('grip_L', 'grip_R'):
+        return grip(rig, name[-1])
+    if name in ('ankle_L', 'ankle_R'):
+        return mw @ pb[f'foot.{name[-1]}'].head
+    if name == 'ankles':
+        return (mw @ pb['foot.L'].head + mw @ pb['foot.R'].head) / 2
+    if name == 'knees':
+        return (mw @ pb['lowerleg01.L'].head + mw @ pb['lowerleg01.R'].head) / 2
+    if name == 'hips':
+        return mw @ pb['spine05'].head
+    if name == 'chest':
+        return mw @ pb['spine01'].head
+    if name == 'neck':
+        return mw @ pb['neck01'].head
+    if name == 'head':
+        return mw @ pb['head'].tail
+    if name == 'floor':
+        return Vector((0, 0, floor_z))
+    raise ValueError(v)
+
+
+def build_equipment(items, rig, body, floor_z, M):
+    """Generic equipment pieces placed relative to the posed body (see poses/generate.py)."""
+    A = lambda v: anchor(rig, body, v, floor_z)  # noqa: E731
+    for it in items:
+        t = it['type']
+        if t == 'bench':
+            scene.flat_bench(it['top_z'], it['y0'], it['y1'], floor_z, M)
+        elif t == 'incline':
+            scene.incline_bench(it['seat_z'], it['seat_y'], it['back_deg'], floor_z, M, it.get('back_y', 0.10))
+        elif t == 'seat':
+            h = A(it.get('at', '@hips'))
+            top = h.z + it.get('dz', -0.11)
+            scene.box('seatpad', (h.x, h.y + it.get('dy', 0.0), top - 0.04), (0.38, 0.38, 0.08), M['pad'])
+            scene.cyl('seatpost', (h.x, h.y, floor_z), (h.x, h.y, top - 0.08), 0.035, M['frame'])
+            scene.box('seatbase', (h.x, h.y, floor_z + 0.02), (0.5, 0.6, 0.04), M['frame'])
+            if it.get('back'):
+                scene.box('seatback', (h.x, h.y + 0.2, top + 0.3), (0.38, 0.07, 0.55), M['pad'])
+        elif t == 'cable':
+            a, b = A(it['from']), A(it['to'])
+            if it.get('tower', True):
+                tz = max(a.z + 0.15, 2.0)
+                scene.box('tower', (a.x, a.y + (0.12 if a.y >= b.y else -0.12), (floor_z + tz) / 2), (0.24, 0.18, tz - floor_z), M['frame'])
+            scene.cyl('pulley', a + Vector((-0.02, 0, 0)), a + Vector((0.02, 0, 0)), 0.045, M['steel'])
+            scene.cyl('cable', a, b, 0.006, M['steel'], verts=12)
+            hd = it.get('handle', 'bar')
+            if hd == 'bar':
+                gl, gr = A('@grip_L'), A('@grip_R')
+                scene.cyl('cablebar', gl + (gl - gr).normalized() * 0.08, gr + (gr - gl).normalized() * 0.08, 0.014, M['steel'])
+            elif hd == 'rope':
+                for side in ('L', 'R'):
+                    scene.cyl(f'rope{side}', b, A(f'@grip_{side}'), 0.012, M['pad'], verts=12)
+        elif t == 'bar':
+            c = A(it.get('at', '@grip'))
+            half = it.get('half', 0.6)
+            scene.cyl('fixedbar', c - Vector((half, 0, 0)), c + Vector((half, 0, 0)), 0.016, M['steel'])
+            if it.get('posts', True):
+                for sgn in (-1, 1):
+                    scene.cyl(f'barpost{sgn}', (c.x + sgn * half, c.y, floor_z), (c.x + sgn * half, c.y, c.z + 0.03), 0.03, M['frame'])
+        elif t == 'dip_bars':
+            for side in ('L', 'R'):
+                g = A(f'@grip_{side}')
+                scene.cyl(f'dip{side}', g - Vector((0, 0.3, 0)), g + Vector((0, 0.25, 0)), 0.022, M['steel'])
+                for dy in (-0.25, 0.2):
+                    scene.cyl(f'dippost{side}{dy}', (g.x, g.y + dy, floor_z), (g.x, g.y + dy, g.z), 0.025, M['frame'])
+        elif t == 'box':
+            c = A(it['center'])
+            scene.box(it.get('name', 'box'), c, it['size'], M[it.get('mat', 'pad')])
+        elif t == 'roller':
+            c = A(it['at'])
+            scene.cyl('roller', c - Vector((0.18, 0, 0)), c + Vector((0.18, 0, 0)), 0.045, M['pad'])
+        elif t == 'post':
+            c = A(it['at'])
+            scene.cyl('post', (c.x, c.y, floor_z), (c.x, c.y, c.z), it.get('r', 0.035), M['frame'])
+        elif t == 'plate':
+            c = A(it['at'])
+            n = Vector(it['normal']).normalized()
+            o = scene.box('sledplate', c, (0.55, 0.035, 0.5), M['frame'])
+            o.rotation_mode = 'QUATERNION'
+            o.rotation_quaternion = Vector((0, 1, 0)).rotation_difference(n)
+        elif t == 'line':
+            scene.cyl(it.get('name', 'rail'), A(it['from']), A(it['to']), it.get('r', 0.03), M['frame'])
+        elif t == 'mat':
+            h = A('@hips')
+            scene.box('mat', (h.x, h.y, floor_z + 0.008), (0.7, 1.9, 0.016), M['pad'])
+
+
+def build_props(props, rig, M):
+    if not props:
+        return
+    gl, gr = grip(rig, 'L'), grip(rig, 'R')
+    if props in ('barbell', 'ez'):
+        half = max(0.32 if props == 'ez' else 0.45, (gl - gr).length / 2 + 0.12)
+        scene.barbell('bb', (gl + gr) / 2, half, M, plates=(0.17, 0.14) if props == 'ez' else (0.225, 0.2))
+    elif props == 'dumbbells':
+        for side in ('L', 'R'):
+            _, _, _, axis, centre = makehuman.hand_basis(rig, side)
+            scene.dumbbell(f'db_{side}', centre, axis, M)
+    elif props in ('dumbbell_L', 'dumbbell_R'):
+        _, _, _, axis, centre = makehuman.hand_basis(rig, props[-1])
+        scene.dumbbell('db', centre, axis, M)
+    elif props == 'dumbbell_single':
+        c = (gl + gr) / 2
+        scene.dumbbell('db', c, (0, 0, 1), M, plate_r=0.08)
+    elif props == 'plate':
+        c = (gl + gr) / 2
+        scene.cyl('heldplate', c - Vector((0, 0.02, 0)), c + Vector((0, 0.02, 0)), 0.2, M['frame'], verts=48)
+    elif props == 'trap_bar':
+        c = (gl + gr) / 2
+        w = (gl - gr).length / 2 + 0.05
+        for sgn in (-1, 1):
+            scene.cyl(f'tbside{sgn}', c + Vector((sgn * w, -0.3, 0)), c + Vector((sgn * w, 0.3, 0)), 0.016, M['steel'])
+            scene.cyl(f'tbend{sgn}', c + Vector((-w, sgn * 0.3, 0)), c + Vector((w, sgn * 0.3, 0)), 0.016, M['steel'])
+            scene.cyl(f'tbsleeve{sgn}', c + Vector((sgn * w, 0, 0)), c + Vector((sgn * (w + 0.35), 0, 0)), 0.016, M['steel'])
+            a = c + Vector((sgn * (w + 0.12), 0, 0))
+            scene.cyl(f'tbplate{sgn}', a, a + Vector((sgn * 0.05, 0, 0)), 0.225, M['frame'], verts=48)
+
+
 def clear_props():
     for o in list(bpy.data.objects):
         if o.get('prop'):
@@ -171,10 +301,14 @@ def main():
             for o in bpy.data.objects:
                 if o.type == 'LIGHT' and o not in rims:
                     o.matrix_world = flip @ o.matrix_world
+        shared_target = None
         for frame in args.frames.split(','):
             clear_props()
             before = {o.name for o in bpy.data.objects}
-            dirs = mirrored({**spec.get('base', {}), **spec['frames'][frame]})
+            fr = dict(spec['frames'][frame])
+            fh = fr.pop('hips', None)
+            rig.location = (Vector(fh) if fh else hips) - rest_pelvis
+            dirs = mirrored({**spec.get('base', {}), **fr})
             pose(rig, dirs)
             floor_z = spec.get('floor', figure_min_z(body))
             setup = spec['setup']
@@ -186,28 +320,38 @@ def main():
                 gl, gr = grip(rig, 'L'), grip(rig, 'R')
                 c = (gl + gr) / 2
                 scene.lat_machine(s['seat_z'], s['seat_y'], floor_z, s['knee'], c, max(0.55, (gl - gr).length / 2 + 0.12), M)
+            elif setup == 'flat_bench':
+                s = spec['bench']
+                scene.flat_bench(s['top_z'], s['y0'], s['y1'], floor_z, M)
+                if spec.get('uprights'):
+                    scene.bench_uprights(s['y1'] - 0.18, s['top_z'] + 0.55, floor_z, 0.55, M)
+            elif setup == 'cable_row':
+                s = spec['row']
+                gl, gr = grip(rig, 'L'), grip(rig, 'R')
+                scene.cable_row(s['seat_z'], s['seat_y'], s['foot_y'], floor_z, (gl + gr) / 2, M)
+            if spec.get('equipment'):
+                build_equipment(spec['equipment'], rig, body, floor_z, M)
             # Clay fists closed around the handles (the model's own hands are only bones).
             hand_mat = bpy.data.materials.get('hand_clay')
             if hand_mat is None:
                 hand_mat = bpy.data.materials.new('hand_clay')
                 scene.clay_material(hand_mat)
             before_fists = {o.name for o in bpy.data.objects}
-            for side in ('L', 'R'):
+            for side in spec.get('fists', ['L', 'R']):
                 wrist, d, palm, axis, g = makehuman.hand_basis(rig, side)
                 scene.fist(f'fist_{side}', wrist, d, palm, axis, g, hand_mat)
             for o in bpy.data.objects:
                 if o.name not in before_fists:
                     figure_coll.objects.link(o)
-            props = spec.get('props')
-            if props == 'dumbbells':
-                for side in ('L', 'R'):
-                    _, _, _, axis, centre = makehuman.hand_basis(rig, side)
-                    scene.dumbbell(f'db_{side}', centre, axis, M)
+            build_props(spec.get('props'), rig, M)
             scene.floor(floor_z)
             tag_new(before)
 
+            # Frame both positions the same way: aim at the first frame's figure centre.
             mn, mx = figure_bounds(body)
-            target = Vector(cam_cfg.get('target', list((mn + mx) / 2)))
+            if shared_target is None:
+                shared_target = Vector(cam_cfg.get('target', list((mn + mx) / 2)))
+            target = shared_target
             for o in list(bpy.data.objects):
                 if o.type == 'CAMERA':
                     bpy.data.objects.remove(o, do_unlink=True)

@@ -16,6 +16,13 @@ SMOOTH_ITER = 14
 INFLATE = 0.004    # metres; pieces are puffed out before the remesh so gaps up to ~8 mm weld shut
 
 
+NORMAL_STRENGTH = 1.7   # baked muscle detail
+CAVITY = 0.45           # how much ambient occlusion darkens the grooves between muscles
+
+# Regions that map to thin bands on the MakeHuman body get widened by this many edge rings.
+GROW = {'pec_major_upper': 3, 'lateral_delt': 1, 'posterior_delt': 1, 'brachialis': 1}
+
+
 def set_glow_mask(body, glow):
     """Per-vertex 'glow' colour (R = primary, G = secondary) from the region ids, softened so it
     fades at each muscle's edges and is brightest in its centre."""
@@ -27,7 +34,12 @@ def set_glow_mask(body, glow):
     for i, n in enumerate(names):
         role = glow.get(n)
         if role:
-            m[idx == i, 0 if role == 'primary' else 1] = 1.0
+            ch = 0 if role == 'primary' else 1
+            mask = (idx == i).astype(np.float32)[:, None]
+            grow = GROW.get(n, 0)
+            if grow:
+                mask = _local_max(me, mask, grow)  # widen thin regions a little
+            m[:, ch] = np.maximum(m[:, ch], mask[:, 0])
     # Blur amounts were tuned on a ~100k-vertex mesh; scale them to this mesh's density.
     f = max(0.25, (len(me.vertices) / 100000) ** 0.5) * 1.7
     soft = _blur(me, m, max(4, int(30 * f)))
@@ -118,7 +130,18 @@ def material(name='clay_glow', normal_image=None):
     mix2.inputs['B'].default_value = (0.80, 0.09, 0.05, 1)
     nt.links.new(mix1.outputs['Result'], mix2.inputs['A'])
     nt.links.new(math('MULTIPLY', math('POWER', p, 1.3), 0.8), mix2.inputs['Factor'])
-    nt.links.new(mix2.outputs['Result'], b.inputs['Base Color'])
+    # Cavity: local ambient occlusion darkens the grooves between muscles so they read at card size.
+    ao = nt.nodes.new('ShaderNodeAmbientOcclusion')
+    ao.only_local = True
+    ao.inputs['Distance'].default_value = 0.035
+    ao.samples = 8
+    cav = nt.nodes.new('ShaderNodeMix')
+    cav.data_type = 'RGBA'
+    cav.blend_type = 'MULTIPLY'
+    cav.inputs['Factor'].default_value = CAVITY
+    nt.links.new(mix2.outputs['Result'], cav.inputs['A'])
+    nt.links.new(ao.outputs['AO'], cav.inputs['B'])
+    nt.links.new(cav.outputs['Result'], b.inputs['Base Color'])
     # Emission: stronger in the centre (power curve), so shading still shows the muscle's form.
     emc = nt.nodes.new('ShaderNodeMix')
     emc.data_type = 'RGBA'
@@ -153,7 +176,11 @@ def material(name='clay_glow', normal_image=None):
         nm.uv_map = 'UVMap'
         det = nt.nodes.new('ShaderNodeAttribute')
         det.attribute_name = 'detail'
-        nt.links.new(math('MULTIPLY', det.outputs['Fac'], 0.9), nm.inputs['Strength'])
+        ns = nt.nodes.new('ShaderNodeMath')
+        ns.operation = 'MULTIPLY'
+        ns.inputs[1].default_value = NORMAL_STRENGTH
+        nt.links.new(det.outputs['Fac'], ns.inputs[0])
+        nt.links.new(ns.outputs[0], nm.inputs['Strength'])
         nt.links.new(tex.outputs['Color'], nm.inputs['Color'])
         nt.links.new(nm.outputs['Normal'], bump.inputs['Normal'])
     nt.links.new(bump.outputs['Normal'], b.inputs['Normal'])
