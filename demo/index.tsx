@@ -18,6 +18,8 @@ import SupplementsScreen from '../src/app/(tabs)/supplements';
 import TodayScreen from '../src/app/(tabs)/index';
 import CompleteScreen from '../src/app/complete';
 import ExerciseScreen from '../src/app/exercise/[id]';
+import BuilderScreen from '../src/app/builder';
+import ProgramsScreen from '../src/app/programs';
 import { Loading, Press } from '../src/components/ui';
 import { STORAGE_KEY, StoreProvider, addDays, todayKey, useStore, type DayLog } from '../src/store';
 import { color, font, size, space } from '../src/theme';
@@ -146,7 +148,15 @@ function Demo() {
       )}
       {top && top.name !== 'tabs' && (
         <ParamsContext.Provider value={top.params}>
-          {top.name === 'exercise' ? <ExerciseScreen key={JSON.stringify(top.params)} /> : <CompleteScreen />}
+          {top.name === 'exercise' ? (
+            <ExerciseScreen key={JSON.stringify(top.params)} />
+          ) : top.name === 'programs' ? (
+            <ProgramsScreen />
+          ) : top.name === 'builder' ? (
+            <BuilderScreen key={JSON.stringify(top.params)} />
+          ) : (
+            <CompleteScreen />
+          )}
         </ParamsContext.Provider>
       )}
       {/* Tabs stay mounted under pushed screens, like the real app's stack. */}

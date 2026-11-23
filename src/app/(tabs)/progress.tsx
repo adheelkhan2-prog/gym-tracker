@@ -8,9 +8,9 @@ import { Icon } from '../../components/icons';
 import { LineChart } from '../../components/LineChart';
 import { CountUp } from '../../components/motion';
 import { Chip, Progress, Screen, SectionTitle } from '../../components/ui';
-import { EXERCISES } from '../../data/exercises';
+import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
 import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
-import { ALL_EXERCISE_IDS } from '../../data/program';
+import { fromKg, round1 } from '../../load';
 import { addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
 import { RANKS, levelFor, pctChange, rankFor, totalXp, volumeOn } from '../../xp';
@@ -35,8 +35,9 @@ export default function ProgressScreen() {
   const week = weekSummary(state);
   const thisWeek = weekKeys(today);
   const lastWeek = weekKeys(addDays(today, -7));
-  const vol = thisWeek.reduce((n, d) => n + volumeOn(state, d), 0);
-  const volLast = lastWeek.reduce((n, d) => n + volumeOn(state, d), 0);
+  // Volume is summed in kg and shown in your unit.
+  const vol = Math.round(fromKg(thisWeek.reduce((n, d) => n + volumeOn(state, d), 0), unit));
+  const volLast = Math.round(fromKg(lastWeek.reduce((n, d) => n + volumeOn(state, d), 0), unit));
   const change = pctChange(vol, volLast);
   const lvl = levelFor(totalXp(state));
   const rank = rankFor(lvl.level);
@@ -55,22 +56,38 @@ export default function ProgressScreen() {
   const topMuscles = (Object.entries(muscleSets) as [MuscleId, number][]).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   // ----- Exercise charts -----
-  const histories = useMemo(() => Object.fromEntries(ALL_EXERCISE_IDS.map((id) => [id, exerciseHistory(state.logs, id)])), [state.logs]);
-  const withData = ALL_EXERCISE_IDS.filter((id) => histories[id].length > 0);
+  // Every exercise has its own history, so swaps chart separately from the original.
+  const histories = useMemo(
+    () => Object.fromEntries(EXERCISE_LIST.map((e) => [e.id, exerciseHistory(state.logs, e.id, state.machines[e.id])])),
+    [state.logs, state.machines],
+  );
+  const withData = EXERCISE_LIST.map((e) => e.id).filter((x) => histories[x].length > 0);
   const [picked, setPicked] = useState<string | null>(null);
   const id = picked && withData.includes(picked) ? picked : withData[0];
   const [metric, setMetric] = useState<Metric>('top');
   const kind = id ? EXERCISES[id].kind : 'weight_reps';
-  const hist = id ? histories[id] : [];
-  const showE1rm = metric === 'e1rm' && kind === 'weight_reps';
-  const valueUnit = kind === 'reps' ? 'reps' : unit;
+  const all = id ? histories[id] : [];
+  // Charted in kg (shown in your unit) when known; a machine that was only logged by pin is charted by pin.
+  const byPin = all.length > 0 && all.every((h) => h.top === 0 && h.pin !== undefined);
+  const hist = byPin ? all : all.filter((h) => h.top > 0);
+  const weightedKind = kind === 'weight_reps' || kind === 'weight_time';
+  const showE1rm = metric === 'e1rm' && kind === 'weight_reps' && !byPin;
+  const valueUnit = byPin ? 'pin' : kind === 'reps' ? 'reps' : kind === 'time' ? 's' : unit;
+  const val = (h: (typeof hist)[number]) =>
+    byPin ? h.pin! : weightedKind ? Number(round1(fromKg(showE1rm ? h.e1rm : h.top, unit))) : h.top;
   const points = hist.map((h) => ({
     label: formatDate(h.date),
-    value: Math.round(showE1rm ? h.e1rm : h.top),
-    detail: kind === 'reps' ? `${h.topReps} reps` : `${h.top} ${unit} × ${h.topReps}${kind === 'weight_time' ? ' s' : ''}`,
+    value: val(h),
+    detail: byPin
+      ? `Pin ${h.pin} × ${h.topReps}`
+      : kind === 'reps'
+        ? `${h.topReps} reps`
+        : kind === 'time'
+          ? `${h.topReps} s`
+          : `${round1(fromKg(h.top, unit))} ${unit} × ${h.topReps}${kind === 'weight_time' ? ' s' : ''}`,
   }));
-  const best = hist.length ? Math.max(...hist.map((h) => h.top)) : 0;
-  const delta = hist.length > 1 ? hist[hist.length - 1].top - hist[0].top : 0;
+  const best = hist.length ? Math.max(...hist.map(val)) : 0;
+  const delta = hist.length > 1 ? Number(round1(val(hist[hist.length - 1]) - val(hist[0]))) : 0;
   const enter = (i: number) => (reduce ? undefined : FadeInDown.delay(i * motion.stagger).springify().damping(16));
   const up = (change ?? 0) >= 0;
 
@@ -203,8 +220,10 @@ export default function ProgressScreen() {
 
           <Glass r={radius.xxl} style={s.chartCard}>
             <View style={s.chartHead}>
-              <Text style={type.label}>{showE1rm ? 'Estimated 1-rep max' : kind === 'reps' ? 'Best set' : 'Heaviest set'}</Text>
-              {kind === 'weight_reps' && (
+              <Text style={type.label}>
+                {byPin ? 'Heaviest pin' : showE1rm ? 'Estimated 1-rep max' : kind === 'reps' || kind === 'time' ? 'Best set' : 'Heaviest set'}
+              </Text>
+              {kind === 'weight_reps' && !byPin && (
                 <View style={{ flexDirection: 'row', gap: space.xs }}>
                   <Chip label="Weight" active={metric === 'top'} onPress={() => setMetric('top')} />
                   <Chip label="1RM" active={metric === 'e1rm'} onPress={() => setMetric('e1rm')} />
@@ -212,6 +231,11 @@ export default function ProgressScreen() {
               )}
             </View>
             <LineChart points={points} unit={valueUnit} />
+            {byPin && (
+              <Text style={[type.small, { marginTop: space.sm }]}>
+                Charted by pin number: add this machine’s kg per plate in the exercise’s load settings to chart kilograms.
+              </Text>
+            )}
             <View style={s.summary}>
               <Text style={type.small}>
                 Best <Text style={s.strong}>{best} {valueUnit}</Text>

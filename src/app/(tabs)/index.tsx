@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -17,11 +17,29 @@ import { Badge, Button, Flame, Press, Ring, Screen } from '../../components/ui';
 import { GREETING, REST_DAY, line } from '../../copy';
 import { EXERCISES } from '../../data/exercises';
 import { MUSCLE_LABEL } from '../../data/muscles';
-import { dayById, WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
+import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
 import { haptic } from '../../feedback';
-import { allTaken, num, previousSession, todayKey, trainedOn, trainingStreak, useStore, weekKeys } from '../../store';
-import { color, dayTitle, font, leading, motion, radius, size, space, touch, type } from '../../theme';
-import { WARMUP, dayProgress } from '../../workout';
+import {
+  activeProgram,
+  allTaken,
+  applyPending,
+  dateFromKey,
+  dayById,
+  dayHasWork,
+  easingIn,
+  formatDate,
+  num,
+  prMetric,
+  previousSession,
+  programById,
+  todayKey,
+  trainedOn,
+  trainingStreak,
+  useStore,
+  weekKeys,
+} from '../../store';
+import { color, font, leading, motion, radius, size, space, touch, type } from '../../theme';
+import { WARMUP, dayProgress, setText, subtitleOf, titleOf } from '../../workout';
 import { levelFor, rankFor, totalXp } from '../../xp';
 
 export default function TodayScreen() {
@@ -32,8 +50,15 @@ export default function TodayScreen() {
   const date = todayKey(now);
   const scheduled = state.week[now.getDay()];
   const [picked, setPicked] = useState<string | null>(null);
+  // A switch booked for "next Monday" kicks in when that day arrives.
+  useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   // Picked day, else the workout already started today, else the scheduled one.
-  const day = dayById(picked ?? state.sessions[date]?.dayId ?? scheduled);
+  const chosen = dayById(state, picked ?? state.sessions[date]?.dayId ?? scheduled);
+  // With injury mode on, a day of only leg/ab work becomes a rest day instead of an empty workout.
+  const hiddenDay = chosen && !dayHasWork(state, chosen.id) ? chosen : undefined;
+  const day = hiddenDay ? undefined : chosen;
+  const program = activeProgram(state);
+  const pending = state.pending ? programById(state, state.pending.programId) : undefined;
   const progress = day ? dayProgress(state, day, date) : null;
   const started = !!progress && progress.done > 0;
   const finished = !!state.sessions[date]?.finishedAt;
@@ -51,10 +76,10 @@ export default function TodayScreen() {
       const ex = EXERCISES[st.exerciseId];
       const prev = previousSession(state.logs, st.exerciseId, date);
       const top = prev?.sets.reduce((a, b) => {
-        const dw = (num(b.weight) ?? 0) - (num(a.weight) ?? 0);
+        const dw = prMetric(b, ex.kind) - prMetric(a, ex.kind);
         return dw > 0 || (dw === 0 && (num(b.reps) ?? 0) > (num(a.reps) ?? 0)) ? b : a;
       });
-      const unit = ex.kind === 'weight_time' ? ' s' : ex.kind === 'reps' ? ' reps' : '';
+      const unit = ex.kind === 'weight_time' || ex.kind === 'time' ? ' s' : ex.kind === 'reps' ? ' reps' : '';
       const paint: DeckItem['paint'] = {};
       for (const m of ex.secondary) paint[m] = { color: color.muscleSecondary };
       for (const m of ex.primary) paint[m] = { color: color.musclePrimary, glow: 0.15 };
@@ -64,7 +89,7 @@ export default function TodayScreen() {
         total: progress.statuses.length,
         name: ex.name,
         target: `${st.plan.sets} × ${st.plan.target}${unit}`,
-        last: top ? (ex.kind === 'reps' ? `Last ${top.reps} reps` : `Last ${top.weight} ${state.unit} × ${top.reps}${ex.kind === 'weight_time' ? 's' : ''}`) : 'First time: set the bar',
+        last: top ? `Last ${setText(top, ex.kind, state.unit, state.gym)}` : 'First time: set the bar',
         status: st.skipped ? 'skipped' : st.complete ? 'done' : st.done > 0 ? 'partial' : 'todo',
         progress: `${st.done}/${st.plan.sets}`,
         paint,
@@ -110,7 +135,6 @@ export default function TodayScreen() {
   };
 
   const finish = () => {
-    // eslint-disable-next-line react-hooks/purity -- runs in the tap handler, not during render
     const at = Date.now();
     update((s) => ({
       ...s,
@@ -122,7 +146,7 @@ export default function TodayScreen() {
   const nextTraining = (() => {
     for (let i = 1; i <= 7; i++) {
       const id = state.week[(now.getDay() + i) % 7];
-      if (id) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(now.getDay() + i) % 7]}`, id };
+      if (id && dayHasWork(state, id)) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(now.getDay() + i) % 7]}`, id };
     }
     return null;
   })();
@@ -132,7 +156,7 @@ export default function TodayScreen() {
   // Battle pass: one tile per weekday that has a workout in your day order (Mon-first).
   const pass = weekKeys(date)
     .map((d) => ({ d, wd: new Date(d.replace(/-/g, '/')).getDay() }))
-    .filter((x) => state.week[x.wd])
+    .filter((x) => dayHasWork(state, state.week[x.wd]))
     .map((x) => ({ ...x, id: state.week[x.wd]! }));
   const ringSize = Math.min(150, width * 0.36);
 
@@ -163,9 +187,11 @@ export default function TodayScreen() {
           <Animated.View entering={reduce ? undefined : FadeInDown.springify().damping(16)} style={{ marginTop: space.xxl }}>
             <Glass strong glow={color.lime} r={radius.xxl} style={s.hero}>
               <Text style={s.dayTag}>{WEEKDAY_SHORT[state.week.indexOf(day.id)] ?? ''}</Text>
-              <Text style={s.dayTitle}>{dayTitle[day.id]}</Text>
+              <Text style={s.dayTitle} numberOfLines={2} adjustsFontSizeToFit>
+                {titleOf(day)}
+              </Text>
               <Text style={s.focus} numberOfLines={2}>
-                {day.name}
+                {subtitleOf(day)}
               </Text>
               <View style={{ marginTop: space.xl, alignSelf: 'flex-start' }}>
                 {finished ? (
@@ -191,12 +217,50 @@ export default function TodayScreen() {
             <Icon name="moon" size={36} color={color.lime} filled />
             <Text style={s.dayTitle}>Rest Day</Text>
             <Text style={s.focus}>
-              {nextTraining ? `${dayTitle[nextTraining.id]} is ${nextTraining.when}.` : 'Recover and refuel.'}
+              {hiddenDay
+                ? `${hiddenDay.name} is resting while injury mode is on.`
+                : nextTraining
+                  ? `${titleOf(dayById(state, nextTraining.id)!)} is ${nextTraining.when}.`
+                  : 'Recover and refuel.'}
             </Text>
           </Glass>
         )}
 
-        {/* Battle pass: 5 training days fill in as you complete them */}
+        {/* Program chip: what you're running and the way to change it */}
+        <Press onPress={() => router.push('/programs')} style={s.program} accessibilityRole="button" accessibilityLabel={`Program: ${program.name}. Change program`}>
+          <Icon name="layers" size={18} color={color.lime} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.programName} numberOfLines={1}>
+              {program.name}
+            </Text>
+            {pending && state.pending && (
+              <Text style={s.programPending} numberOfLines={1}>
+                Switching to {pending.name} on {WEEKDAY_SHORT[dateFromKey(state.pending.from).getDay()]} {formatDate(state.pending.from)}
+              </Text>
+            )}
+          </View>
+          <Text style={s.programChange}>Programs</Text>
+          <Icon name="next" size={16} color={color.muted} />
+        </Press>
+
+        {easingIn(state, date) && (
+          <Glass style={s.ease} r={radius.xl} glow={color.lime}>
+            <View style={s.warmHead}>
+              <Icon name="bandage" size={24} color={color.lime} />
+              <View style={{ flex: 1 }}>
+                <Text style={type.h3}>Welcome back. Ease in.</Text>
+                <Text style={type.small}>
+                  For your first 2 weeks, start leg and ab work at about half your old weights and stop 3–4 reps short of failure. Add load only when it feels easy.
+                </Text>
+              </View>
+            </View>
+            <View style={{ alignSelf: 'flex-end' }}>
+              <Button size="sm" variant="ghost" label="Got it" onPress={() => update((st) => ({ ...st, easeInDismissed: true }))} />
+            </View>
+          </Glass>
+        )}
+
+        {/* Battle pass: training days fill in as you complete them */}
         <View style={s.passHead}>
           <Text style={type.h2}>This week</Text>
           <Text style={s.passCount}>
@@ -372,6 +436,22 @@ const s = StyleSheet.create({
   warmDot: { width: 6, height: 6, borderRadius: radius.pill, backgroundColor: color.lime },
   note: { marginTop: space.md, flexDirection: 'row', gap: space.md, alignItems: 'center', padding: space.lg },
   deckBtns: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
+  program: {
+    marginTop: space.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    minHeight: touch.primary,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.xl,
+    backgroundColor: color.glassSolid,
+    borderWidth: 1,
+    borderColor: color.glassBorder,
+  },
+  programName: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
+  programPending: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.lime, marginTop: 2 },
+  programChange: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.lime },
+  ease: { marginTop: space.md, padding: space.lg, gap: space.sm },
   expand: { position: 'absolute', backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.glassBorder },
 });
 

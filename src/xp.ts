@@ -1,6 +1,6 @@
 // XP, levels and ranks. Everything is derived from the log, so it can't drift.
 import { EXERCISES } from './data/exercises';
-import { doneSets, num, prCountsByDate, type State } from './store';
+import { doneSets, kgOf, num, prCountsByDate, type State } from './store';
 
 export const XP = { set: 10, pr: 50, workout: 40 } as const;
 
@@ -46,12 +46,12 @@ export function totalXp(state: State, upTo?: string) {
   return xp;
 }
 
-/** Weight × reps over loaded lifts on a day. */
+/** Kilograms × reps over loaded lifts on a day (each set converted from its own unit). */
 export function volumeOn(state: State, date: string) {
   let v = 0;
   for (const [id, log] of Object.entries(state.logs[date] ?? {})) {
     if (EXERCISES[id]?.kind !== 'weight_reps') continue;
-    for (const s of doneSets(log, 'weight_reps')) v += num(s.weight)! * num(s.reps)!;
+    for (const s of doneSets(log, 'weight_reps')) v += (kgOf(s) ?? 0) * num(s.reps)!;
   }
   return Math.round(v);
 }

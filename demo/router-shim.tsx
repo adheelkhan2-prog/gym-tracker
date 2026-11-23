@@ -5,7 +5,9 @@ import { createContext, useContext } from 'react';
 export type Route =
   | { name: 'tabs'; tab: string }
   | { name: 'exercise'; params: Record<string, string> }
-  | { name: 'complete'; params: Record<string, string> };
+  | { name: 'complete'; params: Record<string, string> }
+  | { name: 'programs'; params: Record<string, string> }
+  | { name: 'builder'; params: Record<string, string> };
 type Nav = { push: (r: Route) => void; replace: (r: Route) => void; back: () => void; tab: (t: string) => void };
 
 let nav: Nav | null = null;
@@ -21,6 +23,8 @@ const toRoute = (href: Href): Route => {
   const params = typeof href === 'string' ? {} : (href.params ?? {});
   if (path.startsWith('/exercise')) return { name: 'exercise', params };
   if (path.startsWith('/complete')) return { name: 'complete', params };
+  if (path.startsWith('/programs')) return { name: 'programs', params };
+  if (path.startsWith('/builder')) return { name: 'builder', params };
   return { name: 'tabs', tab: path.replace('/', '') || 'index' };
 };
 const go = (href: Href) => {
