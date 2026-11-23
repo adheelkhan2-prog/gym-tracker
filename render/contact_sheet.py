@@ -27,7 +27,10 @@ def main(reports):
         d = json.load(open(r))
         ok += d['ok']
         failed.update(d['failed'])
-    ok = sorted(set(ok), key=lambda i: names.get(i, i))
+    # The user's current split first (in workout order), then everything else by name.
+    first = json.load(open(os.path.join(HERE, 'review-order.json')))['first'] if os.path.exists(os.path.join(HERE, 'review-order.json')) else []
+    rank = {ex: i for i, ex in enumerate(first)}
+    ok = sorted(set(ok), key=lambda i: (0, rank[i]) if i in rank else (1, names.get(i, i)))
     try:
         font = ImageFont.truetype('DejaVuSans.ttf', 15)
     except OSError:
@@ -45,7 +48,8 @@ def main(reports):
                 if os.path.exists(p):
                     im = Image.open(p).convert('RGB').resize((THUMB, THUMB), Image.LANCZOS)
                     sheet.paste(im, (x + j * THUMB + 4, y + 26))
-            d.text((x + 6, y + 5), f'{names.get(ex, ex)}  ({ex})', fill=(200, 255, 46), font=font)
+            tag = 'YOUR SPLIT · ' if ex in rank else ''
+            d.text((x + 6, y + 5), f'{tag}{names.get(ex, ex)}  ({ex})', fill=(200, 255, 46) if ex in rank else (230, 230, 235), font=font)
         sheet.save(os.path.join(OUT, f'contact-sheet-{pi}.jpg'), quality=88)
     lines = ['# Clay render results', '', f'Rendered and passed the check: {len(ok)}', f'Failed or not rendered: {len(failed)}', '']
     if failed:

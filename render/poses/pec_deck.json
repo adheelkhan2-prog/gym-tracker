@@ -95,44 +95,15 @@
    "back": true
   },
   {
-   "type": "line",
-   "from": {
-    "at": "@grip_L",
+   "type": "handles",
+   "pivot": {
+    "at": "@chest",
     "off": [
-     0,
-     0,
-     0.35
+     0.18,
+     0.2,
+     0.55
     ]
-   },
-   "to": {
-    "at": "@grip_L",
-    "off": [
-     0,
-     0,
-     -0.1
-    ]
-   },
-   "r": 0.03
-  },
-  {
-   "type": "line",
-   "from": {
-    "at": "@grip_R",
-    "off": [
-     0,
-     0,
-     0.35
-    ]
-   },
-   "to": {
-    "at": "@grip_R",
-    "off": [
-     0,
-     0,
-     -0.1
-    ]
-   },
-   "r": 0.03
+   }
   }
  ],
  "id": "pec_deck"

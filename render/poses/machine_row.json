@@ -111,28 +111,15 @@
    ]
   },
   {
-   "type": "line",
-   "from": {
-    "at": "@grip_L",
+   "type": "handles",
+   "pivot": {
+    "at": "@chest",
     "off": [
-     0,
-     -0.3,
-     0
+     0.3,
+     -0.75,
+     0.35
     ]
-   },
-   "to": "@grip_L"
-  },
-  {
-   "type": "line",
-   "from": {
-    "at": "@grip_R",
-    "off": [
-     0,
-     -0.3,
-     0
-    ]
-   },
-   "to": "@grip_R"
+   }
   }
  ],
  "id": "machine_row"

@@ -78,7 +78,7 @@ def anchor(rig, body, v, floor_z=0.0):
     raise ValueError(v)
 
 
-def build_equipment(items, rig, body, floor_z, M):
+def build_equipment(items, rig, body, floor_z, M, cam_az=30.0):
     """Generic equipment pieces placed relative to the posed body (see poses/generate.py)."""
     A = lambda v: anchor(rig, body, v, floor_z)  # noqa: E731
     for it in items:
@@ -99,7 +99,14 @@ def build_equipment(items, rig, body, floor_z, M):
             a, b = A(it['from']), A(it['to'])
             if it.get('tower', True):
                 tz = max(a.z + 0.15, 2.0)
-                scene.box('tower', (a.x, a.y + (0.12 if a.y >= b.y else -0.12), (floor_z + tz) / 2), (0.24, 0.18, tz - floor_z), M['frame'])
+                tx = a.x
+                # A tower in line with the lifter would hide them: slide it sideways, away from the camera,
+                # and reach the pulley with a short arm.
+                if abs(a.x) < 0.25:
+                    import math
+                    tx = a.x - 0.4 * (1 if math.sin(math.radians(cam_az)) >= 0 else -1)
+                    scene.cyl('pulleyarm', (tx, a.y, a.z), a, 0.03, M['frame'])
+                scene.box('tower', (tx, a.y + (0.12 if a.y >= b.y else -0.12), (floor_z + tz) / 2), (0.24, 0.18, tz - floor_z), M['frame'])
             scene.cyl('pulley', a + Vector((-0.02, 0, 0)), a + Vector((0.02, 0, 0)), 0.045, M['steel'])
             scene.cyl('cable', a, b, 0.006, M['steel'], verts=12)
             hd = it.get('handle', 'bar')
@@ -139,22 +146,35 @@ def build_equipment(items, rig, body, floor_z, M):
             o.rotation_quaternion = Vector((0, 1, 0)).rotation_difference(n)
         elif t == 'line':
             scene.cyl(it.get('name', 'rail'), A(it['from']), A(it['to']), it.get('r', 0.03), M['frame'])
+        elif t == 'handles':
+            # Machine grips: a short bar through each closed hand, plus a lever arm to its pivot.
+            for side in ('L', 'R'):
+                _, _, _, axis, g = makehuman.hand_basis(rig, side)
+                scene.cyl(f'grip{side}', g - axis * 0.075, g + axis * 0.075, 0.017, M['steel'])
+                if 'pivot' in it:
+                    pv = dict(it['pivot'])
+                    if side == 'R' and isinstance(pv.get('off'), list):
+                        pv['off'] = [-pv['off'][0], pv['off'][1], pv['off'][2]]
+                    pvt = A(pv)
+                    scene.cyl(f'lever{side}', pvt, g, 0.028, M['frame'])
+                    scene.cyl(f'pivotpost{side}', (pvt.x, pvt.y, floor_z), pvt, 0.04, M['frame'])
         elif t == 'mat':
             h = A('@hips')
             scene.box('mat', (h.x, h.y, floor_z + 0.008), (0.7, 1.9, 0.016), M['pad'])
 
 
-def build_props(props, rig, M):
+def build_props(props, rig, M, db_axis=None):
     if not props:
         return
     gl, gr = grip(rig, 'L'), grip(rig, 'R')
-    if props in ('barbell', 'ez'):
-        half = max(0.32 if props == 'ez' else 0.45, (gl - gr).length / 2 + 0.12)
-        scene.barbell('bb', (gl + gr) / 2, half, M, plates=(0.17, 0.14) if props == 'ez' else (0.225, 0.2))
+    if props in ('barbell', 'ez', 'ez_small', 'bar_only'):
+        half = max(0.45 if props == 'barbell' else 0.32, (gl - gr).length / 2 + 0.12)
+        plates = {'barbell': (0.225, 0.2), 'ez': (0.17, 0.14), 'ez_small': (0.1, 0.08), 'bar_only': ()}[props]
+        scene.barbell('bb', (gl + gr) / 2, half, M, plates=plates)
     elif props == 'dumbbells':
         for side in ('L', 'R'):
             _, _, _, axis, centre = makehuman.hand_basis(rig, side)
-            scene.dumbbell(f'db_{side}', centre, axis, M)
+            scene.dumbbell(f'db_{side}', centre, db_axis or axis, M)
     elif props in ('dumbbell_L', 'dumbbell_R'):
         _, _, _, axis, centre = makehuman.hand_basis(rig, props[-1])
         scene.dumbbell('db', centre, axis, M)
@@ -330,7 +350,7 @@ def main():
                 gl, gr = grip(rig, 'L'), grip(rig, 'R')
                 scene.cable_row(s['seat_z'], s['seat_y'], s['foot_y'], floor_z, (gl + gr) / 2, M)
             if spec.get('equipment'):
-                build_equipment(spec['equipment'], rig, body, floor_z, M)
+                build_equipment(spec['equipment'], rig, body, floor_z, M, cam_cfg['azimuth'])
             # Clay fists closed around the handles (the model's own hands are only bones).
             hand_mat = bpy.data.materials.get('hand_clay')
             if hand_mat is None:
@@ -343,7 +363,7 @@ def main():
             for o in bpy.data.objects:
                 if o.name not in before_fists:
                     figure_coll.objects.link(o)
-            build_props(spec.get('props'), rig, M)
+            build_props(spec.get('props'), rig, M, spec['frames'][frame].get('db_axis') or spec.get('db_axis'))
             scene.floor(floor_z)
             tag_new(before)
 

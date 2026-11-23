@@ -105,28 +105,15 @@
    "back": true
   },
   {
-   "type": "line",
-   "from": {
-    "at": "@grip_L",
+   "type": "handles",
+   "pivot": {
+    "at": "@chest",
     "off": [
-     0,
+     0.38,
      0.35,
-     -0.2
+     -0.05
     ]
-   },
-   "to": "@grip_L"
-  },
-  {
-   "type": "line",
-   "from": {
-    "at": "@grip_R",
-    "off": [
-     0,
-     0.35,
-     -0.2
-    ]
-   },
-   "to": "@grip_R"
+   }
   }
  ],
  "id": "machine_shoulder_press"
