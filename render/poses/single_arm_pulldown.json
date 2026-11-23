@@ -116,7 +116,48 @@
     ]
    },
    "to": "@grip_L",
-   "handle": "single"
+   "handle": "single",
+   "tower": false
+  },
+  {
+   "type": "line",
+   "from": {
+    "at": "@hips",
+    "off": [
+     0.15,
+     -0.6,
+     -0.4
+    ]
+   },
+   "to": {
+    "at": "@hips",
+    "off": [
+     0.15,
+     -0.6,
+     1.75
+    ]
+   },
+   "r": 0.06
+  },
+  {
+   "type": "line",
+   "from": {
+    "at": "@hips",
+    "off": [
+     0.15,
+     -0.6,
+     1.75
+    ]
+   },
+   "to": {
+    "at": "@hips",
+    "off": [
+     0.15,
+     -0.05,
+     1.75
+    ]
+   },
+   "r": 0.04
   }
  ],
  "fists": [

@@ -126,7 +126,48 @@
     ]
    },
    "to": "@grip",
-   "handle": "bar"
+   "handle": "bar",
+   "tower": false
+  },
+  {
+   "type": "line",
+   "from": {
+    "at": "@hips",
+    "off": [
+     0,
+     -0.6,
+     -0.6
+    ]
+   },
+   "to": {
+    "at": "@hips",
+    "off": [
+     0,
+     -0.6,
+     1.8
+    ]
+   },
+   "r": 0.06
+  },
+  {
+   "type": "line",
+   "from": {
+    "at": "@hips",
+    "off": [
+     0,
+     -0.6,
+     1.8
+    ]
+   },
+   "to": {
+    "at": "@hips",
+    "off": [
+     0,
+     -0.05,
+     1.8
+    ]
+   },
+   "r": 0.04
   }
  ],
  "id": "wide_pulldown"
