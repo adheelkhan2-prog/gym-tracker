@@ -12,7 +12,7 @@ import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
 import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, round1 } from '../../load';
 import { addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
-import { color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
+import { bottomClearance, color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
 import { RANKS, levelFor, pctChange, rankFor, totalXp, volumeOn } from '../../xp';
 
 type Metric = 'top' | 'e1rm';
@@ -92,7 +92,7 @@ export default function ProgressScreen() {
   const up = (change ?? 0) >= 0;
 
   return (
-    <Screen padBottom={140}>
+    <Screen padBottom={bottomClearance.tabs}>
       {/* Hero: one huge number */}
       <Animated.View entering={enter(0)}>
         <Text style={s.kicker}>Volume this week</Text>
@@ -102,11 +102,11 @@ export default function ProgressScreen() {
         </View>
         {change !== null && (
           <View style={s.changeRow}>
-            <View style={[s.arrow, { backgroundColor: up ? color.lime : color.pink }]}>
-              <Icon name={up ? 'arrowUp' : 'arrowDown'} size={16} color={color.ink} />
+            <View style={[s.arrow, { backgroundColor: up ? color.accent : color.surface3 }]}>
+              <Icon name={up ? 'arrowUp' : 'arrowDown'} size={16} color={color.onAccent} />
             </View>
             <Text style={s.changeText}>
-              <Text style={{ color: up ? color.lime : color.pink }}>
+              <Text style={{ color: up ? color.accent : color.muted }}>
                 {up ? '+' : ''}
                 {change}%
               </Text>{' '}
@@ -118,7 +118,7 @@ export default function ProgressScreen() {
 
       {/* Rank card overlaps the hero's edge */}
       <Animated.View entering={enter(1)} style={s.rankWrap}>
-        <Glass strong r={radius.xxl} style={s.rankCard} glow={color.lime}>
+        <Glass strong r={radius.xxl} style={s.rankCard} glow={color.accent}>
           <View style={s.rankTop}>
             <View>
               <Text style={type.label}>Rank</Text>
@@ -140,7 +140,7 @@ export default function ProgressScreen() {
               const past = lvl.level >= r.from;
               return (
                 <View key={r.name} style={[s.rung, past && s.rungPast, on && s.rungOn]}>
-                  <Text style={[s.rungText, (past || on) && { color: on ? color.ink : color.lime }]}>{r.name}</Text>
+                  <Text style={[s.rungText, (past || on) && { color: on ? color.onAccent : color.accent }]}>{r.name}</Text>
                 </View>
               );
             })}
@@ -156,7 +156,7 @@ export default function ProgressScreen() {
         </Text>
         <View style={s.tickDot} />
         <Text style={s.tick}>
-          <Text style={[s.tickNum, { color: color.pink }]}>{week.prs}</Text> PRs
+          <Text style={[s.tickNum, { color: color.accent }]}>{week.prs}</Text> PRs
         </Text>
         <View style={s.tickDot} />
         <Text style={s.tick}>
@@ -206,7 +206,7 @@ export default function ProgressScreen() {
       <SectionTitle>Lifts</SectionTitle>
       {withData.length === 0 ? (
         <Glass r={radius.xl} style={s.empty}>
-          <Icon name="chart" size={36} color={color.lime} />
+          <Icon name="chart" size={36} color={color.accent} />
           <Text style={[type.h2, { textAlign: 'center' }]}>Your charts start here</Text>
           <Text style={[type.bodyMuted, { textAlign: 'center' }]}>Tick off a set and every lift gets its own progress line.</Text>
         </Glass>
@@ -243,7 +243,7 @@ export default function ProgressScreen() {
               {hist.length > 1 && (
                 <Text style={type.small}>
                   Since first{' '}
-                  <Text style={[s.strong, { color: delta > 0 ? color.lime : color.text }]}>
+                  <Text style={[s.strong, { color: delta > 0 ? color.accent : color.text }]}>
                     {delta > 0 ? '+' : ''}
                     {delta} {valueUnit}
                   </Text>
@@ -272,7 +272,7 @@ export default function ProgressScreen() {
 }
 
 const s = StyleSheet.create({
-  kicker: { ...type.label, color: color.lime },
+  kicker: { ...type.label, color: color.accentText },
   megaRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
   megaUnit: { fontFamily: font.display, fontSize: size.h2, color: color.muted },
@@ -283,16 +283,16 @@ const s = StyleSheet.create({
   rankCard: { padding: space.xl },
   rankTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rankName: { fontFamily: font.display, fontSize: size.hero, lineHeight: leading.hero, color: color.text },
-  levelBubble: { width: 64, height: 64, borderRadius: radius.pill, backgroundColor: color.lime, alignItems: 'center', justifyContent: 'center' },
-  levelText: { fontFamily: font.display, fontSize: size.h2, color: color.ink },
+  levelBubble: { width: 64, height: 64, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
+  levelText: { fontFamily: font.display, fontSize: size.h2, color: color.onAccent },
   ladder: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.md },
   rung: { borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: space.xs, borderWidth: 1, borderColor: color.glassBorder },
-  rungPast: { borderColor: color.limeGlow },
-  rungOn: { backgroundColor: color.lime, borderColor: color.lime },
+  rungPast: { borderColor: color.accentGlow },
+  rungOn: { backgroundColor: color.accent, borderColor: color.accent },
   rungText: { fontFamily: font.bodyBlack, fontSize: size.tiny, color: color.subtle },
   ticker: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm, marginTop: space.lg },
   tick: { fontFamily: font.bodyBold, fontSize: size.small, color: color.muted },
-  tickNum: { fontFamily: font.display, fontSize: size.h2, color: color.lime },
+  tickNum: { fontFamily: font.display, fontSize: size.h2, color: color.accent },
   tickDot: { width: 4, height: 4, borderRadius: radius.pill, backgroundColor: color.subtle },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xs },

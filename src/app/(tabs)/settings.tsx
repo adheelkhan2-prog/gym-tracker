@@ -7,28 +7,56 @@ import { Icon, type IconName } from '../../components/icons';
 import { WeekMapper } from '../../components/ProgramParts';
 import { Button, Chip, Press, Screen, SectionTitle, Switch } from '../../components/ui';
 import { EXERCISES } from '../../data/exercises';
-import { pickOption } from '../../data/program';
+import { exerciseFor } from '../../workout';
 import { DEFAULT_GYM, fmtPlate, type PlateColor } from '../../load';
 import { activeProgram, easingIn, todayKey, useStore } from '../../store';
-import { color, font, leading, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, font, leading, radius, size, space, touch, type } from '../../theme';
 
 const ALL_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5];
 const SWATCHES = ['#E5322D', '#2F6BFF', '#F5C518', '#2DBE60', '#F2F2F2', '#1A1A1A', '#FF7A1A', '#8E5CFF'];
 
-const CREDITS = [
-  { label: 'Z-Anatomy (CC BY-SA 4.0)', url: 'https://github.com/Z-Anatomy/Models-of-human-anatomy' },
-  { label: 'BodyParts3D, © The Database Center for Life Science', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
-  { label: 'Gymmetry muscle map model', url: 'https://github.com/kalibismail/gymmetry-muscle-model' },
-  { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
-  { label: '3D exercise renders: MakeHuman body (CC0) + muscle detail (CC BY-SA 4.0)', url: 'https://github.com/makehumancommunity/mpfb2' },
-  { label: 'Exercise photos: free-exercise-db (Unlicense)', url: 'https://github.com/yuhonas/free-exercise-db' },
+/** Every third-party asset in the app, grouped by where it shows up (see src/data/asset-licences.md). */
+const CREDITS: { title: string; note: string; links: { label: string; url: string }[] }[] = [
+  {
+    title: '3D muscle model (Muscles tab)',
+    note: 'Adapted from Z-Anatomy, based on BodyParts3D, via the Gymmetry muscle map. Changes: deduplicated and welded vertices; quantised positions, normals and vertex colours for mobile; muscle regions unchanged. Shared under CC BY-SA 4.0.',
+    links: [
+      { label: 'Z-Anatomy, Gauthier Kervyn (CC BY-SA 4.0)', url: 'https://github.com/Z-Anatomy/Models-of-human-anatomy' },
+      { label: 'BodyParts3D, Kousaku Okubo, © The Database Center for Life Science (CC BY-SA 2.1 JP)', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
+      { label: 'Gymmetry muscle map model, kalibismail (CC BY-SA 4.0)', url: 'https://github.com/kalibismail/gymmetry-muscle-model' },
+      { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+      { label: 'Licence: CC BY-SA 2.1 JP (BodyParts3D)', url: 'https://creativecommons.org/licenses/by-sa/2.1/jp/' },
+    ],
+  },
+  {
+    title: '3D exercise images (How to tab)',
+    note: 'Rendered for this app in Blender. Body: MakeHuman base mesh, rig and shape targets (CC0). Muscle detail and regions baked from the muscle model above, so the images are shared under CC BY-SA 4.0. Poses, equipment and lighting are our own.',
+    links: [
+      { label: 'MakeHuman / MPFB2 (CC0 1.0)', url: 'https://github.com/makehumancommunity/mpfb2' },
+      { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+    ],
+  },
+  {
+    title: 'Exercise photos',
+    note: 'Shown for exercises that do not have an approved 3D image yet.',
+    links: [{ label: 'free-exercise-db (Unlicense, public domain)', url: 'https://github.com/yuhonas/free-exercise-db' }],
+  },
+  {
+    title: 'Fonts',
+    note: 'SIL Open Font License 1.1.',
+    links: [
+      { label: 'Bricolage Grotesque (OFL)', url: 'https://fonts.google.com/specimen/Bricolage+Grotesque' },
+      { label: 'Figtree (OFL)', url: 'https://fonts.google.com/specimen/Figtree' },
+    ],
+  },
 ];
+
 
 function Toggle({ icon, title, sub, checked, onChange }: { icon: IconName; title: string; sub: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <View style={s.toggle}>
       <View style={s.toggleIcon}>
-        <Icon name={icon} size={20} color={checked ? color.lime : color.muted} filled={checked} />
+        <Icon name={icon} size={20} color={checked ? color.accent : color.muted} filled={checked} />
       </View>
       <View style={{ flex: 1, gap: space.xxs }}>
         <Text style={type.h3}>{title}</Text>
@@ -47,10 +75,11 @@ export default function SettingsScreen() {
   const gym = state.gym;
   const setGym = (patch: Partial<typeof gym>) => update((st) => ({ ...st, gym: { ...st.gym, ...patch } }));
   const setColor = (i: number, patch: Partial<PlateColor>) => setGym({ colors: gym.colors.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
-  const machines = Object.entries(state.machines).filter(([id, m]) => EXERCISES[id] && (m.perPlate || m.start || m.bar !== undefined));
+  // Every machine you've set up stays listed, even while a field is cleared to type a new value.
+  const machines = Object.entries(state.machines).filter(([id]) => EXERCISES[id]);
 
   return (
-    <Screen padBottom={140}>
+    <Screen padBottom={bottomClearance.tabs}>
       <Text style={s.title} accessibilityRole="header">
         Settings
       </Text>
@@ -93,7 +122,7 @@ export default function SettingsScreen() {
         />
       </Glass>
       {easingIn(state) && (
-        <Glass r={radius.xl} style={s.welcome} glow={color.lime}>
+        <Glass r={radius.xl} style={s.welcome} glow={color.accent}>
           <Text style={type.h3}>Welcome back. Ease in.</Text>
           <Text style={type.small}>
             Legs and abs are back. For the first 2 weeks, use about half your old leg weights, stop 3–4 reps short of failure, and add load only when it feels easy.
@@ -123,13 +152,26 @@ export default function SettingsScreen() {
       {slots.length > 0 && <SectionTitle>Exercise choices</SectionTitle>}
       <View style={{ gap: space.md }}>
         {slots.map(({ day, plan }) => {
-          const current = pickOption(plan, state.variants);
+          // What the workout actually uses: a swap made during a workout wins over the version picked here.
+          const current = exerciseFor(state, plan);
+          const swapped = !plan.options.includes(current);
           return (
             <Glass key={plan.slot} r={radius.xl} style={{ gap: space.sm, padding: space.lg }}>
               <Text style={type.label}>{day.name}</Text>
+              {swapped && <Text style={type.small}>Swapped to {EXERCISES[current].name}. Pick a version to switch back.</Text>}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
                 {plan.options.map((o) => (
-                  <Chip key={o} label={EXERCISES[o].name} active={o === current} onPress={() => update((st) => ({ ...st, variants: { ...st.variants, [plan.slot]: o } }))} />
+                  <Chip
+                    key={o}
+                    label={EXERCISES[o].name}
+                    active={o === current}
+                    onPress={() =>
+                      update((st) => {
+                        const { [plan.slot]: _drop, ...swaps } = st.swaps;
+                        return { ...st, variants: { ...st.variants, [plan.slot]: o }, swaps };
+                      })
+                    }
+                  />
                 ))}
               </View>
             </Glass>
@@ -226,18 +268,20 @@ export default function SettingsScreen() {
 
       <SectionTitle>Credits</SectionTitle>
       <Glass r={radius.xl} style={{ gap: space.xs, padding: space.lg }}>
-        <Text style={type.small}>
-          The muscle model is adapted from Z-Anatomy, based on BodyParts3D, via the Gymmetry muscle map. Changes: compressed for mobile.
-          Shared under the same licence.
-        </Text>
-        {CREDITS.map((c) => (
-          <Press key={c.url} onPress={() => Linking.openURL(c.url)} style={s.credit} accessibilityRole="link">
-            <Icon name="link" size={16} color={color.lime} />
-            <Text style={s.creditText}>{c.label}</Text>
-          </Press>
+        {CREDITS.map((g, i) => (
+          <View key={g.title} style={i > 0 ? s.creditGroup : undefined}>
+            <Text style={s.creditTitle}>{g.title}</Text>
+            <Text style={type.small}>{g.note}</Text>
+            {g.links.map((c) => (
+              <Press key={c.url} onPress={() => Linking.openURL(c.url).catch(() => {})} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
+                <Icon name="link" size={16} color={color.accent} />
+                <Text style={s.creditText}>{c.label}</Text>
+              </Press>
+            ))}
+          </View>
         ))}
-        <Text style={[type.small, { marginTop: space.sm }]}>
-          Fonts: Bricolage Grotesque and Figtree (SIL Open Font License). Component structure after react-native-reusables (MIT).
+        <Text style={[type.small, s.creditGroup]}>
+          Icons and the rest-timer sound were made for this app. Component structure after react-native-reusables (MIT).
         </Text>
       </Glass>
 
@@ -277,14 +321,16 @@ const s = StyleSheet.create({
   divider: { borderTopWidth: 1, borderTopColor: color.line },
   welcome: { marginTop: space.md, padding: space.lg, gap: space.xs },
   link: { minHeight: touch.min, justifyContent: 'center', paddingHorizontal: space.sm, borderRadius: radius.pill },
-  linkText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.lime },
+  linkText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText },
   formRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  swatch: { width: 40, height: 40, borderRadius: radius.pill, borderWidth: 2, borderColor: color.glassBorder },
+  swatch: { width: touch.min, height: touch.min, borderRadius: radius.pill, borderWidth: 2, borderColor: color.glassBorder },
   colorName: { flex: 1, minWidth: 0, minHeight: touch.min, color: color.text, fontFamily: font.bodyBold, fontSize: size.small },
   kg: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
-  del: { width: 36, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  del: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   credit: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch.min, borderRadius: radius.sm },
+  creditGroup: { marginTop: space.md, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line },
+  creditTitle: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text, marginBottom: space.xs },
   creditText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
 });

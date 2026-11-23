@@ -68,10 +68,21 @@ jobs:
           ls render/out
       - name: Contact sheets and results
         run: python render/contact_sheet.py render/out/report-*.json
+      - name: Merged report (render/app_images.py reads it)
+        run: |
+          python - <<'PY'
+          import glob, json
+          ok, failed = [], {}
+          for f in sorted(glob.glob('render/out/report-*.json')):
+              d = json.load(open(f)); ok += d['ok']; failed.update(d['failed'])
+          json.dump({'ok': sorted(set(ok)), 'failed': failed}, open('render/review/report.json', 'w'), indent=1)
+          print(len(ok), 'ok,', len(failed), 'failed')
+          PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
           git add assets/exercises-3d render/review
           git commit -m "Clay renders: full set from workflow run ${{ github.run_id }}" || echo "nothing to commit"
-          git push
+          git pull --rebase origin "${{ github.ref_name }}"
+          git push origin "HEAD:${{ github.ref_name }}"

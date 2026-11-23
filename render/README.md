@@ -29,3 +29,10 @@ python render/to_webp.py                 # passing render/out/*.png -> assets/ex
   primary/secondary lists drive the glow directly.
 
 Render time on 4 CPU cores: about 100 s per 1024 px image at 96 samples.
+
+## Licence of the output
+
+The body is MakeHuman/MPFB2 (CC0). The muscle detail and region ids are baked from the
+Z-Anatomy / BodyParts3D / Gymmetry muscle model (CC BY-SA 4.0), so the baked cache
+(`render/cache/`) and every render in `assets/exercises-3d/` are adaptations shared under
+**CC BY-SA 4.0**, credited in Settings → Credits. Details: `src/data/asset-licences.md`.

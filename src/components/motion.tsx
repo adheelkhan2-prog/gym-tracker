@@ -160,7 +160,7 @@ export function Burst({
   const ids = useMemo(() => Array.from({ length: count }, (_, i) => i), [count]);
   if (!burst || reduce) return null;
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
       {ids.map((i) => (
         <Particle key={`${burst}-${i}`} seed={i + burst * 31} x0={x} y0={y} colors={colors} power={power} />
       ))}
@@ -168,17 +168,17 @@ export function Burst({
   );
 }
 
-/** A quick full-screen white flash for big moments. */
-export function Flash({ fire }: { fire: number }) {
+/** One quick full-screen flash for big moments (crimson by default: the PR moment in the dark). */
+export function Flash({ fire, tint = color.accent, peak = 0.22 }: { fire: number; tint?: string; peak?: number }) {
   const reduce = useReducedMotion();
   const o = useSharedValue(0);
   useEffect(() => {
     if (!fire || reduce) return;
-    o.set(withSequence(withTiming(0.35, { duration: 60 }), withTiming(0, { duration: 260 })));
+    o.set(withSequence(withTiming(peak, { duration: 70 }), withTiming(0, { duration: 320 })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fire]);
   const st = useAnimatedStyle(() => ({ opacity: o.value }));
-  return <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: color.flash }, st]} />;
+  return <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }, st]} />;
 }
 
 /** Gentle repeating pulse (scale + opacity). Stops for reduce motion. */

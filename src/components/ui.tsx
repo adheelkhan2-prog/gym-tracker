@@ -20,7 +20,9 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -41,7 +43,7 @@ export function Press({
   style,
   children,
   scaleTo = motion.pressScale,
-  glow = color.lime,
+  glow = color.accentPressed,
   tick = true,
   onPressIn,
   onPressOut,
@@ -81,14 +83,14 @@ export function Press({
   );
 }
 
-/** Screen scaffold: drifting glow backdrop + scroll view with safe-area padding. */
+/** Screen scaffold: backdrop + scroll view with safe-area padding. `padBottom` is added to the bottom inset. */
 export function Screen({ children, padBottom = space.x5 }: { children: React.ReactNode; padBottom?: number }) {
   const insets = useSafeAreaInsets();
   return (
     <Backdrop>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: padBottom }}
+        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: insets.bottom + padBottom }}
         keyboardShouldPersistTaps="handled"
       >
         {children}
@@ -97,11 +99,27 @@ export function Screen({ children, padBottom = space.x5 }: { children: React.Rea
   );
 }
 
-/** Shown while saved data and fonts load, so nothing flashes as empty. */
+/** A grey placeholder block that breathes slowly (still under reduce motion). */
+export function Skeleton({ w = '100%', h, r = radius.lg, style }: { w?: number | `${number}%`; h: number; r?: number; style?: StyleProp<ViewStyle> }) {
+  const reduce = useReducedMotion();
+  const o = useSharedValue(0.55);
+  useEffect(() => {
+    if (!reduce) o.set(withRepeat(withTiming(1, { duration: 900 }), -1, true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduce]);
+  const st = useAnimatedStyle(() => ({ opacity: o.value }));
+  return <Animated.View style={[{ width: w, height: h, borderRadius: r, backgroundColor: color.surface2 }, st, style]} />;
+}
+
+/** Shown while saved data and fonts load: the shape of the Today screen, no spinner, no jump. */
 export function Loading({ label = 'Loading your log' }: { label?: string }) {
   return (
     <View style={s.loading} accessibilityRole="progressbar" accessibilityLabel={label}>
-      <ActivityIndicator color={color.lime} size="large" />
+      <Skeleton w="45%" h={14} r={radius.sm} />
+      <Skeleton w="70%" h={30} r={radius.sm} style={{ marginTop: space.md }} />
+      <Skeleton h={220} r={radius.xxl} style={{ marginTop: space.x4 }} />
+      <Skeleton h={64} r={radius.xl} style={{ marginTop: space.lg }} />
+      <Skeleton h={120} r={radius.xl} style={{ marginTop: space.lg }} />
     </View>
   );
 }
@@ -156,7 +174,8 @@ export const CardFooter = ({ children, style }: { children: React.ReactNode; sty
 
 // ---------- Button (reusables variants: default | secondary | outline | ghost | destructive | link; sizes: sm | default | lg | icon) ----------
 
-type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
+/** default: dark glass, thin crimson edge, crimson label (the main action). solid: crimson fill, PR moments only. */
+type ButtonVariant = 'default' | 'solid' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
 type ButtonSize = 'sm' | 'default' | 'lg' | 'icon';
 
 export function Button({
@@ -181,34 +200,44 @@ export function Button({
   accessibilityLabel?: string;
 }) {
   const fg =
-    variant === 'default' ? color.ink : variant === 'destructive' ? color.danger : variant === 'link' ? color.lime : color.text;
+    disabled && variant !== 'solid'
+      ? color.subtle
+      : variant === 'solid'
+        ? color.onAccent
+        : variant === 'default' || variant === 'link'
+          ? color.accentText // label text: the AA-safe red; the edge stays true crimson
+          : color.text;
+  // Warnings/deletes: amber icon + white label on an amber-tinted panel; never the red accent.
+  const iconFg = variant === 'destructive' ? color.warn : fg;
   const h = sz === 'sm' ? touch.min : sz === 'lg' ? touch.primary + space.sm : touch.primary;
   const shape: StyleProp<ViewStyle> = [
     s.btn,
     { minHeight: h, paddingHorizontal: sz === 'icon' ? 0 : sz === 'sm' ? space.lg : space.xxl, width: sz === 'icon' ? h : undefined },
+    variant === 'default' && s.btnPrimary,
     variant === 'secondary' && { backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
-    variant === 'outline' && { borderWidth: 1.5, borderColor: color.lime },
-    variant === 'destructive' && { backgroundColor: color.surface2 },
-    disabled && { opacity: 0.45 },
+    variant === 'outline' && { borderWidth: 1, borderColor: color.glassBorder },
+    variant === 'destructive' && { backgroundColor: color.warnDim, borderWidth: 1, borderColor: color.warnEdge },
+    disabled && variant === 'default' && { borderColor: color.glassBorder },
+    disabled && variant === 'solid' && { opacity: 0.6 },
   ];
   const inner = (
     <>
-      {loading ? <ActivityIndicator color={fg} /> : icon && <Icon name={icon} size={sz === 'lg' ? 22 : 20} color={fg} />}
+      {loading ? <ActivityIndicator color={fg} /> : icon && <Icon name={icon} size={sz === 'lg' ? 22 : 20} color={iconFg} />}
       {label ? <Text style={[s.btnText, sz === 'lg' && { fontSize: size.h3 }, sz === 'sm' && { fontSize: size.small }, { color: fg }]}>{label}</Text> : null}
-      {iconRight && <Icon name={iconRight} size={20} color={fg} />}
+      {iconRight && <Icon name={iconRight} size={20} color={iconFg} />}
     </>
   );
   return (
     <Press
       onPress={() => !loading && !disabled && onPress()}
-      glow={variant === 'default' ? color.limeSoft : color.lime}
+      glow={variant === 'destructive' ? color.warn : color.accentPressed}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       style={{ borderRadius: radius.pill }}
     >
-      {variant === 'default' ? (
-        <LinearGradient colors={gradient.lime} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
+      {variant === 'solid' ? (
+        <LinearGradient colors={gradient.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
           {inner}
         </LinearGradient>
       ) : (
@@ -250,13 +279,13 @@ export function Badge({
   variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'pr';
   icon?: IconName;
 }) {
-  const fg = variant === 'default' || variant === 'pr' ? color.ink : variant === 'destructive' ? color.danger : color.text;
+  const fg = variant === 'pr' ? color.onAccent : variant === 'default' ? color.accentText : variant === 'destructive' ? color.warn : color.text;
   return (
     <View
       style={[
         s.badge,
-        variant === 'default' && { backgroundColor: color.lime },
-        variant === 'pr' && { backgroundColor: color.pink },
+        variant === 'default' && { backgroundColor: color.accentDim, borderColor: color.accentEdge, borderWidth: 1 },
+        variant === 'pr' && { backgroundColor: color.accent },
         variant === 'secondary' && { backgroundColor: color.glassSolid, borderColor: color.glassBorder, borderWidth: 1 },
         variant === 'outline' && { borderColor: color.glassBorder, borderWidth: 1 },
       ]}
@@ -272,15 +301,15 @@ export function Badge({
 export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
   return (
     <Press onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: !!active }} style={[s.chip, active && s.chipOn]}>
-      {icon && <Icon name={icon} size={16} color={active ? color.ink : color.muted} filled={active} />}
-      <Text style={[s.chipText, active && { color: color.ink }]}>{label}</Text>
+      {icon && <Icon name={icon} size={16} color={active ? color.accent : color.muted} filled={active} />}
+      <Text style={[s.chipText, active && { color: color.accentText }]}>{label}</Text>
     </Press>
   );
 }
 
 // ---------- Progress (reusables Progress: value 0..100) ----------
 
-export function Progress({ value, tint = color.lime, height = 10 }: { value: number; tint?: string; height?: number }) {
+export function Progress({ value, tint = color.accent, height = 10 }: { value: number; tint?: string; height?: number }) {
   const reduce = useReducedMotion();
   const w = useSharedValue(reduce ? value : 0);
   useEffect(() => {
@@ -328,21 +357,21 @@ export function Switch({
       scaleTo={0.92}
     >
       <View style={s.switchTrack}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color.lime, borderRadius: radius.pill }, fill]} />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color.accent, borderRadius: radius.pill }, fill]} />
         <Animated.View style={[s.switchThumb, thumb]} />
       </View>
     </Press>
   );
 }
 
-// ---------- Streak flame (pink) ----------
+// ---------- Streak flame ----------
 
 export function Flame({ count, label }: { count: number; label: string }) {
   const lit = count > 0;
   return (
-    <View style={[s.flame, lit && { backgroundColor: color.pinkDim, borderColor: color.pinkGlow }]} accessibilityLabel={`${count} day ${label} streak`}>
-      <Icon name="flame" size={18} color={lit ? color.pink : color.subtle} filled={lit} />
-      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.pink : color.subtle }]}>{count}</Text>
+    <View style={s.flame} accessibilityLabel={`${count} day ${label} streak`}>
+      <Icon name="flame" size={18} color={lit ? color.accent : color.subtle} filled={lit} />
+      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.text : color.subtle }]}>{count}</Text>
     </View>
   );
 }
@@ -356,7 +385,7 @@ export function Ring({
   progress,
   size: d = 180,
   stroke = 14,
-  tint = color.lime,
+  tint = color.accent,
   track = color.glassBorder,
   children,
 }: {
@@ -399,7 +428,7 @@ export function Ring({
 }
 
 const s = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' },
+  loading: { flex: 1, backgroundColor: color.bg, paddingHorizontal: space.lg, paddingTop: space.x5 + space.xxl },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -410,7 +439,8 @@ const s = StyleSheet.create({
   },
   card: { padding: space.xl },
   btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
-  btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.2 },
+  btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.3 },
+  btnPrimary: { backgroundColor: '#0C0C0E', borderWidth: 1, borderColor: color.accentEdge },
   iconBtn: {
     width: touch.min,
     height: touch.min,
@@ -437,12 +467,14 @@ const s = StyleSheet.create({
     gap: space.xs,
     paddingHorizontal: space.lg,
     minHeight: touch.min,
+    minWidth: touch.min,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: color.glassSolid,
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-  chipOn: { backgroundColor: color.lime, borderColor: color.lime },
+  chipOn: { backgroundColor: color.accentDim, borderColor: color.accentEdge },
   chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   track: { width: '100%', backgroundColor: color.glassBorder, overflow: 'hidden' },
   switchHit: { width: touch.min + space.md, height: touch.min, borderRadius: radius.pill, justifyContent: 'center', alignItems: 'center' },

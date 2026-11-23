@@ -11,7 +11,7 @@ import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Loading } from '../components/ui';
-import { onReminderResponse, setupNotifications, syncReminders } from '../reminders';
+import { applyReminderAction, onReminderResponse, setupNotifications, syncReminders } from '../reminders';
 import { StoreProvider, useStore } from '../store';
 import { color } from '../theme';
 
@@ -30,11 +30,7 @@ function ReminderBridge() {
   useEffect(() => {
     if (!ready) return;
     return onReminderResponse((date, action) => {
-      if (action !== 'taken') return;
-      update((s) => ({
-        ...s,
-        taken: { ...s.taken, [date]: Object.fromEntries(s.supplements.map((x) => [x, true])) },
-      }));
+      if (action === 'taken') update((s) => applyReminderAction(s, date, action));
     });
   }, [ready, update]);
 
@@ -73,6 +69,7 @@ function Gate() {
         }}
       >
         <Stack.Screen name="complete" options={{ animation: 'fade_from_bottom', gestureEnabled: false }} />
+        <Stack.Screen name="focus" options={{ animation: 'fade_from_bottom', animationDuration: 220, gestureEnabled: false }} />
       </Stack>
     </>
   );

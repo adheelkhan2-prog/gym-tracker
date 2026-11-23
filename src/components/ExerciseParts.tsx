@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
-import { EXERCISE_3D } from '../data/exercise-3d';
-import { EXERCISE_IMAGES } from '../data/exercise-images';
+import { howToImages } from '../data/how-to';
+import { Vignette } from './glass';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
 import { haptic } from '../feedback';
@@ -26,11 +26,7 @@ import { Badge, Button, Chip, Press } from './ui';
 
 // ---------- How-to images ----------
 
-/** Clay render if approved, else the free-exercise-db photo. */
-export function howToImages(id: string) {
-  const clay = EXERCISE_3D[id];
-  return clay ? { ...clay, clay: true } : EXERCISE_IMAGES[id] ? { ...EXERCISE_IMAGES[id], clay: false } : undefined;
-}
+export { howToImages } from '../data/how-to';
 
 /** Start/end images that cross-fade on their own; tap to pause or resume. Written steps below. */
 export function HowTo({ ex }: { ex: ExerciseInfo }) {
@@ -66,11 +62,13 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
           <Animated.View style={[StyleSheet.absoluteFill, endStyle]} pointerEvents="none">
             <Image source={img.end} style={s.img} resizeMode={mode} />
           </Animated.View>
+          {/* The renders sit in the same dark room: edges fall off into shadow. */}
+          {img.clay && <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />}
           <View style={s.phase}>
             <View style={[s.phaseDot, !end && s.phaseOn]} />
-            <Text style={[s.phaseText, !end && { color: color.lime }]}>Start</Text>
+            <Text style={[s.phaseText, !end && { color: color.accentText }]}>Start</Text>
             <View style={[s.phaseDot, end && s.phaseOn]} />
-            <Text style={[s.phaseText, end && { color: color.lime }]}>End</Text>
+            <Text style={[s.phaseText, end && { color: color.accentText }]}>End</Text>
           </View>
           {paused && (
             <View style={s.paused} testID="howto-paused">
@@ -159,7 +157,7 @@ export function SwapSheet({
                 </View>
                 <Text style={s.why}>{o.why}</Text>
               </View>
-              {on && <Icon name="checkCircle" size={24} color={color.lime} filled />}
+              {on && <Icon name="checkCircle" size={24} color={color.accent} filled />}
             </Press>
           );
         })}
@@ -239,7 +237,7 @@ export function PlateSheet({
         <View style={{ marginTop: space.sm, gap: space.sm }}>
           <Text style={s.total} accessibilityLiveRegion="polite" testID="plate-total">
             {mode === 'plates' ? platesText(side as number[], bar) : `${side.length ? `${side.length * 2} plates` : 'No plates'}${bar ? ' + bar' : ''}`} ={' '}
-            <Text style={{ color: color.lime }}>{fmtKg(total, unit)}</Text>
+            <Text style={{ color: color.accentText }}>{fmtKg(total, unit)}</Text>
           </Text>
           <Button label="Use this weight" icon="check" onPress={() => onSave(side, bar)} />
         </View>
@@ -296,13 +294,21 @@ export function NumberField({
   label: string;
   placeholder?: string;
 }) {
-  const [text, setText] = useState(value === undefined ? '' : String(value));
-  // Keep what's being typed ("2." etc.) while it still means the same number; otherwise follow the prop.
-  const parsed = text === '' ? undefined : parseFloat(text);
-  const shown = parsed === value || (parsed !== undefined && Number.isNaN(parsed) && value === undefined) ? text : value === undefined ? '' : String(value);
+  const asText = value === undefined ? '' : String(value);
+  const [text, setText] = useState(asText);
+  const [focused, setFocused] = useState(false);
+  // While typing, show exactly what's typed (an empty field or "2." included), so a value can be
+  // cleared and retyped. Otherwise follow the prop; a field that needs a number gets its last
+  // value back on blur if it was left empty.
+  const shown = focused ? text : asText;
   return (
     <TextInput
       value={shown}
+      onFocus={() => {
+        setText(asText);
+        setFocused(true);
+      }}
+      onBlur={() => setFocused(false)}
       onChangeText={(t) => {
         const clean = t.replace(/[^0-9.,]/g, '').replace(',', '.');
         setText(clean);
@@ -398,7 +404,7 @@ export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
 const s = StyleSheet.create({
   photo: { height: 260, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.flash },
   img: { width: '100%', height: '100%' },
-  clay: { backgroundColor: '#0A0A0A', height: 300 },
+  clay: { backgroundColor: color.bg, height: 300 },
   paused: {
     position: 'absolute',
     right: space.md,
@@ -422,10 +428,10 @@ const s = StyleSheet.create({
     paddingVertical: space.xs,
   },
   phaseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.subtle },
-  phaseOn: { backgroundColor: color.lime },
+  phaseOn: { backgroundColor: color.accent },
   phaseText: { fontFamily: font.bodyBlack, fontSize: size.tiny, color: color.muted, marginRight: space.xs },
   step: { flexDirection: 'row', gap: space.md, marginTop: space.md },
-  stepNo: { fontFamily: font.display, fontSize: size.h3, color: color.lime, width: 20 },
+  stepNo: { fontFamily: font.display, fontSize: size.h3, color: color.accentText, width: 20 },
   credit: { ...type.small, fontSize: size.tiny, marginTop: space.md, color: color.subtle },
   swapRow: {
     flexDirection: 'row',
@@ -437,7 +443,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-  swapOn: { borderColor: color.lime, backgroundColor: color.limeDim },
+  swapOn: { borderColor: color.accent, backgroundColor: color.accentDim },
   thumb: { width: 72, height: 72, borderRadius: radius.md, backgroundColor: color.flash },
   noThumb: { backgroundColor: color.surface3, alignItems: 'center', justifyContent: 'center' },
   swapName: { fontFamily: font.bodyBlack, fontSize: size.body, color: color.text },

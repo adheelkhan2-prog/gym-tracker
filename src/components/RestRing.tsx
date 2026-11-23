@@ -15,6 +15,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { haptic } from '../feedback';
+import { startRestNotification, stopRestNotification } from '../restNotify';
 import { color, fmtClock, font, leading, radius, size, space, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Press } from './ui';
@@ -82,6 +83,17 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endsAt]);
 
+  // Ongoing countdown notification (lock screen) + an alert at the end; removed when the rest goes.
+  useEffect(() => {
+    startRestNotification(endsAt, nextLabel, sound).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endsAt]);
+  // Skipping ends the rest everywhere; leaving the screen does not (the rest carries over).
+  const skip = () => {
+    stopRestNotification().catch(() => {});
+    onSkip();
+  };
+
   const d = Math.min(width - space.x4 * 2, 320);
   const R = d / 2 - 14;
   const C = 2 * Math.PI * R;
@@ -99,13 +111,13 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
       <Animated.View entering={reduce ? undefined : FadeIn.duration(160)} style={[s.bar, { bottom: insets.bottom + space.md }]}>
         <Press onPress={() => setMini(false)} style={s.barMain} accessibilityRole="button" accessibilityLabel={`Rest, ${left} seconds left. Open timer`} glow={tint}>
           <Svg width={56} height={56} viewBox="0 0 56 56">
-            <Circle cx={28} cy={28} r={RM} stroke={color.surface3} strokeWidth={6} fill="none" />
+            <Circle cx={28} cy={28} r={RM} stroke={color.surface3} strokeWidth={3} fill="none" />
             <ACircle
               cx={28}
               cy={28}
               r={RM}
               stroke={tint}
-              strokeWidth={6}
+              strokeWidth={3}
               strokeLinecap="round"
               fill="none"
               strokeDasharray={`${CM} ${CM}`}
@@ -121,8 +133,8 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
         <Press onPress={onAdd} style={s.barBtn} accessibilityRole="button" accessibilityLabel="Add 15 seconds" glow={tint}>
           <Text style={s.barBtnText}>+15s</Text>
         </Press>
-        <Press onPress={onSkip} style={[s.barBtn, { backgroundColor: tint }]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
-          <Text style={[s.barBtnText, { color: color.ink }]}>{skipLabel}</Text>
+        <Press onPress={skip} style={[s.barBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
+          <Text style={[s.barBtnText, { color: tint }]}>{skipLabel}</Text>
         </Press>
       </Animated.View>
     );
@@ -142,16 +154,16 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
         <View />
       </Press>
       <View pointerEvents="box-none" style={[s.fullInner, { paddingTop: insets.top + space.x4, paddingBottom: insets.bottom + space.xxl }]}>
-        <Text style={[type.label, { color: tint }]}>Rest</Text>
+        <Text style={type.label}>Rest</Text>
         <Animated.View style={[{ width: d, height: d, alignItems: 'center', justifyContent: 'center' }, beatStyle]} pointerEvents="none">
           <Svg width={d} height={d} style={StyleSheet.absoluteFill}>
-            <Circle cx={d / 2} cy={d / 2} r={R} stroke={color.surface2} strokeWidth={22} fill="none" />
+            <Circle cx={d / 2} cy={d / 2} r={R} stroke={color.surface2} strokeWidth={4} fill="none" />
             <ACircle
               cx={d / 2}
               cy={d / 2}
               r={R}
               stroke={tint}
-              strokeWidth={22}
+              strokeWidth={4}
               strokeLinecap="round"
               fill="none"
               strokeDasharray={`${C} ${C}`}
@@ -171,9 +183,9 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
             <Icon name="plus" size={20} color={color.text} />
             <Text style={s.bigBtnText}>15s</Text>
           </Press>
-          <Press onPress={onSkip} style={[s.bigBtn, { backgroundColor: tint }]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
-            <Text style={[s.bigBtnText, { color: color.ink }]}>{skipLabel}</Text>
-            <Icon name="arrowRight" size={20} color={color.ink} />
+          <Press onPress={skip} style={[s.bigBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
+            <Text style={[s.bigBtnText, { color: tint }]}>{skipLabel}</Text>
+            <Icon name="arrowRight" size={20} color={tint} />
           </Press>
         </View>
         <Text style={s.hint}>Tap anywhere to log your next set</Text>
@@ -183,9 +195,9 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
 }
 
 const s = StyleSheet.create({
-  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.scrimDeep },
+  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,4,5,0.97)' },
   fullInner: { flex: 1, alignItems: 'center', justifyContent: 'space-between' },
-  count: { fontFamily: font.display, fontSize: size.mega, lineHeight: leading.mega, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -2 },
+  count: { fontFamily: font.display, fontSize: size.mega, lineHeight: leading.mega, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -1 },
   next: { fontFamily: font.bodyBold, fontSize: size.body, color: color.muted, marginTop: space.xs, maxWidth: '80%' },
   actions: { flexDirection: 'row', gap: space.md },
   bigBtn: {
@@ -195,8 +207,11 @@ const s = StyleSheet.create({
     minHeight: touch.primary + space.sm,
     paddingHorizontal: space.x3,
     borderRadius: radius.pill,
-    backgroundColor: color.surface2,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.glassBorder,
   },
+  bigBtnMain: { borderColor: color.accentEdge, backgroundColor: 'rgba(14,14,17,0.9)' },
   bigBtnText: { fontFamily: font.bodyBlack, fontSize: size.h3, color: color.text },
   hint: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle },
   bar: {
@@ -206,10 +221,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    backgroundColor: color.surface2,
+    backgroundColor: color.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: color.line,
+    borderColor: color.glassBorder,
     padding: space.sm,
   },
   barMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, borderRadius: radius.lg },

@@ -16,6 +16,15 @@ SMOOTH_ITER = 14
 INFLATE = 0.004    # metres; pieces are puffed out before the remesh so gaps up to ~8 mm weld shut
 
 
+# Muscle glow colours (linear RGB). Red-orange, nudged a few degrees toward the app's crimson
+# accent (#E0243A) so renders and UI read as one family. Previous values in git history:
+# secondary base (0.86, 0.42, 0.28), primary base (0.80, 0.09, 0.05),
+# secondary emit (1.0, 0.36, 0.14), primary emit (1.0, 0.07, 0.03).
+GLOW_SECONDARY_BASE = (0.86, 0.36, 0.30, 1)
+GLOW_PRIMARY_BASE = (0.80, 0.07, 0.08, 1)
+GLOW_SECONDARY_EMIT = (1.0, 0.30, 0.20, 1)
+GLOW_PRIMARY_EMIT = (1.0, 0.05, 0.07, 1)
+
 NORMAL_STRENGTH = 1.7   # baked muscle detail
 CAVITY = 0.45           # how much ambient occlusion darkens the grooves between muscles
 
@@ -123,11 +132,11 @@ def material(name='clay_glow', normal_image=None):
     mix1 = nt.nodes.new('ShaderNodeMix')
     mix1.data_type = 'RGBA'
     mix1.inputs['A'].default_value = (0.50, 0.50, 0.52, 1)
-    mix1.inputs['B'].default_value = (0.86, 0.42, 0.28, 1)
+    mix1.inputs['B'].default_value = GLOW_SECONDARY_BASE
     nt.links.new(math('MULTIPLY', math('POWER', s, 1.1), 0.85), mix1.inputs['Factor'])
     mix2 = nt.nodes.new('ShaderNodeMix')
     mix2.data_type = 'RGBA'
-    mix2.inputs['B'].default_value = (0.80, 0.09, 0.05, 1)
+    mix2.inputs['B'].default_value = GLOW_PRIMARY_BASE
     nt.links.new(mix1.outputs['Result'], mix2.inputs['A'])
     nt.links.new(math('MULTIPLY', math('POWER', p, 1.3), 0.8), mix2.inputs['Factor'])
     # Cavity: local ambient occlusion darkens the grooves between muscles so they read at card size.
@@ -145,8 +154,8 @@ def material(name='clay_glow', normal_image=None):
     # Emission: stronger in the centre (power curve), so shading still shows the muscle's form.
     emc = nt.nodes.new('ShaderNodeMix')
     emc.data_type = 'RGBA'
-    emc.inputs['A'].default_value = (1.0, 0.36, 0.14, 1)
-    emc.inputs['B'].default_value = (1.0, 0.07, 0.03, 1)
+    emc.inputs['A'].default_value = GLOW_SECONDARY_EMIT
+    emc.inputs['B'].default_value = GLOW_PRIMARY_EMIT
     nt.links.new(math('POWER', p, 0.5), emc.inputs['Factor'])
     nt.links.new(emc.outputs['Result'], b.inputs['Emission Color'])
     strength = math('ADD', math('MULTIPLY', math('POWER', p, 2.2), 0.75), math('MULTIPLY', math('POWER', s, 2.2), 0.3))

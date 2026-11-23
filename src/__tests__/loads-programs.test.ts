@@ -1,0 +1,215 @@
+/**
+ * Load types (kg/lb, barbell plates, machine pin, colour plates), PRs/charts/volume numbers,
+ * programs + injury mode, and How to images for every exercise the app can show.
+ */
+import { EXERCISES, loadsInjury } from '../data/exercises';
+import { EXERCISE_3D } from '../data/exercise-3d';
+import { howToImages } from '../data/how-to';
+import { PROGRAMS, hasLegWork } from '../data/programs';
+import { SWAPS, swapsFor } from '../data/swaps';
+import {
+  DEFAULT_GYM,
+  LB,
+  colorsKg,
+  fmtKg,
+  fromKg,
+  loadKg,
+  loadTypeOf,
+  loadTypesFor,
+  platesTotal,
+  round1,
+  stackKg,
+  toKg,
+  weightFromLoad,
+} from '../load';
+import { DEFAULT_STATE, applyPending, exerciseHistory, kgOf, prCountsByDate, setKg, trainingStreak, type SetEntry, type State } from '../store';
+import { exerciseFor, loadText, visiblePlans } from '../workout';
+import { volumeOn } from '../xp';
+
+const set = (weight: string, reps: string, u: 'kg' | 'lb', load?: SetEntry['load']): SetEntry => ({ weight, reps, done: true, u, load });
+
+describe('kg / lb', () => {
+  test('conversions are exact and round-trip', () => {
+    expect(LB).toBe(0.45359237);
+    expect(toKg(100, 'lb')).toBeCloseTo(45.359237, 6);
+    expect(fromKg(toKg(225, 'lb'), 'lb')).toBeCloseTo(225, 9);
+    expect(toKg(60, 'kg')).toBe(60);
+  });
+
+  test('display follows the chosen unit; the saved set never changes', () => {
+    const s = set('100', '5', 'kg');
+    expect(fmtKg(kgOf(s)!, 'kg')).toBe('100 kg');
+    expect(fmtKg(kgOf(s)!, 'lb')).toBe('220.5 lb');
+    expect(fmtKg(kgOf(set('135', '5', 'lb'))!, 'kg')).toBe('61.2 kg');
+    expect(s).toEqual(set('100', '5', 'kg'));
+  });
+
+  test('round1 shows whole numbers when close, otherwise one decimal', () => {
+    expect(round1(61.99)).toBe('62');
+    expect(round1(61.23)).toBe('61.2');
+  });
+});
+
+describe('barbell plates', () => {
+  test('bar + both sides', () => {
+    expect(platesTotal([20, 10, 2.5], 20)).toBe(85);
+    expect(platesTotal([], 20)).toBe(20);
+    expect(platesTotal([1.25], 0)).toBe(2.5);
+  });
+
+  test('a plates set is saved in kg and shown in either unit', () => {
+    const w = weightFromLoad({ t: 'plates', plates: [20, 5], bar: 20 }, DEFAULT_GYM);
+    expect(w).toEqual({ weight: '70', u: 'kg', load: { t: 'plates', plates: [20, 5], bar: 20 } });
+    const s: SetEntry = { ...w, reps: '5', done: true };
+    expect(loadText(s, 'kg', DEFAULT_GYM)).toBe('2×20 + 2×5 + bar · 70 kg');
+    expect(loadText(s, 'lb', DEFAULT_GYM)).toBe('2×20 + 2×5 + bar · 154.3 lb');
+  });
+});
+
+describe('colour plates', () => {
+  test('colours add up per side, with the bar', () => {
+    expect(colorsKg(['red', 'blue'], DEFAULT_GYM)).toBe(45);
+    expect(loadKg({ t: 'colors', colors: ['red', 'blue'], bar: 20 }, DEFAULT_GYM)).toBe(110);
+    expect(loadKg({ t: 'colors', colors: [], bar: 0 }, DEFAULT_GYM)).toBe(0);
+  });
+
+  test("your gym's colours are used (custom kg)", () => {
+    const gym = { ...DEFAULT_GYM, colors: [{ id: 'c1', name: 'Purple', hex: '#800080', kg: 12.5 }] };
+    expect(loadKg({ t: 'colors', colors: ['c1', 'c1'], bar: 15 }, gym)).toBe(65);
+    expect(loadText({ ...weightFromLoad({ t: 'colors', colors: ['c1'], bar: 15 }, gym), reps: '8', done: true }, 'kg', gym)).toBe('purple + bar · 40 kg');
+  });
+});
+
+describe('machine pin', () => {
+  test('pin 1 is the starting weight, each pin adds kg per plate', () => {
+    expect(stackKg(1, { perPlate: 7 })).toBe(7);
+    expect(stackKg(7, { perPlate: 7 })).toBe(49);
+    expect(stackKg(5, { perPlate: 5, start: 10 })).toBe(30);
+    expect(stackKg(7, undefined)).toBeNull();
+    expect(stackKg(7, {})).toBeNull();
+  });
+
+  test('a pin logged before setup has no kg; it converts once kg per plate is set', () => {
+    const s: SetEntry = { ...weightFromLoad({ t: 'stack', pin: 7 }, DEFAULT_GYM, undefined), reps: '10', done: true };
+    expect(s.weight).toBe('');
+    expect(kgOf(s)).toBeNull();
+    expect(setKg(s, { perPlate: 7 })).toBe(49);
+    expect(loadText(s, 'kg', DEFAULT_GYM)).toBe('Pin 7');
+  });
+});
+
+describe('PRs, charts and volume use the right numbers', () => {
+  const logs: State['logs'] = {
+    '2026-11-02': { flat_bench: { sets: [set('60', '5', 'kg')] } },
+    '2026-11-09': { flat_bench: { sets: [set('135', '5', 'lb')] } }, // 61.2 kg: a PR
+    '2026-11-16': { flat_bench: { sets: [set('130', '5', 'lb')] } }, // 59 kg: not a PR
+    '2026-11-17': { lat_pulldown: { sets: [{ ...weightFromLoad({ t: 'stack', pin: 7 }, DEFAULT_GYM), reps: '10', done: true }] } },
+  };
+
+  test('PRs compare kg across units', () => {
+    expect(prCountsByDate(logs)).toMatchObject({ '2026-11-02': 0, '2026-11-09': 1, '2026-11-16': 0 });
+  });
+
+  test('chart points are kg, whatever unit each set was logged in', () => {
+    const h = exerciseHistory(logs, 'flat_bench');
+    expect(h.map((p) => Math.round(p.top * 10) / 10)).toEqual([60, 61.2, 59]);
+  });
+
+  test('pin-only sets chart and count in volume once the machine is set up', () => {
+    const machines = { lat_pulldown: { perPlate: 7 } };
+    expect(exerciseHistory(logs, 'lat_pulldown', machines.lat_pulldown)[0].top).toBe(49);
+    expect(volumeOn({ ...DEFAULT_STATE, logs, machines }, '2026-11-17')).toBe(490);
+    expect(volumeOn({ ...DEFAULT_STATE, logs, machines: {} }, '2026-11-17')).toBe(0);
+  });
+
+  test('switching kg/lb changes no stored number, so PRs and volume stay the same', () => {
+    const kg: State = { ...DEFAULT_STATE, unit: 'kg', logs };
+    const lb: State = { ...kg, unit: 'lb' };
+    expect(prCountsByDate(lb.logs)).toEqual(prCountsByDate(kg.logs));
+    expect(volumeOn(lb, '2026-11-09')).toBe(volumeOn(kg, '2026-11-09'));
+  });
+});
+
+describe('load type choices', () => {
+  test('each kind of equipment offers the right load types', () => {
+    expect(loadTypesFor('lat_pulldown')).toEqual(['stack', 'weight']);
+    expect(loadTypesFor('flat_bench')).toEqual(['weight', 'plates', 'colors']);
+    expect(loadTypesFor('lateral_raise')).toEqual(['weight']);
+    expect(loadTypesFor('push_ups')).toEqual(['bodyweight']);
+  });
+
+  test("a saved load type that doesn't fit the exercise falls back to the default", () => {
+    expect(loadTypeOf('lateral_raise', { lateral_raise: 'stack' })).toBe('weight');
+    expect(loadTypeOf('flat_bench', { flat_bench: 'colors' })).toBe('colors');
+  });
+});
+
+describe('programs and injury mode', () => {
+  test('there are 7 built-in programs, every exercise in them exists', () => {
+    expect(PROGRAMS).toHaveLength(7);
+    for (const p of PROGRAMS) for (const d of p.days) for (const e of d.exercises) for (const o of e.options) expect(EXERCISES[o]).toBeDefined();
+  });
+
+  test('switching programs keeps every log and the streak', () => {
+    const logs: State['logs'] = { '2026-11-16': { flat_bench: { sets: [set('60', '5', 'kg')] } } };
+    const before: State = { ...DEFAULT_STATE, logs, programId: 'upper5', sessions: { '2026-11-16': { dayId: 'mon', finishedAt: 1 } } };
+    const after = applyPending({ ...before, pending: { programId: 'ppl6', week: PROGRAMS[1].week, from: '2026-11-17' } }, '2026-11-17');
+    expect(after.programId).toBe('ppl6');
+    expect(after.logs).toBe(before.logs);
+    expect(after.sessions).toBe(before.sessions);
+    expect(trainingStreak(after, '2026-11-16')).toBe(trainingStreak(before, '2026-11-16'));
+  });
+
+  test('injury mode hides every leg/ab exercise on every program day, and turning it off shows them again', () => {
+    for (const p of PROGRAMS) {
+      for (const d of p.days) {
+        const on = visiblePlans({ ...DEFAULT_STATE, injured: true }, d);
+        expect(on.every((pl) => !loadsInjury(exerciseFor(DEFAULT_STATE, pl)))).toBe(true);
+        const off = visiblePlans({ ...DEFAULT_STATE, injured: false }, d);
+        expect(off).toHaveLength(d.exercises.length);
+      }
+    }
+  });
+
+  test('injury mode never offers a leg/ab swap', () => {
+    for (const id of Object.keys(EXERCISES)) {
+      expect(swapsFor(id, true).some((s) => loadsInjury(s.id))).toBe(false);
+    }
+  });
+
+  test('a swap to a leg/ab exercise is hidden too while injury mode is on', () => {
+    const day = PROGRAMS[0].days[0];
+    const slot = day.exercises[0].slot;
+    const st: State = { ...DEFAULT_STATE, injured: true, swaps: { [slot]: 'back_squat' } };
+    expect(visiblePlans(st, day).some((p) => p.slot === slot)).toBe(false);
+    expect(visiblePlans({ ...st, injured: false }, day).some((p) => p.slot === slot)).toBe(true);
+  });
+
+  test('the Programs list hides programs with leg work in injury mode (only the upper-body split stays)', () => {
+    expect(PROGRAMS.filter((p) => !hasLegWork(p)).map((p) => p.id)).toEqual(['upper5']);
+  });
+});
+
+describe('How to images', () => {
+  // Every exercise the app can show: all program options plus every swap.
+  const shown = new Set<string>();
+  for (const p of PROGRAMS) for (const d of p.days) for (const e of d.exercises) e.options.forEach((o) => shown.add(o));
+  for (const id of [...shown]) {
+    swapsFor(id, false).forEach((s) => shown.add(s.id));
+    (SWAPS[id] ?? []).forEach((s) => shown.add(s.id));
+  }
+
+  test('every exercise in the 7 programs and their swaps has start + end images', () => {
+    const missing = [...shown].filter((id) => {
+      const img = howToImages(id);
+      return !img || img.start == null || img.end == null;
+    });
+    expect(missing).toEqual([]);
+    expect(shown.size).toBeGreaterThan(100);
+  });
+
+  test('clay images are used wherever an approved render exists', () => {
+    for (const id of Object.keys(EXERCISE_3D)) expect(howToImages(id)?.clay).toBe(true);
+    expect(Object.keys(EXERCISE_3D)).toHaveLength(117);
+  });
+});

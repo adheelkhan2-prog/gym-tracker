@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { INJURY_REGIONS, type MuscleId } from './data/muscles';
 import { DEFAULT_WEEK, pickOption, type WorkoutDay } from './data/program';
-import { PROGRAMS, type Program } from './data/programs';
+import { PROGRAMS, hasLegWork, type Program } from './data/programs';
 import { DEFAULT_GYM, stackKg, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
@@ -75,6 +75,7 @@ export const DEFAULT_STATE: State = {
 export const STORAGE_KEY = 'gym-tracker/state/v3';
 const V2_KEY = 'gym-tracker/state/v2';
 const OLD_KEY = 'gym-tracker/state/v1';
+export const BACKUP_PREFIX = 'gym-tracker/state/unreadable-backup-';
 
 // Exercises from the first version of the app that still exist in the new program.
 const OLD_IDS: Record<string, string> = {
@@ -93,6 +94,25 @@ const OLD_IDS: Record<string, string> = {
   Pullups: 'pull_ups',
 };
 
+/**
+ * Read the saved state (current key, else v2, else v1) and migrate it. Returns null for a fresh
+ * install. If saved data can't be read, a copy is kept under BACKUP_PREFIX before the app starts
+ * fresh, so the first save can never destroy the only copy of someone's history.
+ */
+export async function loadState(): Promise<State | null> {
+  let raw: string | null = null;
+  try {
+    raw = (await AsyncStorage.getItem(STORAGE_KEY)) ?? (await AsyncStorage.getItem(V2_KEY));
+    if (raw) return applyPending(migrate(JSON.parse(raw), false));
+    raw = await AsyncStorage.getItem(OLD_KEY);
+    if (raw) return migrate(JSON.parse(raw), true);
+    return null;
+  } catch {
+    if (raw) await AsyncStorage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw).catch(() => {});
+    return null;
+  }
+}
+
 /** Turn a saved state from any version into the current shape. */
 export function migrate(raw: unknown, fromOld: boolean): State {
   const r = (raw ?? {}) as Partial<State> & { logs?: Record<string, Record<string, unknown>> };
@@ -102,8 +122,11 @@ export function migrate(raw: unknown, fromOld: boolean): State {
   for (const [date, day] of Object.entries(r.logs ?? {})) {
     const out: DayLog = {};
     for (const [id, v] of Object.entries(day ?? {})) {
+      // v1 ids are mapped to the new library (unmapped ones never existed in it). From v2 on, every
+      // log is kept, even for an exercise this version doesn't know (e.g. removed in an update), so
+      // an update can never delete history; screens skip ids they can't show.
       const newId = fromOld ? OLD_IDS[id] : id;
-      if (!newId || !EXERCISES[newId]) continue;
+      if (!newId || (fromOld && !EXERCISES[newId])) continue;
       const log = Array.isArray(v) ? { sets: v as SetEntry[] } : (v as ExerciseLog);
       out[newId] = { ...log, sets: (log.sets ?? []).map((st) => (st.u ? st : { ...st, u: legacyUnit })) };
     }
@@ -177,17 +200,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = (await AsyncStorage.getItem(STORAGE_KEY)) ?? (await AsyncStorage.getItem(V2_KEY));
-        if (raw) setState(applyPending(migrate(JSON.parse(raw), false)));
-        else {
-          const old = await AsyncStorage.getItem(OLD_KEY);
-          if (old) setState(migrate(JSON.parse(old), true));
-        }
-      } catch {}
+    loadState().then((loaded) => {
+      if (loaded) setState(loaded);
       setReady(true);
-    })();
+    });
   }, []);
 
   useEffect(() => {
@@ -224,6 +240,9 @@ export const kgOf = (s: SetEntry) => {
   const w = num(s.weight);
   return w === null ? null : toKg(w, s.u ?? 'lb');
 };
+
+/** kg for a set, also converting a pin-only set once its machine has kg per plate set up. */
+export const setKg = (s: SetEntry, machine?: MachineSetup) => kgOf(s) ?? (s.load?.pin !== undefined ? stackKg(s.load.pin, machine) : null);
 
 const weighted = (kind: LogKind) => kind === 'weight_reps' || kind === 'weight_time';
 
@@ -313,7 +332,7 @@ export type HistoryPoint = {
  */
 export function exerciseHistory(logs: State['logs'], exerciseId: string, machine?: MachineSetup): HistoryPoint[] {
   const kind = kindOf(exerciseId);
-  const kgFor = (s: SetEntry) => kgOf(s) ?? (s.load?.pin !== undefined ? stackKg(s.load.pin, machine) : null);
+  const kgFor = (s: SetEntry) => setKg(s, machine);
   const metric = (s: SetEntry) => (kind === 'weight_reps' || kind === 'weight_time' ? (kgFor(s) ?? 0) : num(s.reps)!);
   return Object.keys(logs)
     .sort()
@@ -408,9 +427,14 @@ export function weeklyMuscleSets(state: State, keys = weekKeys()) {
   return out;
 }
 
-/** Show the "welcome back, ease in" card for the first two weeks after injury mode goes off. */
+/**
+ * Show the "welcome back, ease in" card for the first two weeks after injury mode is turned OFF,
+ * and only when the active program actually brings leg/ab work back (never on the upper-body
+ * injury program, never while injury mode is on).
+ */
 export function easingIn(state: State, today = todayKey()) {
   if (state.injured || !state.easeInFrom || state.easeInDismissed) return false;
+  if (!hasLegWork(activeProgram(state))) return false;
   return today < addDays(state.easeInFrom, 14);
 }
 

@@ -10,13 +10,13 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Glass } from '../src/components/glass';
 import { Icon, type IconName } from '../src/components/icons';
 import ProgressScreen from '../src/app/(tabs)/progress';
 import SettingsScreen from '../src/app/(tabs)/settings';
 import SupplementsScreen from '../src/app/(tabs)/supplements';
 import TodayScreen from '../src/app/(tabs)/index';
 import CompleteScreen from '../src/app/complete';
+import FocusScreen from '../src/app/focus';
 import ExerciseScreen from '../src/app/exercise/[id]';
 import BuilderScreen from '../src/app/builder';
 import ProgramsScreen from '../src/app/programs';
@@ -154,6 +154,8 @@ function Demo() {
             <ProgramsScreen />
           ) : top.name === 'builder' ? (
             <BuilderScreen key={JSON.stringify(top.params)} />
+          ) : top.name === 'focus' ? (
+            <FocusScreen key={JSON.stringify(top.params)} />
           ) : (
             <CompleteScreen />
           )}
@@ -171,19 +173,22 @@ function Demo() {
             ))}
           </View>
           <View style={[s.barWrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none">
-            <Glass r={999} style={{ padding: space.xs }}>
+            <View style={s.bar}>
               <View style={{ flexDirection: 'row' }} accessibilityRole="tablist">
                 {TABS.map((t) => {
                   const on = t.id === tab;
                   return (
-                    <Press key={t.id} onPress={() => setTab(t.id)} style={[s.tab, on && { backgroundColor: color.lime }]} accessibilityRole="tab" accessibilityState={{ selected: on }}>
-                      <Icon name={t.icon} size={22} color={on ? color.ink : color.muted} filled={on} />
-                      <Text style={[s.tabText, { color: on ? color.ink : color.muted }]}>{t.title}</Text>
+                    <Press key={t.id} onPress={() => setTab(t.id)} style={s.tab} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={t.title}>
+                      {on && <View style={s.tabLine} />}
+                      <Icon name={t.icon} size={22} color={on ? color.accent : color.subtle} filled={on} />
+                      <Text style={[s.tabText, { color: on ? color.text : color.subtle }]} numberOfLines={1}>
+                        {t.title}
+                      </Text>
                     </Press>
                   );
                 })}
               </View>
-            </Glass>
+            </View>
           </View>
       </View>
     </View>
@@ -205,11 +210,13 @@ function Root() {
 const s = StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: color.surface2, paddingHorizontal: space.lg, paddingVertical: space.sm },
   bannerText: { flex: 1, fontFamily: font.body, fontSize: size.label, lineHeight: 16, color: color.muted },
-  bannerBtn: { borderWidth: 1, borderColor: color.line, borderRadius: 999, paddingHorizontal: space.lg, minHeight: 40, justifyContent: 'center' },
+  bannerBtn: { borderWidth: 1, borderColor: color.line, borderRadius: 999, paddingHorizontal: space.lg, minHeight: 48, justifyContent: 'center' },
   bannerBtnText: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
   barWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 60, borderRadius: 999 },
-  tabText: { fontFamily: font.bodyBlack, fontSize: size.tiny },
+  bar: { padding: space.xs, borderRadius: 30, backgroundColor: color.surface, borderWidth: 1, borderColor: color.glassBorder },
+  tab: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 60, borderRadius: 24 },
+  tabLine: { position: 'absolute', top: 0, width: 28, height: 2, borderRadius: 1, backgroundColor: color.accent },
+  tabText: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
 });
 
 registerRootComponent(Root);

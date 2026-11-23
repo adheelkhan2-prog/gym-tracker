@@ -1,6 +1,6 @@
 // XP, levels and ranks. Everything is derived from the log, so it can't drift.
 import { EXERCISES } from './data/exercises';
-import { doneSets, kgOf, num, prCountsByDate, type State } from './store';
+import { doneSets, num, prCountsByDate, setKg, type State } from './store';
 
 export const XP = { set: 10, pr: 50, workout: 40 } as const;
 
@@ -51,7 +51,8 @@ export function volumeOn(state: State, date: string) {
   let v = 0;
   for (const [id, log] of Object.entries(state.logs[date] ?? {})) {
     if (EXERCISES[id]?.kind !== 'weight_reps') continue;
-    for (const s of doneSets(log, 'weight_reps')) v += (kgOf(s) ?? 0) * num(s.reps)!;
+    // Pin-only sets count once the machine's kg per plate is known (same as the charts).
+    for (const s of doneSets(log, 'weight_reps')) v += (setKg(s, state.machines?.[id]) ?? 0) * num(s.reps)!;
   }
   return Math.round(v);
 }

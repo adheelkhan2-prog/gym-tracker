@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { EQUIPMENT_LABEL, EXERCISE_LIST, EXERCISES, loadsInjury, type Equipment } from '../data/exercises';
 import { howToImages } from './ExerciseParts';
 import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../data/muscles';
@@ -138,20 +138,19 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
   const [muscle, setMuscle] = useState<string | null>(null);
   const [eq, setEq] = useState<Equipment | null>(null);
   const filters = MUSCLE_FILTERS.filter((f) => !(injured && f.muscles.every((m) => INJURY_REGIONS.has(m))));
-  const list = useMemo(() => {
-    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const mf = MUSCLE_FILTERS.find((f) => f.label === muscle);
-    return EXERCISE_LIST.filter(
-      (e) =>
-        !(injured && loadsInjury(e.id)) &&
-        (!eq || e.equipment === eq) &&
-        (!mf || e.primary.some((m) => mf.muscles.includes(m))) &&
-        words.every((w) => e.name.toLowerCase().includes(w) || e.primary.some((m) => MUSCLE_LABEL[m].toLowerCase().includes(w))),
-    ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [q, muscle, eq, injured]);
+  // The React Compiler memoizes this.
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const mf = MUSCLE_FILTERS.find((f) => f.label === muscle);
+  const list = EXERCISE_LIST.filter(
+    (e) =>
+      !(injured && loadsInjury(e.id)) &&
+      (!eq || e.equipment === eq) &&
+      (!mf || e.primary.some((m) => mf.muscles.includes(m))) &&
+      words.every((w) => e.name.toLowerCase().includes(w) || e.primary.some((m) => MUSCLE_LABEL[m].toLowerCase().includes(w))),
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
-  return (
-    <Sheet title={title} subtitle={`${list.length} exercises${injured ? ' · leg and ab work hidden (injury mode)' : ''}`} onClose={onClose} testID="library-sheet">
+  const header = (
+    <>
       <View style={s.search}>
         <Icon name="search" size={18} color={color.subtle} />
         <TextInput
@@ -169,16 +168,31 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
           <Chip key={f.label} label={f.label} active={muscle === f.label} onPress={() => setMuscle(muscle === f.label ? null : f.label)} />
         ))}
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.filters, { marginBottom: space.sm }]}>
         {EQUIPMENT.map((e) => (
           <Chip key={e} label={EQUIPMENT_LABEL[e]} active={eq === e} onPress={() => setEq(eq === e ? null : e)} />
         ))}
       </ScrollView>
-      <View style={{ gap: space.xs, marginTop: space.sm }}>
-        {list.map((e) => {
+    </>
+  );
+
+  // Virtualized: only the rows on screen (and their full-size thumbnails) are rendered and decoded.
+  return (
+    <Sheet title={title} subtitle={`${list.length} exercises${injured ? ' · leg and ab work hidden (injury mode)' : ''}`} onClose={onClose} testID="library-sheet" scroll={false}>
+      <FlatList
+        data={list}
+        keyExtractor={(e) => e.id}
+        ListHeaderComponent={header}
+        keyboardShouldPersistTaps="handled"
+        initialNumToRender={10}
+        windowSize={5}
+        contentContainerStyle={{ paddingBottom: space.md }}
+        ItemSeparatorComponent={LibrarySpacer}
+        ListEmptyComponent={<Text style={[type.small, { textAlign: 'center', marginTop: space.lg }]}>Nothing matches. Try fewer filters.</Text>}
+        renderItem={({ item: e }) => {
           const img = howToImages(e.id);
           return (
-            <Press key={e.id} onPress={() => onPick(e.id)} style={s.libRow} accessibilityRole="button" accessibilityLabel={`Add ${e.name}`}>
+            <Press onPress={() => onPick(e.id)} style={s.libRow} accessibilityRole="button" accessibilityLabel={`Add ${e.name}`}>
               {img ? <Image source={img.start} style={s.thumb} /> : <View style={[s.thumb, s.noThumb]}><Icon name="barbell" size={18} color={color.muted} /></View>}
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={s.libName} numberOfLines={1}>
@@ -188,20 +202,21 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
                   {EQUIPMENT_LABEL[e.equipment]} · {e.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}
                 </Text>
               </View>
-              <Icon name="plus" size={20} color={color.lime} />
+              <Icon name="plus" size={20} color={color.accent} />
             </Press>
           );
-        })}
-        {list.length === 0 && <Text style={[type.small, { textAlign: 'center', marginTop: space.lg }]}>Nothing matches. Try fewer filters.</Text>}
-      </View>
+        }}
+      />
     </Sheet>
   );
 }
 
+const LibrarySpacer = () => <View style={{ height: space.xs }} />;
+
 const s = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   weekRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  wd: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.lime, width: 40 },
+  wd: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.accentText, width: 40 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

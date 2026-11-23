@@ -88,3 +88,18 @@ export const WARMUP = [
   { icon: 'hand-left', text: 'Wrist circles and finger stretches, 30 s' },
   { icon: 'barbell', text: 'One light set of your first exercise × 15' },
 ] as const;
+
+/**
+ * Which workout day the Today screen shows.
+ * - `picked`: a day tapped in the week strip (a preview, with a way back to today).
+ * - Otherwise today's scheduled day, unless sets were already logged today under another day
+ *   (you chose to train that one today); a session started but never logged no longer pins a day.
+ */
+export function todayDayId(state: State, date: string, weekday: number, picked?: string | null) {
+  const scheduled = state.week[weekday] ?? null;
+  if (picked) return { id: picked, preview: picked !== scheduled, scheduled };
+  const sessionDay = state.sessions[date]?.dayId;
+  const logged = Object.values(state.logs[date] ?? {}).some((l) => l.skipped || l.sets.some((s) => s.done));
+  const id = sessionDay && logged ? sessionDay : scheduled;
+  return { id, preview: false, scheduled, swappedDay: !!(sessionDay && logged && sessionDay !== scheduled) };
+}

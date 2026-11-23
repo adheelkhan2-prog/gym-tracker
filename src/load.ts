@@ -142,3 +142,17 @@ export function platesText(plates: number[], bar: number) {
 
 /** Does a set need a weight number for this kind? */
 export const isWeighted = (kind: LogKind) => kind === 'weight_reps' || kind === 'weight_time';
+
+/** kg for a load (pin, plates or colour plates), or null when it can't be known yet (pin on a machine without kg per plate). */
+export function loadKg(l: LoadInfo, gym: Gym, machine?: MachineSetup): number | null {
+  if (l.t === 'stack') return l.pin !== undefined ? stackKg(l.pin, machine) : null;
+  if (l.t === 'plates') return platesTotal(l.plates ?? [], l.bar ?? 0);
+  if (l.t === 'colors') return (l.bar ?? 0) + 2 * colorsKg(l.colors ?? [], gym);
+  return null;
+}
+
+/** The saved weight for a set logged with a load: always kg (plates and pins are kg), plus the load itself. */
+export function weightFromLoad(l: LoadInfo, gym: Gym, machine?: MachineSetup): { weight: string; u: Unit; load: LoadInfo } {
+  const kg = loadKg(l, gym, machine);
+  return { weight: kg === null ? '' : String(Math.round(kg * 100) / 100), u: 'kg', load: l };
+}
