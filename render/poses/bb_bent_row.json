@@ -79,8 +79,8 @@
   }
  },
  "camera": {
-  "azimuth": 90,
-  "elevation": 30,
+  "azimuth": 42,
+  "elevation": 20,
   "distance": 3.5,
   "lens": 50
  },

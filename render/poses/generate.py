@@ -41,6 +41,12 @@ CAM_BACK = {'azimuth': 150, 'elevation': 12, 'distance': 3.4, 'lens': 50}
 CAM_HINGE = {'azimuth': 90, 'elevation': 30, 'distance': 3.5, 'lens': 50}
 # Side view from slightly behind, so a cable tower in front of the lifter never hides them.
 CAM_CABLE = {'azimuth': 112, 'elevation': 10, 'distance': 3.4, 'lens': 50}
+# Pushdowns: front three-quarter view; the tower slides to the far side, so it stands clear of the lifter.
+CAM_PUSHDOWN = {'azimuth': 50, 'elevation': 12, 'distance': 3.4, 'lens': 50}
+# Barbell hinge rows: raised front three-quarter view, so the plates sit beside the body, not over it.
+CAM_ROW = {'azimuth': 42, 'elevation': 20, 'distance': 3.5, 'lens': 50}
+# Rear raises: raised front view, so the arms spreading out to the sides read clearly.
+CAM_REAR = {'azimuth': 22, 'elevation': 26, 'distance': 3.4, 'lens': 50}
 
 STAND_HIPS = [0, 0, 0.056]
 SEAT_HIPS = [0, 0, 0.55]
@@ -109,20 +115,24 @@ ROW_HINGE_S = HANG_ARMS
 ROW_HINGE_E = arms([0.15, 0.8, -0.55], [0.05, -0.1, -1])
 PUSHDOWN_S = arms([0.06, 0.08, -1], [0.04, -0.85, 0.5])
 PUSHDOWN_E = arms([0.06, 0.05, -1], [0.04, -0.05, -1])
-OH_EXT_S = arms([0.12, 0.15, 1], [0.02, 0.35, -0.95])
-OH_EXT_E = arms([0.12, 0.1, 1], [0.04, 0.02, 1])
+OH_EXT_S = arms([0.1, -0.12, 1], [0.02, 0.42, -0.9])
+OH_EXT_E = arms([0.1, 0.02, 1], [0.03, 0.0, 1])
 LAT_RAISE_S = arms([0.18, -0.12, -1], [0.16, -0.3, -1])
 LAT_RAISE_E = {'clav_L': [1, 0.02, 0.22], **arms([1, -0.18, -0.02], [1, -0.32, 0.06])}
 FRONT_RAISE_S = arms([0.1, -0.15, -1], [0.08, -0.2, -1])
 FRONT_RAISE_E = arms([0.15, -1, 0.05], [0.12, -1, 0.08])
 REAR_S = arms([0.1, -0.15, -1], [0.08, -0.2, -1])
 REAR_E = arms([1, 0.1, -0.15], [1, -0.05, -0.15])
+# Standing bent-over rear raise END: arms straight out to the sides, parallel to the floor.
+REAR_E_T = {'clav_L': [1, 0.1, 0.05], **arms([1, 0.06, -0.02], [1, 0.0, 0.0])}
 PULLUP_S = {'clav_L': [1, 0.05, 0.35], **arms([0.42, -0.02, 1], [0.3, -0.02, 1])}
 PULLUP_E = {'clav_L': [1, 0.12, 0], **arms([0.6, 0.15, -0.8], [0.0, -0.25, 1])}
 STRAIGHT_S = arms([0.12, -0.75, 0.65], [0.1, -0.8, 0.6])
 STRAIGHT_E = arms([0.12, 0.1, -1], [0.1, 0.05, -1])
 SHRUG_S = {'clav_L': [1, 0, -0.08], **ARMS_DOWN}
 SHRUG_E = {'clav_L': [1, 0, 0.35], **ARMS_DOWN}
+# Dumbbell shrug END, exaggerated so the raised shoulders read at thumbnail size.
+SHRUG_E_BIG = {'clav_L': [1, 0, 0.62], **ARMS_DOWN}
 UPRIGHT_E = {'clav_L': [1, 0, 0.2], **arms([0.95, -0.15, 0.2], [-0.55, -0.35, -0.75])}
 FACE_PULL_S = arms([0.12, -1, 0.15], [0.08, -1, 0.15])
 FACE_PULL_E = arms([0.95, 0.15, 0.1], [-0.25, -0.3, 0.92])
@@ -215,7 +225,7 @@ P['cable_upright_row'] = standing(ARMS_DOWN, UPRIGHT_E, cam=CAM_CABLE, equipment
 P['front_raise'] = standing(FRONT_RAISE_S, FRONT_RAISE_E, props='dumbbells')
 P['cable_front_raise'] = standing(FRONT_RAISE_S, FRONT_RAISE_E, equipment=[cable_from(0, 0.45, -0.78, 'bar')], cam=CAM_CABLE)
 P['plate_front_raise'] = standing(arms([0.05, -0.15, -1], [-0.05, -0.2, -1]), arms([0.1, -1, 0.1], [-0.08, -1, 0.15]), props='plate', cam=CAM_SIDE)
-P['rear_raise'] = standing(REAR_S, REAR_E, props='dumbbells', torso=HINGE, legs=SOFT_KNEE, cam=CAM_SIDE)
+P['rear_raise'] = standing(REAR_S, REAR_E_T, props='dumbbells', torso=HINGE, legs=SOFT_KNEE, cam=CAM_REAR)
 P['prone_rear_raise'] = spec(base={'pelvis': [0, -0.85, 0.5], 'spine': [0, -0.85, 0.5], 'chest': [0, -0.85, 0.5], 'neck': [0, -0.9, 0.4], 'head': [0, -0.9, 0.4],
                                    'thigh_L': [0.12, -0.35, -1], 'shin_L': [0.05, 0.3, -1], 'foot_L': [0.08, -1, -0.3]},
                              start=REAR_S, end=REAR_E, props='dumbbells', hips=[0, 0.3, 0.2], cam=CAM_SIDE,
@@ -252,7 +262,7 @@ P['chin_ups'] = spec(base=P['pull_ups']['base'], start={'clav_L': [1, 0.05, 0.35
                      cam={'azimuth': 35, 'elevation': 8, 'distance': 3.8, 'lens': 50}, floor=-0.9)
 P['assisted_pull_ups'] = dict(P['pull_ups'], equipment=PULLUP_EQ + [{'type': 'line', 'from': {'at': '@grip_L', 'off': [-0.1, 0, 0]}, 'to': {'at': '@knees', 'off': [0, 0.05, -0.05]}, 'r': 0.012},
                                                                    {'type': 'line', 'from': {'at': '@grip_R', 'off': [0.1, 0, 0]}, 'to': {'at': '@knees', 'off': [0, 0.05, -0.05]}, 'r': 0.012}])
-P['bb_bent_row'] = standing(ROW_HINGE_S, ROW_HINGE_E, cam=CAM_HINGE, props='barbell', torso=HINGE, legs=SOFT_KNEE)
+P['bb_bent_row'] = standing(ROW_HINGE_S, ROW_HINGE_E, cam=CAM_ROW, props='barbell', torso=HINGE, legs=SOFT_KNEE)
 P['db_bent_row'] = standing(ROW_HINGE_S, ROW_HINGE_E, cam=CAM_HINGE, props='dumbbells', torso=HINGE, legs=SOFT_KNEE)
 P['tbar_row'] = standing(arms([0.05, -0.1, -1], [0.0, -0.05, -1]), arms([0.15, 0.7, -0.7], [-0.02, -0.15, -1]), props='ez', torso=HINGE, legs=SOFT_KNEE, cam=CAM_SIDE,
                          equipment=[{'type': 'line', 'from': {'at': '@grip', 'off': [0, -0.08, 0]}, 'to': {'at': '@hips', 'off': [0, 1.2, -0.9]}, 'r': 0.022}])
@@ -278,7 +288,7 @@ P['inverted_row'] = spec(base={**SUPINE, 'thigh_L': [0.05, -1, -0.08], 'shin_L':
 P['straight_arm_pulldown'] = standing(STRAIGHT_S, STRAIGHT_E, torso=LEAN, legs=SOFT_KNEE, equipment=[cable_from(0, -0.75, 1.25, 'bar')], cam=CAM_CABLE)
 P['rope_straight_arm'] = standing(STRAIGHT_S, arms([0.25, 0.25, -1], [0.25, 0.2, -1]), torso=LEAN, legs=SOFT_KNEE, equipment=[cable_from(0, -0.75, 1.25, 'rope')], cam=CAM_CABLE)
 P['db_pullover'] = lying(arms([0.12, 1, 0.15], [0.05, 1, 0.1]), arms([0.12, 0.2, 1], [0.04, 0.15, 1]), props='dumbbell_single')
-P['db_shrug'] = standing(SHRUG_S, SHRUG_E, props='dumbbells')
+P['db_shrug'] = standing(SHRUG_S, SHRUG_E_BIG, props='dumbbells')
 P['bb_shrug'] = standing(SHRUG_S, SHRUG_E, props='barbell')
 P['cable_shrug'] = standing(SHRUG_S, SHRUG_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.4, -0.78, 'bar')])
 P['deadlift'] = hinge('barbell', deadlift=True)
@@ -314,10 +324,11 @@ P['machine_curl'] = seated(arms([0.12, -0.75, -0.6], [0.08, -0.9, -0.35]), arms(
                            equipment=[{'type': 'box', 'center': {'at': '@chest', 'off': [0, -0.25, -0.1]}, 'size': [0.5, 0.08, 0.32]},
                                       {'type': 'line', 'from': '@grip_L', 'to': '@grip_R', 'r': 0.016},
                                       {'type': 'handles', 'pivot': {'at': '@chest', 'off': [0.3, -0.35, -0.15]}}])
-P['triceps_pushdown'] = standing(PUSHDOWN_S, PUSHDOWN_E, torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'bar')], cam=CAM_CABLE)
-P['rope_pushdown'] = standing(PUSHDOWN_S, arms([0.06, 0.05, -1], [0.2, 0.05, -1]), torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'rope')], cam=CAM_CABLE)
+P['triceps_pushdown'] = standing(PUSHDOWN_S, PUSHDOWN_E, torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'bar')], cam=CAM_PUSHDOWN)
+P['rope_pushdown'] = standing(PUSHDOWN_S, arms([0.06, 0.05, -1], [0.2, 0.05, -1]), torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'rope')], cam=CAM_PUSHDOWN)
 P['vbar_pushdown'] = standing(PUSHDOWN_S, PUSHDOWN_E, torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'none')], cam=CAM_CABLE)
-P['overhead_db_ext'] = seated(OH_EXT_S, OH_EXT_E, props='dumbbell_single', cam=CAM_SIDE)
+# Side view from slightly behind with a backless seat, so the dumbbell behind the head shows.
+P['overhead_db_ext'] = seated(OH_EXT_S, OH_EXT_E, props='dumbbell_single', back=False, cam={'azimuth': 96, 'elevation': 10, 'distance': 3.0, 'lens': 50})
 P['cable_overhead_ext'] = spec(base={'pelvis': [0, -0.35, 0.94], 'spine': [0, -0.35, 0.94], 'chest': [0, -0.35, 0.94], 'neck': [0, -0.3, 0.95], 'head': [0, -0.3, 0.95],
                                      'thigh_L': [0.06, -0.3, -1], 'shin_L': [0.04, 0.05, -1], 'thigh_R': [-0.06, 0.3, -1], 'shin_R': [-0.04, 0.3, -1]},
                                start=arms([0.1, -0.45, 0.9], [0.02, 0.6, 0.2]), end=arms([0.1, -0.5, 0.86], [0.04, -0.55, 0.83]),
