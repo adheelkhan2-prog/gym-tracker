@@ -19,6 +19,7 @@ export function Sheet({
   children,
   footer,
   testID,
+  scroll = true,
 }: {
   title: string;
   subtitle?: string;
@@ -26,6 +27,8 @@ export function Sheet({
   children: React.ReactNode;
   footer?: React.ReactNode;
   testID?: string;
+  /** false when children bring their own (virtualized) list, which must not sit inside a ScrollView. */
+  scroll?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -68,9 +71,13 @@ export function Sheet({
               {subtitle ? <Text style={[type.small, { marginTop: space.xxs }]}>{subtitle}</Text> : null}
             </View>
           </GestureDetector>
-          <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingBottom: space.md }} keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
+          {scroll ? (
+            <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingBottom: space.md }} keyboardShouldPersistTaps="handled">
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={{ flexShrink: 1 }}>{children}</View>
+          )}
           {footer}
         </Glass>
       </Animated.View>

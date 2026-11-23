@@ -401,7 +401,7 @@ export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
 const s = StyleSheet.create({
   photo: { height: 260, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.flash },
   img: { width: '100%', height: '100%' },
-  clay: { backgroundColor: '#0A0A0A', height: 300 },
+  clay: { backgroundColor: color.bg, height: 300 },
   paused: {
     position: 'absolute',
     right: space.md,
