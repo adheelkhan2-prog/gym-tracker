@@ -15,14 +15,40 @@ import { color, font, leading, radius, size, space, touch, type } from '../../th
 const ALL_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5];
 const SWATCHES = ['#E5322D', '#2F6BFF', '#F5C518', '#2DBE60', '#F2F2F2', '#1A1A1A', '#FF7A1A', '#8E5CFF'];
 
-const CREDITS = [
-  { label: 'Z-Anatomy (CC BY-SA 4.0)', url: 'https://github.com/Z-Anatomy/Models-of-human-anatomy' },
-  { label: 'BodyParts3D, © The Database Center for Life Science', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
-  { label: 'Gymmetry muscle map model', url: 'https://github.com/kalibismail/gymmetry-muscle-model' },
-  { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
-  { label: '3D exercise renders: MakeHuman body (CC0) + muscle detail (CC BY-SA 4.0)', url: 'https://github.com/makehumancommunity/mpfb2' },
-  { label: 'Exercise photos: free-exercise-db (Unlicense)', url: 'https://github.com/yuhonas/free-exercise-db' },
+/** Every third-party asset in the app, grouped by where it shows up (see src/data/asset-licences.md). */
+const CREDITS: { title: string; note: string; links: { label: string; url: string }[] }[] = [
+  {
+    title: '3D muscle model (Muscles tab)',
+    note: 'Adapted from Z-Anatomy, based on BodyParts3D, via the Gymmetry muscle map. Changes: compressed and quantised for mobile; muscle regions unchanged. Shared under CC BY-SA 4.0.',
+    links: [
+      { label: 'Z-Anatomy, Gauthier Kervyn (CC BY-SA 4.0)', url: 'https://github.com/Z-Anatomy/Models-of-human-anatomy' },
+      { label: 'BodyParts3D, © The Database Center for Life Science (CC BY-SA 2.1 JP)', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
+      { label: 'Gymmetry muscle map model, kalibismail (CC BY-SA 4.0)', url: 'https://github.com/kalibismail/gymmetry-muscle-model' },
+    ],
+  },
+  {
+    title: '3D exercise images (How to tab)',
+    note: 'Rendered for this app in Blender. Body: MakeHuman base mesh, rig and shape targets (CC0). Muscle detail and regions baked from the muscle model above, so the images are shared under CC BY-SA 4.0. Poses, equipment and lighting are our own.',
+    links: [
+      { label: 'MakeHuman / MPFB2 (CC0 1.0)', url: 'https://github.com/makehumancommunity/mpfb2' },
+      { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+    ],
+  },
+  {
+    title: 'Exercise photos',
+    note: 'Shown for exercises that do not have an approved 3D image yet.',
+    links: [{ label: 'free-exercise-db (Unlicense, public domain)', url: 'https://github.com/yuhonas/free-exercise-db' }],
+  },
+  {
+    title: 'Fonts',
+    note: 'SIL Open Font License 1.1.',
+    links: [
+      { label: 'Bricolage Grotesque (OFL)', url: 'https://fonts.google.com/specimen/Bricolage+Grotesque' },
+      { label: 'Figtree (OFL)', url: 'https://fonts.google.com/specimen/Figtree' },
+    ],
+  },
 ];
+
 
 function Toggle({ icon, title, sub, checked, onChange }: { icon: IconName; title: string; sub: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -226,18 +252,20 @@ export default function SettingsScreen() {
 
       <SectionTitle>Credits</SectionTitle>
       <Glass r={radius.xl} style={{ gap: space.xs, padding: space.lg }}>
-        <Text style={type.small}>
-          The muscle model is adapted from Z-Anatomy, based on BodyParts3D, via the Gymmetry muscle map. Changes: compressed for mobile.
-          Shared under the same licence.
-        </Text>
-        {CREDITS.map((c) => (
-          <Press key={c.url} onPress={() => Linking.openURL(c.url)} style={s.credit} accessibilityRole="link">
-            <Icon name="link" size={16} color={color.lime} />
-            <Text style={s.creditText}>{c.label}</Text>
-          </Press>
+        {CREDITS.map((g, i) => (
+          <View key={g.title} style={i > 0 ? s.creditGroup : undefined}>
+            <Text style={s.creditTitle}>{g.title}</Text>
+            <Text style={type.small}>{g.note}</Text>
+            {g.links.map((c) => (
+              <Press key={c.url} onPress={() => Linking.openURL(c.url)} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
+                <Icon name="link" size={16} color={color.lime} />
+                <Text style={s.creditText}>{c.label}</Text>
+              </Press>
+            ))}
+          </View>
         ))}
-        <Text style={[type.small, { marginTop: space.sm }]}>
-          Fonts: Bricolage Grotesque and Figtree (SIL Open Font License). Component structure after react-native-reusables (MIT).
+        <Text style={[type.small, s.creditGroup]}>
+          Icons and the rest-timer sound were made for this app. Component structure after react-native-reusables (MIT).
         </Text>
       </Glass>
 
@@ -286,5 +314,7 @@ const s = StyleSheet.create({
   kg: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   del: { width: 36, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   credit: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch.min, borderRadius: radius.sm },
+  creditGroup: { marginTop: space.md, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line },
+  creditTitle: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text, marginBottom: space.xs },
   creditText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
 });
