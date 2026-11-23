@@ -109,62 +109,217 @@ def _seg_dist(p, a, b):
     return (p - (a + ab * t)).length
 
 
+ARM_REGIONS = {
+    'anterior_delt', 'lateral_delt', 'posterior_delt', 'biceps', 'brachialis', 'brachioradialis',
+    'triceps_long', 'triceps_lateral', 'triceps_medial', 'forearm_flexors', 'forearm_extensors', 'hand_muscles',
+}
+LEG_REGIONS = {
+    'adductors', 'rectus_femoris', 'vastus_group', 'medial_hamstrings', 'lateral_hamstrings',
+    'gastrocnemius', 'soleus', 'tibialis_anterior', 'fibularis', 'foot_muscles',
+}
+PART_BONES = {
+    'torso': {'pelvis', 'spine', 'chest', 'neck', 'head', 'clav'},
+    'arm': {'clav', 'upper', 'fore', 'hand'},
+    'leg': {'pelvis', 'thigh', 'shin', 'foot'},
+}
+
+
+def _part(region, centre):
+    """Which separately-smoothed part a face belongs to: torso, arm_L/R or leg_L/R.
+    Smoothing each part on its own stops arms fusing to the torso and thighs to each other."""
+    side = 'L' if centre.x > 0 else 'R'
+    if region in ARM_REGIONS:
+        return f'arm_{side}'
+    if region in LEG_REGIONS:
+        return f'leg_{side}'
+    if region == 'context_skin':
+        if abs(centre.x) > 0.2 and centre.z < 0.35:
+            return f'arm_{side}'
+        if centre.z < -0.06:
+            return f'leg_{side}'
+    return 'torso'
+
+
+VOXEL = 0.0045       # metres; closes the cracks between muscle shells, keeps their relief
+INFLATE = 0.004      # pieces are puffed out before the remesh so gaps up to ~8 mm weld shut
+SMOOTH_ITER = 12
+
+
 def build(glb_path):
-    """Import the model, join regions into one mesh (one material slot per region), rig and skin it."""
+    """Import the muscle model and turn it into ONE smooth, rigged clay mesh.
+
+    1. Bulk each muscle region outward (bodybuilder build).
+    2. Voxel-remesh all regions together in the rest pose (cracks close, muscle relief stays),
+       then smooth (no lumps; smooth knees and abs).
+    3. Carry each region's id onto the new mesh (`region` attribute) for the glow masks.
+    4. Tuck the bony hands away (shape key; clay fists replace them) and skin the single mesh.
+    Posing a continuous surface stretches it instead of tearing muscle shells apart.
+    """
     bpy.ops.import_scene.gltf(filepath=glb_path)
+    for o in list(bpy.context.scene.objects):
+        # Skeleton, tendons and the thin skin sheet sit under/over the muscles and stretch into
+        # webs when posed; the clay surface doesn't need them.
+        if o.type == 'MESH' and o.name.split('.')[0] in ('context_bone', 'context_tendon', 'context_skin'):
+            bpy.data.objects.remove(o, do_unlink=True)
     meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
-    # One material per region so masks survive the join.
     for o in meshes:
         region = o.name.split('.')[0]
         mat = bpy.data.materials.get(region) or bpy.data.materials.new(region)
         o.data.materials.clear()
         o.data.materials.append(mat)
-        o['region'] = region
-    # Bake transforms so vertex positions are in world space.
-    for o in meshes:
         o.parent = None
     bpy.ops.object.select_all(action='DESELECT')
     for o in meshes:
         o.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    regions_by_obj = {o.name: o['region'] for o in meshes}
+    bpy.ops.object.join()
+    src = bpy.context.view_layer.objects.active
+    src.name = 'muscle_src'
+    me = src.data
+    names = [m.name for m in me.materials]
+    vregion = [None] * len(me.vertices)
+    for poly in me.polygons:
+        for v in poly.vertices:
+            vregion[v] = names[poly.material_index]
+    # 1. bulk
+    for v in me.vertices:
+        amt = BULK.get(vregion[v.index] or '', 0.0)
+        if amt:
+            v.co = v.co + v.normal * amt
+    me.update()
 
-    # Skin weights per object before joining (region restriction is per object).
-    for o in meshes:
-        region = o['region']
-        allowed = RESTRICT.get(region)
-        groups = {}
-        for name in BONES:
-            groups[name] = o.vertex_groups.new(name=name)
-        for vtx in o.data.vertices:
-            p = o.matrix_world @ vtx.co
-            side = 'L' if p.x > 0.015 else 'R' if p.x < -0.015 else None
-            cands = []
-            for name, (h, t, _) in BONES.items():
-                base = name.split('_')[0]
-                if allowed and base not in allowed:
-                    continue
-                if name.endswith('_L') and side == 'R' or name.endswith('_R') and side == 'L':
-                    continue
-                cands.append((_seg_dist(p, h, t), name))
-            if not cands:
-                continue
-            cands.sort()
-            top = cands[:2]
-            ws = [1.0 / (d + 0.01) ** 4 for d, _ in top]
-            s = sum(ws)
-            for (d, name), w in zip(top, ws):
-                if w / s > 0.02:
-                    groups[name].add([vtx.index], w / s, 'REPLACE')
-
-    for o in meshes:
-        o.select_set(True)
+    # 2. remesh + smooth each body part in the rest pose
+    import bmesh
+    face_part = [_part(names[p.material_index], p.center) for p in me.polygons]
+    parts = sorted(set(face_part))
+    part_objs = []
+    for part in parts:
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if face_part[f.index] != part], context='FACES')
+        pm = bpy.data.meshes.new(f'part_{part}')
+        bm.to_mesh(pm)
+        bm.free()
+        po = bpy.data.objects.new(f'part_{part}', pm)
+        bpy.context.scene.collection.objects.link(po)
+        puff = po.modifiers.new('puff', 'DISPLACE')
+        puff.strength = INFLATE
+        puff.mid_level = 0
+        rm = po.modifiers.new('remesh', 'REMESH')
+        rm.mode = 'VOXEL'
+        rm.voxel_size = VOXEL
+        rm.adaptivity = 0
+        sm = po.modifiers.new('smooth', 'LAPLACIANSMOOTH')
+        sm.iterations = SMOOTH_ITER
+        sm.lambda_factor = 0.6
+        sm.lambda_border = 0
+        sm.use_volume_preserve = True
+        unpuff = po.modifiers.new('unpuff', 'DISPLACE')
+        unpuff.strength = -INFLATE * 0.8
+        unpuff.mid_level = 0
+        dg = bpy.context.evaluated_depsgraph_get()
+        out = bpy.data.meshes.new_from_object(po.evaluated_get(dg), depsgraph=dg)
+        bpy.data.objects.remove(po, do_unlink=True)
+        oo = bpy.data.objects.new(f'clay_{part}', out)
+        bpy.context.scene.collection.objects.link(oo)
+        oo['part'] = part
+        part_objs.append(oo)
+    # Remember each vertex's part before joining.
+    for oo in part_objs:
+        a_ = oo.data.attributes.new('part', 'INT', 'POINT')
+        a_.data.foreach_set('value', [parts.index(oo['part'])] * len(oo.data.vertices))
+    bpy.ops.object.select_all(action='DESELECT')
+    for oo in part_objs:
+        oo.select_set(True)
+    bpy.context.view_layer.objects.active = part_objs[0]
     bpy.ops.object.join()
     body = bpy.context.view_layer.objects.active
     body.name = 'Figure'
-    for poly in body.data.polygons:
-        poly.use_smooth = True
+    clay_me = body.data
+    vpart_idx = [0] * len(clay_me.vertices)
+    clay_me.attributes['part'].data.foreach_get('value', vpart_idx)
+    vpart = [parts[i] for i in vpart_idx]
+
+    # 3. region id per vertex from the nearest original face
+    from mathutils.bvhtree import BVHTree
+    sco = [v.co.copy() for v in me.vertices]
+    polys = [tuple(p.vertices) for p in me.polygons]
+    pmat = [p.material_index for p in me.polygons]
+    tree = BVHTree.FromPolygons(sco, polys)
+    region_idx = []
+    for v in clay_me.vertices:
+        hit = tree.find_nearest(v.co)
+        region_idx.append(pmat[hit[2]] if hit[2] is not None else -1)
+    attr = clay_me.attributes.new('region', 'INT', 'POINT')
+    attr.data.foreach_set('value', region_idx)
+    body['region_names'] = names
+    bpy.data.objects.remove(src, do_unlink=True)
+    for p in clay_me.polygons:
+        p.use_smooth = True
+    vreg = [names[i] if i >= 0 else None for i in region_idx]
+
+    # 4a. hands: tuck the bony fingers into the palm (clay fists are added per pose)
+    body.shape_key_add(name='Basis')
+    fist = body.shape_key_add(name='fist', from_mix=False)
+    for side in (1, -1):
+        w = Vector((J['wrist'][0] * side, J['wrist'][1], J['wrist'][2]))
+        f = Vector((J['fingers'][0] * side, J['fingers'][1], J['fingers'][2]))
+        L = (f - w).length
+        d = (f - w).normalized()
+        palm = w + d * (0.3 * L)
+        for v in clay_me.vertices:
+            p = v.co
+            if (p.x > 0) != (side > 0):
+                continue
+            t = (p - w).dot(d) / L
+            if t < 0.05 or t > 2.2 or _seg_dist(p, w, f + d * 0.16) > 0.115:
+                continue
+            k = _smooth((t - 0.05) / 0.2)
+            fist.data[v.index].co = p.lerp(palm + (p - palm) * 0.25, k)
+    fist.value = 1.0
+
+    # 4b. skin: three nearest allowed bones with a soft falloff
+    groups = {name: body.vertex_groups.new(name=name) for name in BONES}
+    for v in clay_me.vertices:
+        p = v.co
+        part = vpart[v.index]
+        base_ok = PART_BONES[part.split('_')[0]]
+        reg_ok = RESTRICT.get(vreg[v.index] or '')
+        allowed = (base_ok & reg_ok) if reg_ok and (base_ok & reg_ok) else base_ok
+        # Only the shoulder cap may follow the collarbone; the rest of the arm moves as one,
+        # otherwise the armpit stretches into a curtain when the arm lifts.
+        if part.startswith('arm') and p.z < J['shoulder'][2] + 0.01:
+            allowed = allowed - {'clav'} or {'upper'}
+        if part == 'torso' and p.z < J['shoulder'][2] - 0.02:
+            allowed = allowed - {'clav'} or {'chest'}
+        side = part[-1] if part != 'torso' else ('L' if p.x > 0.015 else 'R' if p.x < -0.015 else None)
+        cands = []
+        for name, (h, t, _) in BONES.items():
+            if allowed and name.split('_')[0] not in allowed:
+                continue
+            if name.endswith('_L') and side == 'R' or name.endswith('_R') and side == 'L':
+                continue
+            cands.append((_seg_dist(p, h, t), name))
+        if not cands:
+            continue
+        cands.sort()
+        # Arms: two bones, sharp falloff (soft weights near the armpit leave webs when the arm lifts).
+        # Torso and legs: three bones, soft falloff for smooth bends at the hips, knees and spine.
+        if part.startswith('arm'):
+            top = cands[:2]
+            ws = [1.0 / (d + 0.01) ** 4 for d, _ in top]
+        elif part.startswith('leg'):
+            top = cands[:2]
+            ws = [1.0 / (d + 0.015) ** 3 for d, _ in top]
+        else:
+            top = cands[:3]
+            ws = [1.0 / (d + 0.02) ** 2.5 for d, _ in top]
+        tot = sum(ws)
+        for (d, name), w in zip(top, ws):
+            if w / tot > 0.02:
+                groups[name].add([v.index], w / tot, 'REPLACE')
 
     # Armature
     arm_data = bpy.data.armatures.new('Rig')
@@ -186,10 +341,63 @@ def build(glb_path):
     mod = body.modifiers.new('Rig', 'ARMATURE')
     mod.object = rig
     body.parent = rig
-    return body, rig, regions_by_obj
+    return body, rig, names
 
 
-def aim(rig, bone, direction):
+BULK = {
+    'pec_major_upper': 0.016, 'pec_major_lower': 0.018,
+    'anterior_delt': 0.018, 'lateral_delt': 0.022, 'posterior_delt': 0.018,
+    'biceps': 0.016, 'brachialis': 0.010, 'triceps_long': 0.014, 'triceps_lateral': 0.016, 'triceps_medial': 0.010,
+    'brachioradialis': 0.010, 'forearm_flexors': 0.009, 'forearm_extensors': 0.009,
+    'upper_lats': 0.016, 'lower_lats': 0.012, 'teres_major': 0.012, 'rhomboids': 0.006,
+    'upper_traps': 0.020, 'mid_traps': 0.010, 'lower_traps': 0.008, 'erector_spinae': 0.010,
+    'serratus_anterior': 0.008, 'rectus_abdominis': 0.007, 'obliques': 0.008, 'transverse_abdominis': 0.004,
+    'neck_flexors': 0.006, 'neck_extensors': 0.008,
+    'glute_max': 0.014, 'glute_med': 0.010, 'hip_flexors': 0.006, 'adductors': 0.010,
+    'rectus_femoris': 0.018, 'vastus_group': 0.020, 'medial_hamstrings': 0.014, 'lateral_hamstrings': 0.014,
+    'gastrocnemius': 0.014, 'soleus': 0.010, 'tibialis_anterior': 0.006, 'fibularis': 0.005,
+}
+
+# Anatomical position: palms face forward (-Y).
+PALM = Vector((0, -1, 0))
+KNUCKLE_T = 0.36   # fraction of the wrist->fingertip segment where the fingers bend
+FIST_DEG = 105
+
+
+def _smooth(x):
+    x = max(0.0, min(1.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def hand_frame(rig, side):
+    """Posed grip centre and the handle axis for a closed hand."""
+    pb = rig.pose.bones[f'hand_{side}']
+    rest = rig.data.bones[f'hand_{side}'].matrix_local.to_3x3()
+    R = (rig.matrix_world.to_3x3() @ pb.matrix.to_3x3()) @ rest.inverted()
+    s = 1 if side == 'L' else -1
+    w = Vector((J['wrist'][0] * s, J['wrist'][1], J['wrist'][2]))
+    f = Vector((J['fingers'][0] * s, J['fingers'][1], J['fingers'][2]))
+    d = (f - w).normalized()
+    L = (f - w).length
+    head = rig.matrix_world @ pb.head
+    centre = head + R @ (d * (KNUCKLE_T * L + 0.012) + PALM * 0.03)
+    axis = (R @ d.cross(PALM)).normalized()
+    return centre, axis
+
+
+def hand_basis(rig, side):
+    """Posed wrist position, finger direction, palm normal and handle axis for building a fist."""
+    pb = rig.pose.bones[f'hand_{side}']
+    rest = rig.data.bones[f'hand_{side}'].matrix_local.to_3x3()
+    R = (rig.matrix_world.to_3x3() @ pb.matrix.to_3x3()) @ rest.inverted()
+    s = 1 if side == 'L' else -1
+    w = Vector((J['wrist'][0] * s, J['wrist'][1], J['wrist'][2]))
+    f = Vector((J['fingers'][0] * s, J['fingers'][1], J['fingers'][2]))
+    d = (f - w).normalized()
+    return rig.matrix_world @ pb.head, (R @ d).normalized(), (R @ PALM).normalized(), (R @ d.cross(PALM)).normalized() * s
+
+
+def aim(rig, bone, direction, twist=0.0):
     """Point a pose bone along a world-space direction (minimal twist), keeping its head where the parent put it."""
     bpy.context.view_layer.update()
     pb = rig.pose.bones[bone]
@@ -197,6 +405,8 @@ def aim(rig, bone, direction):
     rest_dir = (rest.to_3x3() @ Vector((0, 1, 0))).normalized()
     target = (rig.matrix_world.inverted().to_3x3() @ Vector(direction)).normalized()
     rot = rest_dir.rotation_difference(target).to_matrix().to_4x4()
+    if twist:
+        rot = Matrix.Rotation(math.radians(twist), 4, target) @ rot
     head = pb.head.copy() if pb.parent is None else (pb.parent.matrix @ (pb.parent.bone.matrix_local.inverted() @ rest.translation))
     m = rot @ Matrix.Translation(-rest.translation) @ rest
     m.translation = head

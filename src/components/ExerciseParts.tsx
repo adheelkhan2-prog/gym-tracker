@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
+import { EXERCISE_3D } from '../data/exercise-3d';
 import { EXERCISE_IMAGES } from '../data/exercise-images';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
@@ -25,35 +26,45 @@ import { Badge, Button, Chip, Press } from './ui';
 
 // ---------- How-to images ----------
 
-/** Start/end photos that flip on their own (or on tap), with the written steps below. */
+/** Clay render if approved, else the free-exercise-db photo. */
+export function howToImages(id: string) {
+  const clay = EXERCISE_3D[id];
+  return clay ? { ...clay, clay: true } : EXERCISE_IMAGES[id] ? { ...EXERCISE_IMAGES[id], clay: false } : undefined;
+}
+
+/** Start/end images that cross-fade on their own; tap to pause or resume. Written steps below. */
 export function HowTo({ ex }: { ex: ExerciseInfo }) {
-  const img = EXERCISE_IMAGES[ex.id];
+  const img = howToImages(ex.id);
   const reduce = useReducedMotion();
   const [end, setEnd] = useState(false);
-  const [auto, setAuto] = useState(true);
+  const [paused, setPaused] = useState(false);
+  const fade = useSharedValue(0);
   useEffect(() => {
-    if (!img || reduce || !auto) return;
-    const t = setInterval(() => setEnd((v) => !v), 1600);
+    if (!img || paused) return;
+    const t = setInterval(() => setEnd((v) => !v), 2200);
     return () => clearInterval(t);
-  }, [img, reduce, auto]);
+  }, [img, paused]);
+  useEffect(() => {
+    fade.value = reduce ? (end ? 1 : 0) : withTiming(end ? 1 : 0, { duration: 600, easing: Easing.inOut(Easing.quad) });
+  }, [end, reduce, fade]);
+  const endStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
+  const mode = img?.clay ? 'contain' : 'cover';
 
   return (
     <View>
       {img ? (
         <Press
-          onPress={() => {
-            setAuto(false);
-            setEnd((v) => !v);
-          }}
+          onPress={() => setPaused((v) => !v)}
           tick
           scaleTo={0.98}
-          style={s.photo}
+          style={[s.photo, img.clay && s.clay]}
           accessibilityRole="button"
-          accessibilityLabel={`${ex.name}, ${end ? 'end' : 'start'} position. Tap to flip`}
+          accessibilityLabel={`${ex.name}, ${end ? 'end' : 'start'} position. ${paused ? 'Paused, tap to play' : 'Tap to pause'}`}
           testID="howto-photo"
         >
-          <Animated.View key={end ? 'end' : 'start'} entering={reduce ? undefined : FadeIn.duration(220)} exiting={reduce ? undefined : FadeOut.duration(220)} style={StyleSheet.absoluteFill}>
-            <Image source={end ? img.end : img.start} style={s.img} resizeMode="cover" />
+          <Image source={img.start} style={s.img} resizeMode={mode} />
+          <Animated.View style={[StyleSheet.absoluteFill, endStyle]} pointerEvents="none">
+            <Image source={img.end} style={s.img} resizeMode={mode} />
           </Animated.View>
           <View style={s.phase}>
             <View style={[s.phaseDot, !end && s.phaseOn]} />
@@ -61,11 +72,16 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
             <View style={[s.phaseDot, end && s.phaseOn]} />
             <Text style={[s.phaseText, end && { color: color.lime }]}>End</Text>
           </View>
+          {paused && (
+            <View style={s.paused} testID="howto-paused">
+              <Text style={s.phaseText}>Paused · tap to play</Text>
+            </View>
+          )}
         </Press>
       ) : (
         <View style={[s.photo, s.noPhoto]}>
           <Icon name="info" size={28} color={color.muted} />
-          <Text style={[type.small, { textAlign: 'center' }]}>No licence-free photo for this one yet. Follow the steps below.</Text>
+          <Text style={[type.small, { textAlign: 'center' }]}>No licence-free image for this one yet. Follow the steps below.</Text>
         </View>
       )}
       {ex.steps.map((t, i) => (
@@ -74,7 +90,7 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
           <Text style={[type.body, { flex: 1, color: color.muted }]}>{t}</Text>
         </View>
       ))}
-      {img && <Text style={s.credit}>Photos: free-exercise-db (public domain)</Text>}
+      {img && <Text style={s.credit}>{img.clay ? '3D render: made for this app, CC BY-SA 4.0 (credits in Settings)' : 'Photos: free-exercise-db (public domain)'}</Text>}
     </View>
   );
 }
@@ -117,7 +133,7 @@ export function SwapSheet({
       <View style={{ gap: space.sm }}>
         {options.map((o) => {
           const ex = EXERCISES[o.id];
-          const img = EXERCISE_IMAGES[o.id];
+          const img = howToImages(o.id);
           const on = o.id === current;
           return (
             <Press
@@ -382,6 +398,16 @@ export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
 const s = StyleSheet.create({
   photo: { height: 260, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.flash },
   img: { width: '100%', height: '100%' },
+  clay: { backgroundColor: '#0A0A0A', height: 300 },
+  paused: {
+    position: 'absolute',
+    right: space.md,
+    top: space.md,
+    backgroundColor: color.scrimDeep,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+  },
   noPhoto: { backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center', gap: space.sm, padding: space.xl },
   phase: {
     position: 'absolute',

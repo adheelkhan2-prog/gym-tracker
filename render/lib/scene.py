@@ -96,10 +96,11 @@ def incline_bench(seat_z, seat_y, back_deg, floor_z, M, back_y=0.10):
     """Adjustable bench: seat pad, inclined back pad, steel frame down to the floor."""
     box('seat', (0, seat_y, seat_z - 0.04), (0.30, 0.36, 0.07), M['pad'])
     ang = math.radians(back_deg)  # from vertical
-    length = 0.85
+    length = 0.95
     base = Vector((0, seat_y + back_y, seat_z - 0.02))
     up = Vector((0, math.sin(ang), math.cos(ang)))
-    pad = box('backpad', base + up * (length / 2) + Vector((0, 0.05 * math.cos(ang), -0.05 * math.sin(ang))), (0.30, 0.07, length), M['pad'])
+    # The pad starts slightly below the seat top so the two always meet (no see-through gap).
+    pad = box('backpad', base + up * (length / 2 - 0.1) + Vector((0, 0.05 * math.cos(ang), -0.05 * math.sin(ang))), (0.30, 0.07, length), M['pad'])
     pad.rotation_euler = (-ang, 0, 0)
     # Frame
     cyl('rail', (0, seat_y - 0.30, floor_z + 0.04), (0, seat_y + 0.55, floor_z + 0.04), 0.03, M['frame'])
@@ -160,13 +161,14 @@ def lights():
     area('fill', (2.8, -1.8, 1.4), (0, 0, 0.6), 45, 3.0)
     area('top', (0, 0, 4.0), (0, 0, 0.6), 50, 4.0)
     # Lime rim from behind, to sit the figure on the app's black glass.
-    area('rim_l', (-1.2, 3.2, 1.8), (0, 0, 0.8), 70, 0.8, LIME)
-    area('rim_r', (1.4, 3.0, 1.4), (0, 0, 0.8), 50, 0.8, LIME)
+    # Soft lime rim. Light linking (set by render.py) keeps it off the equipment.
+    rims = [area('rim_l', (-1.2, 3.2, 1.8), (0, 0, 0.8), 18, 1.6, LIME), area('rim_r', (1.4, 3.0, 1.4), (0, 0, 0.8), 12, 1.6, LIME)]
     world = bpy.data.worlds.new('w')
     world.use_nodes = True
     world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.16, 0.16, 0.17, 1)
     world.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.25
     bpy.context.scene.world = world
+    return rims
 
 
 def camera(target, azimuth, elevation, distance, lens=50):
@@ -199,3 +201,94 @@ def settings(size, samples):
     sc.view_settings.look = 'None'
     sc.view_settings.exposure = -0.6
     sc.cycles.max_bounces = 6
+
+
+def _ellipsoid(name, centre, axes, radii, mat):
+    """UV sphere scaled along three orthonormal axes."""
+    from mathutils import Matrix
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1, location=centre)
+    o = bpy.context.active_object
+    o.name = name
+    o.data.materials.append(mat)
+    for p in o.data.polygons:
+        p.use_smooth = True
+    a, b, c = (Vector(v).normalized() for v in axes)
+    m = Matrix((a * radii[0], b * radii[1], c * radii[2])).transposed().to_4x4()
+    m.translation = Vector(centre)
+    o.matrix_world = m
+    return o
+
+
+def _torus(name, centre, axis, major, minor, mat):
+    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=32, minor_segments=12, location=centre)
+    o = bpy.context.active_object
+    o.name = name
+    o.data.materials.append(mat)
+    for p in o.data.polygons:
+        p.use_smooth = True
+    o.rotation_mode = 'QUATERNION'
+    o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(Vector(axis).normalized())
+    return o
+
+
+def fist(name, wrist, d, palm, axis, grip, mat):
+    """Sculpted clay fist closed around a handle at `grip` running along `axis`."""
+    wrist, d, palm, axis, grip = (Vector(v) for v in (wrist, d, palm, axis, grip))
+    # Palm and back of the hand, from the wrist to the knuckles.
+    _ellipsoid(f'{name}_palm', wrist + d * 0.045 + palm * 0.006, (axis, d, palm), (0.042, 0.052, 0.022), mat)
+    # Four fingers wrapped round the handle, slightly staggered like a real grip.
+    for i, off in enumerate((-0.029, -0.0097, 0.0097, 0.029)):
+        _torus(f'{name}_finger{i}', grip + axis * off - d * (0.002 * abs(off) / 0.01), axis, 0.026, 0.0122 - 0.0007 * i, mat)
+    # Knuckle ridge so the fist reads as a fist from behind.
+    _ellipsoid(f'{name}_knuckles', grip - palm * 0.012 + d * 0.006, (axis, d, palm), (0.045, 0.02, 0.018), mat)
+    # Thumb over the front of the handle.
+    tip = grip + palm * 0.027 + axis * 0.012
+    base = wrist + d * 0.03 + palm * 0.012 + axis * 0.035
+    mid = (tip + base) / 2
+    _ellipsoid(f'{name}_thumb', mid, ((tip - base).normalized(), palm.cross(tip - base).normalized(), palm), ((tip - base).length / 2 + 0.01, 0.011, 0.011), mat)
+
+
+def flat_bench(top_z, y0, y1, floor_z, M, width=0.30):
+    """Flat bench whose pad runs from y0 to y1 with its top at top_z."""
+    box('flatpad', (0, (y0 + y1) / 2, top_z - 0.04), (width, abs(y1 - y0), 0.08), M['pad'])
+    for y in (y0 + 0.12, y1 - 0.12):
+        cyl(f'leg{y:.2f}', (0, y, floor_z + 0.04), (0, y, top_z - 0.08), 0.03, M['frame'])
+        cyl(f'foot{y:.2f}', (-0.2, y, floor_z + 0.03), (0.2, y, floor_z + 0.03), 0.03, M['frame'])
+    cyl('rail', (0, y0 + 0.12, top_z - 0.1), (0, y1 - 0.12, top_z - 0.1), 0.025, M['frame'])
+
+
+def barbell(name, centre, half, M, plates=(0.225, 0.2)):
+    """Olympic-style bar along X through `centre`, with a plate pair at each end."""
+    c = Vector(centre)
+    x = Vector((1, 0, 0))
+    cyl(f'{name}_bar', c - x * (half + 0.22), c + x * (half + 0.22), 0.0145, M['steel'])
+    for s in (-1, 1):
+        inner = c + x * s * (half + 0.03)
+        cyl(f'{name}_collar{s}', inner - x * s * 0.03, inner, 0.025, M['steel'])
+        for i, r in enumerate(plates):
+            a = inner + x * s * (0.005 + i * 0.045)
+            cyl(f'{name}_plate{s}{i}', a, a + x * s * 0.04, r, M['frame'], verts=48)
+
+
+def bench_uprights(y, top_z, floor_z, half, M):
+    for s in (-1, 1):
+        cyl(f'upright{s}', (s * (half - 0.05), y, floor_z), (s * (half - 0.05), y, top_z), 0.03, M['frame'])
+        cyl(f'hook{s}', (s * (half - 0.05), y, top_z - 0.08), (s * (half - 0.05), y - 0.06, top_z - 0.08), 0.015, M['steel'])
+
+
+def cable_row(seat_z, seat_y, foot_y, floor_z, handle, M):
+    """Seated cable row: long low bench, foot plate, low pulley tower in front, V-handle on a cable."""
+    box('rowbench', (0, seat_y - 0.2, seat_z - 0.04), (0.32, 1.1, 0.08), M['pad'])
+    for y in (seat_y + 0.25, seat_y - 0.6):
+        cyl(f'rowleg{y:.2f}', (0, y, floor_z), (0, y, seat_z - 0.08), 0.035, M['frame'])
+    box('footplate', (0, foot_y, floor_z + 0.36), (0.42, 0.04, 0.34), M['frame'])
+    box('footbase', (0, foot_y + 0.12, floor_z + 0.1), (0.42, 0.3, 0.2), M['frame'])
+    tower_y = foot_y - 0.25
+    box('tower', (0, tower_y, floor_z + 0.9), (0.3, 0.2, 1.8), M['frame'])
+    pulley = Vector((0, foot_y - 0.06, floor_z + 0.38))
+    cyl('lowpulley', pulley + Vector((-0.02, 0, 0)), pulley + Vector((0.02, 0, 0)), 0.05, M['steel'])
+    h = Vector(handle)
+    cyl('rowcable', pulley, h + Vector((0, -0.06, 0)), 0.006, M['steel'], verts=12)
+    # V-handle: two short angled grips meeting at the cable clip.
+    for s in (-1, 1):
+        cyl(f'vgrip{s}', h + Vector((0, -0.06, 0)), h + Vector((s * 0.05, 0.03, 0)), 0.014, M['steel'])

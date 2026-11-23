@@ -43,3 +43,4 @@ yarn-error.*
 # generated native Android folder (rebuilt by expo prebuild)
 /android
 render/out/
+__pycache__/

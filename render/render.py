@@ -17,7 +17,9 @@ from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
+import clay  # noqa: E402
 import figure  # noqa: E402
+import makehuman  # noqa: E402
 import scene  # noqa: E402
 
 ORDER = ['pelvis', 'spine', 'chest', 'neck', 'head']
@@ -30,22 +32,167 @@ def mirrored(dirs):
     out = dict(dirs)
     for k, v in dirs.items():
         if k.endswith('_L'):
-            out.setdefault(k[:-2] + '_R', [-v[0], v[1], v[2]])
+            out.setdefault(k[:-2] + '_R', [-v[0], v[1], v[2], *(-x for x in v[3:])])
     return out
 
 
 def pose(rig, dirs):
-    for pb in rig.pose.bones:
-        pb.matrix_basis.identity()
-    bpy.context.view_layer.update()
-    for b in ORDER:
-        if b in dirs:
-            figure.aim(rig, b, dirs[b])
+    """dirs[bone] = [x, y, z] or [x, y, z, twist_degrees] (twist turns the bone about its own axis)."""
+    makehuman.pose(rig, dirs, figure.aim)
 
 
-def grip(rig, side, t=0.55):
-    h, tail = figure.bone_world(rig, f'hand_{side}')
-    return h + (tail - h) * t
+def grip(rig, side):
+    return makehuman.hand_basis(rig, side)[4]
+
+
+def anchor(rig, body, v, floor_z=0.0):
+    """Resolve a position: [x, y, z], "@name", or {"at": "@name", "off": [dx, dy, dz]}.
+    Names: grip, grip_L, grip_R, ankle_L, ankle_R, ankles, knees, hips, chest, neck, head."""
+    if isinstance(v, dict):
+        return anchor(rig, body, v['at'], floor_z) + Vector(v.get('off', (0, 0, 0)))
+    if not isinstance(v, str):
+        return Vector(v)
+    mw = rig.matrix_world
+    pb = rig.pose.bones
+    name = v[1:]
+    if name == 'grip':
+        return (grip(rig, 'L') + grip(rig, 'R')) / 2
+    if name in ('grip_L', 'grip_R'):
+        return grip(rig, name[-1])
+    if name in ('ankle_L', 'ankle_R'):
+        return mw @ pb[f'foot.{name[-1]}'].head
+    if name == 'ankles':
+        return (mw @ pb['foot.L'].head + mw @ pb['foot.R'].head) / 2
+    if name == 'knees':
+        return (mw @ pb['lowerleg01.L'].head + mw @ pb['lowerleg01.R'].head) / 2
+    if name == 'hips':
+        return mw @ pb['spine05'].head
+    if name == 'chest':
+        return mw @ pb['spine01'].head
+    if name == 'neck':
+        return mw @ pb['neck01'].head
+    if name == 'head':
+        return mw @ pb['head'].tail
+    if name == 'floor':
+        return Vector((0, 0, floor_z))
+    raise ValueError(v)
+
+
+def build_equipment(items, rig, body, floor_z, M, cam_az=30.0):
+    """Generic equipment pieces placed relative to the posed body (see poses/generate.py)."""
+    A = lambda v: anchor(rig, body, v, floor_z)  # noqa: E731
+    for it in items:
+        t = it['type']
+        if t == 'bench':
+            scene.flat_bench(it['top_z'], it['y0'], it['y1'], floor_z, M)
+        elif t == 'incline':
+            scene.incline_bench(it['seat_z'], it['seat_y'], it['back_deg'], floor_z, M, it.get('back_y', 0.10))
+        elif t == 'seat':
+            h = A(it.get('at', '@hips'))
+            top = h.z + it.get('dz', -0.11)
+            scene.box('seatpad', (h.x, h.y + it.get('dy', 0.0), top - 0.04), (0.38, 0.38, 0.08), M['pad'])
+            scene.cyl('seatpost', (h.x, h.y, floor_z), (h.x, h.y, top - 0.08), 0.035, M['frame'])
+            scene.box('seatbase', (h.x, h.y, floor_z + 0.02), (0.5, 0.6, 0.04), M['frame'])
+            if it.get('back'):
+                scene.box('seatback', (h.x, h.y + 0.2, top + 0.3), (0.38, 0.07, 0.55), M['pad'])
+        elif t == 'cable':
+            a, b = A(it['from']), A(it['to'])
+            if it.get('tower', True):
+                tz = max(a.z + 0.15, 2.0)
+                tx = a.x
+                # A tower in line with the lifter would hide them: slide it sideways, away from the camera,
+                # and reach the pulley with a short arm.
+                if abs(a.x) < 0.25:
+                    import math
+                    tx = a.x - 0.4 * (1 if math.sin(math.radians(cam_az)) >= 0 else -1)
+                    scene.cyl('pulleyarm', (tx, a.y, a.z), a, 0.03, M['frame'])
+                scene.box('tower', (tx, a.y + (0.12 if a.y >= b.y else -0.12), (floor_z + tz) / 2), (0.24, 0.18, tz - floor_z), M['frame'])
+            scene.cyl('pulley', a + Vector((-0.02, 0, 0)), a + Vector((0.02, 0, 0)), 0.045, M['steel'])
+            scene.cyl('cable', a, b, 0.006, M['steel'], verts=12)
+            hd = it.get('handle', 'bar')
+            if hd == 'bar':
+                gl, gr = A('@grip_L'), A('@grip_R')
+                scene.cyl('cablebar', gl + (gl - gr).normalized() * 0.08, gr + (gr - gl).normalized() * 0.08, 0.014, M['steel'])
+            elif hd == 'rope':
+                for side in ('L', 'R'):
+                    scene.cyl(f'rope{side}', b, A(f'@grip_{side}'), 0.012, M['pad'], verts=12)
+        elif t == 'bar':
+            c = A(it.get('at', '@grip'))
+            half = it.get('half', 0.6)
+            scene.cyl('fixedbar', c - Vector((half, 0, 0)), c + Vector((half, 0, 0)), 0.016, M['steel'])
+            if it.get('posts', True):
+                for sgn in (-1, 1):
+                    scene.cyl(f'barpost{sgn}', (c.x + sgn * half, c.y, floor_z), (c.x + sgn * half, c.y, c.z + 0.03), 0.03, M['frame'])
+        elif t == 'dip_bars':
+            for side in ('L', 'R'):
+                g = A(f'@grip_{side}')
+                scene.cyl(f'dip{side}', g - Vector((0, 0.3, 0)), g + Vector((0, 0.25, 0)), 0.022, M['steel'])
+                for dy in (-0.25, 0.2):
+                    scene.cyl(f'dippost{side}{dy}', (g.x, g.y + dy, floor_z), (g.x, g.y + dy, g.z), 0.025, M['frame'])
+        elif t == 'box':
+            c = A(it['center'])
+            scene.box(it.get('name', 'box'), c, it['size'], M[it.get('mat', 'pad')])
+        elif t == 'roller':
+            c = A(it['at'])
+            scene.cyl('roller', c - Vector((0.18, 0, 0)), c + Vector((0.18, 0, 0)), 0.045, M['pad'])
+        elif t == 'post':
+            c = A(it['at'])
+            scene.cyl('post', (c.x, c.y, floor_z), (c.x, c.y, c.z), it.get('r', 0.035), M['frame'])
+        elif t == 'plate':
+            c = A(it['at'])
+            n = Vector(it['normal']).normalized()
+            o = scene.box('sledplate', c, (0.55, 0.035, 0.5), M['frame'])
+            o.rotation_mode = 'QUATERNION'
+            o.rotation_quaternion = Vector((0, 1, 0)).rotation_difference(n)
+        elif t == 'line':
+            scene.cyl(it.get('name', 'rail'), A(it['from']), A(it['to']), it.get('r', 0.03), M['frame'])
+        elif t == 'handles':
+            # Machine grips: a short bar through each closed hand, plus a lever arm to its pivot.
+            for side in ('L', 'R'):
+                _, _, _, axis, g = makehuman.hand_basis(rig, side)
+                scene.cyl(f'grip{side}', g - axis * 0.075, g + axis * 0.075, 0.017, M['steel'])
+                if 'pivot' in it:
+                    pv = dict(it['pivot'])
+                    if side == 'R' and isinstance(pv.get('off'), list):
+                        pv['off'] = [-pv['off'][0], pv['off'][1], pv['off'][2]]
+                    pvt = A(pv)
+                    scene.cyl(f'lever{side}', pvt, g, 0.028, M['frame'])
+                    scene.cyl(f'pivotpost{side}', (pvt.x, pvt.y, floor_z), pvt, 0.04, M['frame'])
+        elif t == 'mat':
+            h = A('@hips')
+            scene.box('mat', (h.x, h.y, floor_z + 0.008), (0.7, 1.9, 0.016), M['pad'])
+
+
+def build_props(props, rig, M, db_axis=None):
+    if not props:
+        return
+    gl, gr = grip(rig, 'L'), grip(rig, 'R')
+    if props in ('barbell', 'ez', 'ez_small', 'bar_only'):
+        half = max(0.45 if props == 'barbell' else 0.32, (gl - gr).length / 2 + 0.12)
+        plates = {'barbell': (0.225, 0.2), 'ez': (0.17, 0.14), 'ez_small': (0.1, 0.08), 'bar_only': ()}[props]
+        scene.barbell('bb', (gl + gr) / 2, half, M, plates=plates)
+    elif props == 'dumbbells':
+        for side in ('L', 'R'):
+            _, _, _, axis, centre = makehuman.hand_basis(rig, side)
+            scene.dumbbell(f'db_{side}', centre, db_axis or axis, M)
+    elif props in ('dumbbell_L', 'dumbbell_R'):
+        _, _, _, axis, centre = makehuman.hand_basis(rig, props[-1])
+        scene.dumbbell('db', centre, axis, M)
+    elif props == 'dumbbell_single':
+        c = (gl + gr) / 2
+        scene.dumbbell('db', c, (0, 0, 1), M, plate_r=0.08)
+    elif props == 'plate':
+        c = (gl + gr) / 2
+        scene.cyl('heldplate', c - Vector((0, 0.02, 0)), c + Vector((0, 0.02, 0)), 0.2, M['frame'], verts=48)
+    elif props == 'trap_bar':
+        c = (gl + gr) / 2
+        w = (gl - gr).length / 2 + 0.05
+        for sgn in (-1, 1):
+            scene.cyl(f'tbside{sgn}', c + Vector((sgn * w, -0.3, 0)), c + Vector((sgn * w, 0.3, 0)), 0.016, M['steel'])
+            scene.cyl(f'tbend{sgn}', c + Vector((-w, sgn * 0.3, 0)), c + Vector((w, sgn * 0.3, 0)), 0.016, M['steel'])
+            scene.cyl(f'tbsleeve{sgn}', c + Vector((sgn * w, 0, 0)), c + Vector((sgn * (w + 0.35), 0, 0)), 0.016, M['steel'])
+            a = c + Vector((sgn * (w + 0.12), 0, 0))
+            scene.cyl(f'tbplate{sgn}', a, a + Vector((sgn * 0.05, 0, 0)), 0.225, M['frame'], verts=48)
 
 
 def clear_props():
@@ -80,6 +227,24 @@ def figure_bounds(body):
     return mn, mx
 
 
+def write_body_mask(body, path):
+    """Cheap extra render: alpha = where the BODY is visible (equipment held out, so anything in
+    front of the body cuts it away). check_renders.py only inspects these pixels."""
+    sc = bpy.context.scene
+    saved = (sc.cycles.samples, sc.cycles.use_denoising, sc.render.filepath)
+    others = [o for o in bpy.data.objects if o.type == 'MESH' and o is not body and not o.name.startswith('fist_')
+              and not o.get('fist')]
+    for o in others:
+        o.is_holdout = True
+    sc.cycles.samples = 1
+    sc.cycles.use_denoising = False
+    sc.render.filepath = path[:-4] + '.mask.png'
+    bpy.ops.render.render(write_still=True)
+    for o in others:
+        o.is_holdout = False
+    sc.cycles.samples, sc.cycles.use_denoising, sc.render.filepath = saved
+
+
 def glare():
     """Soft bloom around the glowing muscles (Blender 5 compositor)."""
     sc = bpy.context.scene
@@ -109,6 +274,8 @@ def main():
     ap.add_argument('ids', nargs='+')
     ap.add_argument('--size', type=int, default=1024)
     ap.add_argument('--samples', type=int, default=96)
+    ap.add_argument('--cam', help='debug override: "x,y,z,azimuth,elevation,distance"')
+    ap.add_argument('--frames', default='start,end')
     ap.add_argument('--model', default=os.path.join(HERE, 'source', 'muscles-src.glb'))
     args = ap.parse_args(sys.argv[sys.argv.index(__file__) + 1:] if __file__ in sys.argv else sys.argv[1:])
 
@@ -119,25 +286,49 @@ def main():
         spec = json.load(open(os.path.join(HERE, 'poses', f'{ex_id}.json')))
         ex = exercises[ex_id]
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        body, rig, _ = figure.build(args.model)
+        body, rig = makehuman.build()
         glow = {m: 'secondary' for m in ex['secondary']} | {m: 'primary' for m in ex['primary']}
-        for mat in body.data.materials:
-            scene.clay_material(mat, glow.get(mat.name))
+        if 'region' in body.data.attributes:
+            clay.set_glow_mask(body, glow)
+        body.data.materials.append(clay.material(normal_image=makehuman.normal_map()))
         M = scene.materials()
-        scene.lights()
+        rims = scene.lights()
+        figure_coll = bpy.data.collections.new('figure_only')
+        figure_coll.objects.link(body)
+        for r in rims:
+            r.light_linking.receiver_collection = figure_coll
         scene.settings(args.size, args.samples)
         glare()
 
         # Put the hips where the setup wants them (rest pelvis head is at J['pelvis']).
-        rest_pelvis = Vector(figure.J['pelvis'])
+        rest_pelvis = makehuman.rest_hips(rig)
         hips = Vector(spec.get('hips', list(rest_pelvis)))
         rig.location = hips - rest_pelvis
 
         cam_cfg = spec['camera']
-        for frame in ('start', 'end'):
+        if args.cam:
+            x, y, z, az, el, dist = map(float, args.cam.split(','))
+            cam_cfg = {'target': [x, y, z], 'azimuth': az, 'elevation': el, 'distance': dist, 'lens': 50}
+        # The lime rim sits behind the figure; on back views it would face the camera and tint the
+        # back green, so it is switched off there.
+        if abs(((cam_cfg['azimuth'] + 180) % 360) - 180) > 100:
+            from mathutils import Matrix
+            for r in rims:
+                r.data.energy = 0
+            # Turn the key/fill/top lights round so the back (the side we see) is modelled by light.
+            flip = Matrix.Rotation(3.14159265, 4, 'Z')
+            bpy.context.view_layer.update()
+            for o in bpy.data.objects:
+                if o.type == 'LIGHT' and o not in rims:
+                    o.matrix_world = flip @ o.matrix_world
+        shared_target = None
+        for frame in args.frames.split(','):
             clear_props()
             before = {o.name for o in bpy.data.objects}
-            dirs = mirrored({**spec.get('base', {}), **spec['frames'][frame]})
+            fr = dict(spec['frames'][frame])
+            fh = fr.pop('hips', None)
+            rig.location = (Vector(fh) if fh else hips) - rest_pelvis
+            dirs = mirrored({**spec.get('base', {}), **fr})
             pose(rig, dirs)
             floor_z = spec.get('floor', figure_min_z(body))
             setup = spec['setup']
@@ -149,15 +340,38 @@ def main():
                 gl, gr = grip(rig, 'L'), grip(rig, 'R')
                 c = (gl + gr) / 2
                 scene.lat_machine(s['seat_z'], s['seat_y'], floor_z, s['knee'], c, max(0.55, (gl - gr).length / 2 + 0.12), M)
-            props = spec.get('props')
-            if props == 'dumbbells':
-                for side in ('L', 'R'):
-                    scene.dumbbell(f'db_{side}', grip(rig, side), spec['frames'][frame].get('db_axis', spec.get('db_axis', [1, 0, 0])), M)
+            elif setup == 'flat_bench':
+                s = spec['bench']
+                scene.flat_bench(s['top_z'], s['y0'], s['y1'], floor_z, M)
+                if spec.get('uprights'):
+                    scene.bench_uprights(s['y1'] - 0.18, s['top_z'] + 0.55, floor_z, 0.55, M)
+            elif setup == 'cable_row':
+                s = spec['row']
+                gl, gr = grip(rig, 'L'), grip(rig, 'R')
+                scene.cable_row(s['seat_z'], s['seat_y'], s['foot_y'], floor_z, (gl + gr) / 2, M)
+            if spec.get('equipment'):
+                build_equipment(spec['equipment'], rig, body, floor_z, M, cam_cfg['azimuth'])
+            # Clay fists closed around the handles (the model's own hands are only bones).
+            hand_mat = bpy.data.materials.get('hand_clay')
+            if hand_mat is None:
+                hand_mat = bpy.data.materials.new('hand_clay')
+                scene.clay_material(hand_mat)
+            before_fists = {o.name for o in bpy.data.objects}
+            for side in spec.get('fists', ['L', 'R']):
+                wrist, d, palm, axis, g = makehuman.hand_basis(rig, side)
+                scene.fist(f'fist_{side}', wrist, d, palm, axis, g, hand_mat)
+            for o in bpy.data.objects:
+                if o.name not in before_fists:
+                    figure_coll.objects.link(o)
+            build_props(spec.get('props'), rig, M, spec['frames'][frame].get('db_axis') or spec.get('db_axis'))
             scene.floor(floor_z)
             tag_new(before)
 
+            # Frame both positions the same way: aim at the first frame's figure centre.
             mn, mx = figure_bounds(body)
-            target = Vector(cam_cfg.get('target', list((mn + mx) / 2)))
+            if shared_target is None:
+                shared_target = Vector(cam_cfg.get('target', list((mn + mx) / 2)))
+            target = shared_target
             for o in list(bpy.data.objects):
                 if o.type == 'CAMERA':
                     bpy.data.objects.remove(o, do_unlink=True)
@@ -166,6 +380,7 @@ def main():
             bpy.context.scene.render.filepath = path
             bpy.ops.render.render(write_still=True)
             print('wrote', path)
+            write_body_mask(body, path)
 
 
 if __name__ == '__main__':

@@ -18,4 +18,8 @@ const { EXERCISE_LIST } = require(path.join(__dirname, '../src/data/exercises.ts
 const { SWAPS } = require(path.join(__dirname, '../src/data/swaps.ts'));
 const out = EXERCISE_LIST.map((e) => ({ id: e.id, name: e.name, primary: e.primary, secondary: e.secondary, equipment: e.equipment, pattern: e.pattern, swaps: SWAPS[e.id] ?? null }));
 fs.writeFileSync(path.join(__dirname, 'exercises.json'), JSON.stringify(out, null, 1) + '\n');
+// The user's current Upper Body 5-Day split, in workout order: reviewed first on the contact sheet.
+const { DAYS } = require(path.join(__dirname, '../src/data/program.ts'));
+const upper = [...new Set(DAYS.flatMap((d) => d.exercises.flatMap((e) => e.options)))];
+fs.writeFileSync(path.join(__dirname, 'review-order.json'), JSON.stringify({ first: upper }, null, 1) + '\n');
 console.log(out.length, 'exercises');
