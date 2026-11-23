@@ -30,22 +30,23 @@ def mirrored(dirs):
     out = dict(dirs)
     for k, v in dirs.items():
         if k.endswith('_L'):
-            out.setdefault(k[:-2] + '_R', [-v[0], v[1], v[2]])
+            out.setdefault(k[:-2] + '_R', [-v[0], v[1], v[2], *(-x for x in v[3:])])
     return out
 
 
 def pose(rig, dirs):
+    """dirs[bone] = [x, y, z] or [x, y, z, twist_degrees] (twist turns the bone about its own axis)."""
     for pb in rig.pose.bones:
         pb.matrix_basis.identity()
     bpy.context.view_layer.update()
     for b in ORDER:
         if b in dirs:
-            figure.aim(rig, b, dirs[b])
+            v = dirs[b]
+            figure.aim(rig, b, v[:3], v[3] if len(v) > 3 else 0.0)
 
 
-def grip(rig, side, t=0.55):
-    h, tail = figure.bone_world(rig, f'hand_{side}')
-    return h + (tail - h) * t
+def grip(rig, side):
+    return figure.hand_frame(rig, side)[0]
 
 
 def clear_props():
@@ -109,6 +110,8 @@ def main():
     ap.add_argument('ids', nargs='+')
     ap.add_argument('--size', type=int, default=1024)
     ap.add_argument('--samples', type=int, default=96)
+    ap.add_argument('--cam', help='debug override: "x,y,z,azimuth,elevation,distance"')
+    ap.add_argument('--frames', default='start,end')
     ap.add_argument('--model', default=os.path.join(HERE, 'source', 'muscles-src.glb'))
     args = ap.parse_args(sys.argv[sys.argv.index(__file__) + 1:] if __file__ in sys.argv else sys.argv[1:])
 
@@ -124,7 +127,11 @@ def main():
         for mat in body.data.materials:
             scene.clay_material(mat, glow.get(mat.name))
         M = scene.materials()
-        scene.lights()
+        rims = scene.lights()
+        figure_coll = bpy.data.collections.new('figure_only')
+        figure_coll.objects.link(body)
+        for r in rims:
+            r.light_linking.receiver_collection = figure_coll
         scene.settings(args.size, args.samples)
         glare()
 
@@ -134,7 +141,10 @@ def main():
         rig.location = hips - rest_pelvis
 
         cam_cfg = spec['camera']
-        for frame in ('start', 'end'):
+        if args.cam:
+            x, y, z, az, el, dist = map(float, args.cam.split(','))
+            cam_cfg = {'target': [x, y, z], 'azimuth': az, 'elevation': el, 'distance': dist, 'lens': 50}
+        for frame in args.frames.split(','):
             clear_props()
             before = {o.name for o in bpy.data.objects}
             dirs = mirrored({**spec.get('base', {}), **spec['frames'][frame]})
@@ -149,10 +159,19 @@ def main():
                 gl, gr = grip(rig, 'L'), grip(rig, 'R')
                 c = (gl + gr) / 2
                 scene.lat_machine(s['seat_z'], s['seat_y'], floor_z, s['knee'], c, max(0.55, (gl - gr).length / 2 + 0.12), M)
+            # Clay fists closed around the handles (the model's own hands are only bones).
+            hand_mat = bpy.data.materials.get('hand_clay')
+            if hand_mat is None:
+                hand_mat = bpy.data.materials.new('hand_clay')
+                scene.clay_material(hand_mat)
+            for side in ('L', 'R'):
+                wrist, d, palm, axis = figure.hand_basis(rig, side)
+                scene.fist(f'fist_{side}', wrist, d, palm, axis, figure.hand_frame(rig, side)[0], hand_mat)
             props = spec.get('props')
             if props == 'dumbbells':
                 for side in ('L', 'R'):
-                    scene.dumbbell(f'db_{side}', grip(rig, side), spec['frames'][frame].get('db_axis', spec.get('db_axis', [1, 0, 0])), M)
+                    centre, axis = figure.hand_frame(rig, side)
+                    scene.dumbbell(f'db_{side}', centre, axis, M)
             scene.floor(floor_z)
             tag_new(before)
 

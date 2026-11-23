@@ -165,6 +165,7 @@ def build(glb_path):
     body.name = 'Figure'
     for poly in body.data.polygons:
         poly.use_smooth = True
+    add_shape_keys(body)
 
     # Armature
     arm_data = bpy.data.armatures.new('Rig')
@@ -189,7 +190,99 @@ def build(glb_path):
     return body, rig, regions_by_obj
 
 
-def aim(rig, bone, direction):
+# How far (metres) each region is pushed out along its normals by the "bulk" shape key:
+# turns the lean anatomy model into a bodybuilder build.
+BULK = {
+    'pec_major_upper': 0.016, 'pec_major_lower': 0.018,
+    'anterior_delt': 0.018, 'lateral_delt': 0.022, 'posterior_delt': 0.018,
+    'biceps': 0.016, 'brachialis': 0.010, 'triceps_long': 0.014, 'triceps_lateral': 0.016, 'triceps_medial': 0.010,
+    'brachioradialis': 0.010, 'forearm_flexors': 0.009, 'forearm_extensors': 0.009,
+    'upper_lats': 0.016, 'lower_lats': 0.012, 'teres_major': 0.012, 'rhomboids': 0.006,
+    'upper_traps': 0.020, 'mid_traps': 0.010, 'lower_traps': 0.008, 'erector_spinae': 0.010,
+    'serratus_anterior': 0.008, 'rectus_abdominis': 0.007, 'obliques': 0.008, 'transverse_abdominis': 0.004,
+    'neck_flexors': 0.006, 'neck_extensors': 0.008,
+    'glute_max': 0.014, 'glute_med': 0.010, 'hip_flexors': 0.006, 'adductors': 0.010,
+    'rectus_femoris': 0.018, 'vastus_group': 0.020, 'medial_hamstrings': 0.014, 'lateral_hamstrings': 0.014,
+    'gastrocnemius': 0.014, 'soleus': 0.010, 'tibialis_anterior': 0.006, 'fibularis': 0.005,
+}
+
+# Anatomical position: palms face forward (-Y).
+PALM = Vector((0, -1, 0))
+KNUCKLE_T = 0.36   # fraction of the wrist->fingertip segment where the fingers bend
+FIST_DEG = 105
+
+
+def _smooth(x):
+    x = max(0.0, min(1.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def add_shape_keys(body):
+    """'bulk': inflate muscles per region. 'fist': curl the fingers (and thumb) into a grip."""
+    me = body.data
+    region = [None] * len(me.vertices)
+    for poly in me.polygons:
+        name = me.materials[poly.material_index].name
+        for v in poly.vertices:
+            region[v] = name
+    basis = body.shape_key_add(name='Basis')
+    bulk = body.shape_key_add(name='bulk')
+    for v in me.vertices:
+        amt = BULK.get(region[v.index] or '', 0.0)
+        if amt:
+            bulk.data[v.index].co = v.co + v.normal * amt
+    bulk.value = 1.0
+
+    # The model's hands are bare bones and tendons; tuck them into the palm, where a sculpted
+    # clay fist (scene.fist) takes their place.
+    fist = body.shape_key_add(name='fist', from_mix=False)
+    for s in (1, -1):
+        w = Vector((J['wrist'][0] * s, J['wrist'][1], J['wrist'][2]))
+        f = Vector((J['fingers'][0] * s, J['fingers'][1], J['fingers'][2]))
+        L = (f - w).length
+        d = (f - w).normalized()
+        palm = w + d * (0.3 * L)
+        for v in me.vertices:
+            p = v.co
+            if (p.x > 0) != (s > 0):
+                continue
+            t = (p - w).dot(d) / L
+            if t < 0.05 or t > 2.2 or _seg_dist(p, w, f + d * 0.16) > 0.115:
+                continue
+            k = _smooth((t - 0.05) / 0.2)
+            fist.data[v.index].co = p.lerp(palm + (p - palm) * 0.25, k)
+    fist.value = 1.0
+
+
+def hand_frame(rig, side):
+    """Posed grip centre and the handle axis for a closed hand."""
+    pb = rig.pose.bones[f'hand_{side}']
+    rest = rig.data.bones[f'hand_{side}'].matrix_local.to_3x3()
+    R = (rig.matrix_world.to_3x3() @ pb.matrix.to_3x3()) @ rest.inverted()
+    s = 1 if side == 'L' else -1
+    w = Vector((J['wrist'][0] * s, J['wrist'][1], J['wrist'][2]))
+    f = Vector((J['fingers'][0] * s, J['fingers'][1], J['fingers'][2]))
+    d = (f - w).normalized()
+    L = (f - w).length
+    head = rig.matrix_world @ pb.head
+    centre = head + R @ (d * (KNUCKLE_T * L + 0.012) + PALM * 0.03)
+    axis = (R @ d.cross(PALM)).normalized()
+    return centre, axis
+
+
+def hand_basis(rig, side):
+    """Posed wrist position, finger direction, palm normal and handle axis for building a fist."""
+    pb = rig.pose.bones[f'hand_{side}']
+    rest = rig.data.bones[f'hand_{side}'].matrix_local.to_3x3()
+    R = (rig.matrix_world.to_3x3() @ pb.matrix.to_3x3()) @ rest.inverted()
+    s = 1 if side == 'L' else -1
+    w = Vector((J['wrist'][0] * s, J['wrist'][1], J['wrist'][2]))
+    f = Vector((J['fingers'][0] * s, J['fingers'][1], J['fingers'][2]))
+    d = (f - w).normalized()
+    return rig.matrix_world @ pb.head, (R @ d).normalized(), (R @ PALM).normalized(), (R @ d.cross(PALM)).normalized() * s
+
+
+def aim(rig, bone, direction, twist=0.0):
     """Point a pose bone along a world-space direction (minimal twist), keeping its head where the parent put it."""
     bpy.context.view_layer.update()
     pb = rig.pose.bones[bone]
@@ -197,6 +290,8 @@ def aim(rig, bone, direction):
     rest_dir = (rest.to_3x3() @ Vector((0, 1, 0))).normalized()
     target = (rig.matrix_world.inverted().to_3x3() @ Vector(direction)).normalized()
     rot = rest_dir.rotation_difference(target).to_matrix().to_4x4()
+    if twist:
+        rot = Matrix.Rotation(math.radians(twist), 4, target) @ rot
     head = pb.head.copy() if pb.parent is None else (pb.parent.matrix @ (pb.parent.bone.matrix_local.inverted() @ rest.translation))
     m = rot @ Matrix.Translation(-rest.translation) @ rest
     m.translation = head

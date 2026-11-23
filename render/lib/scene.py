@@ -160,13 +160,14 @@ def lights():
     area('fill', (2.8, -1.8, 1.4), (0, 0, 0.6), 45, 3.0)
     area('top', (0, 0, 4.0), (0, 0, 0.6), 50, 4.0)
     # Lime rim from behind, to sit the figure on the app's black glass.
-    area('rim_l', (-1.2, 3.2, 1.8), (0, 0, 0.8), 70, 0.8, LIME)
-    area('rim_r', (1.4, 3.0, 1.4), (0, 0, 0.8), 50, 0.8, LIME)
+    # Soft lime rim. Light linking (set by render.py) keeps it off the equipment.
+    rims = [area('rim_l', (-1.2, 3.2, 1.8), (0, 0, 0.8), 18, 1.6, LIME), area('rim_r', (1.4, 3.0, 1.4), (0, 0, 0.8), 12, 1.6, LIME)]
     world = bpy.data.worlds.new('w')
     world.use_nodes = True
     world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.16, 0.16, 0.17, 1)
     world.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.25
     bpy.context.scene.world = world
+    return rims
 
 
 def camera(target, azimuth, elevation, distance, lens=50):
@@ -199,3 +200,48 @@ def settings(size, samples):
     sc.view_settings.look = 'None'
     sc.view_settings.exposure = -0.6
     sc.cycles.max_bounces = 6
+
+
+def _ellipsoid(name, centre, axes, radii, mat):
+    """UV sphere scaled along three orthonormal axes."""
+    from mathutils import Matrix
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1, location=centre)
+    o = bpy.context.active_object
+    o.name = name
+    o.data.materials.append(mat)
+    for p in o.data.polygons:
+        p.use_smooth = True
+    a, b, c = (Vector(v).normalized() for v in axes)
+    m = Matrix((a * radii[0], b * radii[1], c * radii[2])).transposed().to_4x4()
+    m.translation = Vector(centre)
+    o.matrix_world = m
+    return o
+
+
+def _torus(name, centre, axis, major, minor, mat):
+    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=32, minor_segments=12, location=centre)
+    o = bpy.context.active_object
+    o.name = name
+    o.data.materials.append(mat)
+    for p in o.data.polygons:
+        p.use_smooth = True
+    o.rotation_mode = 'QUATERNION'
+    o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(Vector(axis).normalized())
+    return o
+
+
+def fist(name, wrist, d, palm, axis, grip, mat):
+    """Sculpted clay fist closed around a handle at `grip` running along `axis`."""
+    wrist, d, palm, axis, grip = (Vector(v) for v in (wrist, d, palm, axis, grip))
+    # Palm and back of the hand, from the wrist to the knuckles.
+    _ellipsoid(f'{name}_palm', wrist + d * 0.045 + palm * 0.006, (axis, d, palm), (0.042, 0.052, 0.022), mat)
+    # Four fingers wrapped round the handle, slightly staggered like a real grip.
+    for i, off in enumerate((-0.029, -0.0097, 0.0097, 0.029)):
+        _torus(f'{name}_finger{i}', grip + axis * off - d * (0.002 * abs(off) / 0.01), axis, 0.026, 0.0122 - 0.0007 * i, mat)
+    # Knuckle ridge so the fist reads as a fist from behind.
+    _ellipsoid(f'{name}_knuckles', grip - palm * 0.012 + d * 0.006, (axis, d, palm), (0.045, 0.02, 0.018), mat)
+    # Thumb over the front of the handle.
+    tip = grip + palm * 0.027 + axis * 0.012
+    base = wrist + d * 0.03 + palm * 0.012 + axis * 0.035
+    mid = (tip + base) / 2
+    _ellipsoid(f'{name}_thumb', mid, ((tip - base).normalized(), palm.cross(tip - base).normalized(), palm), ((tip - base).length / 2 + 0.01, 0.011, 0.011), mat)
