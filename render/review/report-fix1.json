@@ -1,0 +1,11 @@
+{
+ "ok": [
+  "triceps_pushdown",
+  "rope_pushdown",
+  "overhead_db_ext",
+  "rear_raise",
+  "bb_bent_row",
+  "db_shrug"
+ ],
+ "failed": {}
+}

@@ -225,7 +225,9 @@ P['cable_upright_row'] = standing(ARMS_DOWN, UPRIGHT_E, cam=CAM_CABLE, equipment
 P['front_raise'] = standing(FRONT_RAISE_S, FRONT_RAISE_E, props='dumbbells')
 P['cable_front_raise'] = standing(FRONT_RAISE_S, FRONT_RAISE_E, equipment=[cable_from(0, 0.45, -0.78, 'bar')], cam=CAM_CABLE)
 P['plate_front_raise'] = standing(arms([0.05, -0.15, -1], [-0.05, -0.2, -1]), arms([0.1, -1, 0.1], [-0.08, -1, 0.15]), props='plate', cam=CAM_SIDE)
-P['rear_raise'] = standing(REAR_S, REAR_E_T, props='dumbbells', torso=HINGE, legs=SOFT_KNEE, cam=CAM_REAR)
+# Start: dumbbells hanging under the chest, arms a little forward and out (no dark crevice at the armpit).
+REAR_S_OPEN = arms([0.22, -0.35, -1], [0.16, -0.32, -1])
+P['rear_raise'] = standing(REAR_S_OPEN, REAR_E_T, props='dumbbells', torso=HINGE, legs=SOFT_KNEE, cam=CAM_REAR)
 P['prone_rear_raise'] = spec(base={'pelvis': [0, -0.85, 0.5], 'spine': [0, -0.85, 0.5], 'chest': [0, -0.85, 0.5], 'neck': [0, -0.9, 0.4], 'head': [0, -0.9, 0.4],
                                    'thigh_L': [0.12, -0.35, -1], 'shin_L': [0.05, 0.3, -1], 'foot_L': [0.08, -1, -0.3]},
                              start=REAR_S, end=REAR_E, props='dumbbells', hips=[0, 0.3, 0.2], cam=CAM_SIDE,
