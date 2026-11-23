@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { EQUIPMENT_LABEL, EXERCISE_LIST, EXERCISES, loadsInjury, type Equipment } from '../data/exercises';
-import { EXERCISE_IMAGES } from '../data/exercise-images';
+import { howToImages } from './ExerciseParts';
 import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../data/muscles';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../data/program';
 import type { Program } from '../data/programs';
@@ -176,7 +176,7 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
       </ScrollView>
       <View style={{ gap: space.xs, marginTop: space.sm }}>
         {list.map((e) => {
-          const img = EXERCISE_IMAGES[e.id];
+          const img = howToImages(e.id);
           return (
             <Press key={e.id} onPress={() => onPick(e.id)} style={s.libRow} accessibilityRole="button" accessibilityLabel={`Add ${e.name}`}>
               {img ? <Image source={img.start} style={s.thumb} /> : <View style={[s.thumb, s.noThumb]}><Icon name="barbell" size={18} color={color.muted} /></View>}

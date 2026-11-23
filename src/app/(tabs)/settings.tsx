@@ -20,6 +20,7 @@ const CREDITS = [
   { label: 'BodyParts3D, © The Database Center for Life Science', url: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/' },
   { label: 'Gymmetry muscle map model', url: 'https://github.com/kalibismail/gymmetry-muscle-model' },
   { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+  { label: '3D exercise renders: MakeHuman body (CC0) + muscle detail (CC BY-SA 4.0)', url: 'https://github.com/makehumancommunity/mpfb2' },
   { label: 'Exercise photos: free-exercise-db (Unlicense)', url: 'https://github.com/yuhonas/free-exercise-db' },
 ];
 
