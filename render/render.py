@@ -36,30 +36,24 @@ def mirrored(dirs):
     return out
 
 
-def blend(a, b, t):
-    """Pose part-way from frame `a` to frame `b` (0..1): bone directions turn along the arc
-    between the two (slerp), twists and hips move linearly. Used for the looping videos."""
-    out = {}
-    for k in set(a) | set(b):
-        va, vb = a.get(k, b.get(k)), b.get(k, a.get(k))
-        if k == 'hips':
-            out[k] = list(Vector(va).lerp(Vector(vb), t))
-            continue
-        if not isinstance(va, list) or len(va) < 3:
-            out[k] = va
-            continue
-        da, db = Vector(va[:3]).normalized(), Vector(vb[:3]).normalized()
-        d = da.slerp(db, t) if da.dot(db) > -0.999 else da.lerp(db, t).normalized()
-        twist = (va[3] if len(va) > 3 else 0.0) * (1 - t) + (vb[3] if len(vb) > 3 else 0.0) * t
-        out[k] = [d.x, d.y, d.z, twist] if (len(va) > 3 or len(vb) > 3) else [d.x, d.y, d.z]
-    return out
-
-
 def video_frames(spec, n):
     """n frames looping start -> end -> start with an ease-in-out (slow at both ends, like a rep)."""
     import math
     s, e = spec['frames']['start'], spec['frames']['end']
-    return [(f'v{i:03d}', blend(s, e, (1 - math.cos(2 * math.pi * i / n)) / 2)) for i in range(n)]
+    only = os.environ.get("VIDEO_ONLY")  # debug: render just these frame numbers
+    keep = {int(x) for x in only.split(",")} if only else set(range(n))
+    # The start/end specs ride along for the props (db_axis); the pose itself is blended per bone.
+    return [(f"v{i:03d}", {**s, '_t': (1 - math.cos(2 * math.pi * i / n)) / 2}) for i in range(n) if i in keep]
+
+
+def posed_state(rig, spec, frame, hips, rest_pelvis):
+    """Pose one key frame exactly as the stills do; return (rig location, every bone's matrix_basis)."""
+    fr = dict(spec['frames'][frame])
+    fh = fr.pop('hips', None)
+    loc = (Vector(fh) if fh else hips) - rest_pelvis
+    rig.location = loc
+    pose(rig, mirrored({**spec.get('base', {}), **fr}))
+    return loc.copy(), {pb.name: pb.matrix_basis.copy() for pb in rig.pose.bones}
 
 
 def pose(rig, dirs):
@@ -355,6 +349,11 @@ def main():
         shared_floor = None
         if args.video:
             jobs = video_frames(spec, args.video)
+            # Both key frames posed exactly like the stills; every video frame is a smooth blend of
+            # the two (bone rotations slerped), so frame 0 IS the start image and the middle IS the end.
+            key_a = posed_state(rig, spec, 'start', hips, rest_pelvis)
+            key_b = posed_state(rig, spec, 'end', hips, rest_pelvis)
+            shoulder_on = any(k.startswith('shoulder_') for f in ('start', 'end') for k in {**spec.get('base', {}), **spec['frames'][f]})
             os.makedirs(os.path.join(HERE, 'out', 'video', ex_id), exist_ok=True)
         else:
             jobs = [(f, spec['frames'][f]) for f in args.frames.split(',')]
@@ -363,9 +362,13 @@ def main():
             before = {o.name for o in bpy.data.objects}
             fr = dict(frame_spec)
             fh = fr.pop('hips', None)
-            rig.location = (Vector(fh) if fh else hips) - rest_pelvis
-            dirs = mirrored({**spec.get('base', {}), **fr})
-            pose(rig, dirs)
+            t = fr.pop('_t', None)
+            if t is not None:
+                rig.location = key_a[0].lerp(key_b[0], t)
+                makehuman.pose_between(rig, key_a[1], key_b[1], t, shoulder_on)
+            else:
+                rig.location = (Vector(fh) if fh else hips) - rest_pelvis
+                pose(rig, mirrored({**spec.get('base', {}), **fr}))
             floor_z = spec.get('floor', shared_floor if shared_floor is not None else figure_min_z(body))
             if args.video and shared_floor is None:
                 # The start frame's floor for the whole loop, so the floor never jumps between frames.
