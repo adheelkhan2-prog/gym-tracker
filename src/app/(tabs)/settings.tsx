@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { NumberField } from '../../components/ExerciseParts';
 import { clearCrashLog, readCrashLog } from '../../crash';
 import { shareCrashLog } from '../../crashShare';
@@ -10,12 +10,8 @@ import { WeekMapper } from '../../components/ProgramParts';
 import { Button, Chip, Press, Screen, SectionTitle, Switch } from '../../components/ui';
 import { EXERCISES } from '../../data/exercises';
 import { exerciseFor } from '../../workout';
-import { DEFAULT_GYM, fmtPlate, type PlateColor } from '../../load';
 import { activeProgram, easingIn, todayKey, useStore } from '../../store';
 import { bottomClearance, color, font, leading, radius, size, space, touch, type } from '../../theme';
-
-const ALL_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5];
-const SWATCHES = ['#E5322D', '#2F6BFF', '#F5C518', '#2DBE60', '#F2F2F2', '#1A1A1A', '#FF7A1A', '#8E5CFF'];
 
 /** Every third-party asset in the app, grouped by where it shows up (see src/data/asset-licences.md). */
 const CREDITS: { title: string; note: string; links: { label: string; url: string }[] }[] = [
@@ -74,9 +70,6 @@ export default function SettingsScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const program = activeProgram(state);
   const slots = program.days.flatMap((d) => d.exercises.filter((e) => e.options.length > 1).map((e) => ({ day: d, plan: e })));
-  const gym = state.gym;
-  const setGym = (patch: Partial<typeof gym>) => update((st) => ({ ...st, gym: { ...st.gym, ...patch } }));
-  const setColor = (i: number, patch: Partial<PlateColor>) => setGym({ colors: gym.colors.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
   // Every machine you've set up stays listed, even while a field is cleared to type a new value.
   const machines = Object.entries(state.machines).filter(([id]) => EXERCISES[id]);
 
@@ -181,72 +174,9 @@ export default function SettingsScreen() {
         })}
       </View>
 
-      <SectionTitle
-        right={
-          <Press onPress={() => setGym(DEFAULT_GYM)} style={s.link} accessibilityRole="button">
-            <Text style={s.linkText}>Reset</Text>
-          </Press>
-        }
-      >
-        My gym
-      </SectionTitle>
+      <SectionTitle>Machine stacks</SectionTitle>
       <Glass r={radius.xxl} style={{ padding: space.lg, gap: space.xl }}>
-        <View style={s.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.h3}>Bar weight</Text>
-            <Text style={type.small}>kg, used for barbell plate maths.</Text>
-          </View>
-          <NumberField value={gym.bar} onChange={(n) => n !== undefined && setGym({ bar: n })} label="Bar weight in kilograms" />
-        </View>
         <View style={{ gap: space.sm }}>
-          <Text style={type.h3}>Plates you have (kg)</Text>
-          <View style={s.wrap}>
-            {ALL_PLATES.map((p) => {
-              const on = gym.plates.includes(p);
-              return (
-                <Chip
-                  key={p}
-                  label={fmtPlate(p)}
-                  active={on}
-                  onPress={() => setGym({ plates: on ? gym.plates.filter((x) => x !== p) : [...gym.plates, p].sort((a, b) => b - a) })}
-                />
-              );
-            })}
-          </View>
-        </View>
-        <View style={{ gap: space.sm }}>
-          <Text style={type.h3}>Plate colours</Text>
-          <Text style={type.small}>Match your gym. Tap a swatch to change its colour.</Text>
-          {gym.colors.map((c, i) => (
-            <View key={c.id} style={s.colorRow}>
-              <Press
-                onPress={() => setColor(i, { hex: SWATCHES[(SWATCHES.indexOf(c.hex) + 1) % SWATCHES.length] })}
-                style={[s.swatch, { backgroundColor: c.hex }]}
-                accessibilityRole="button"
-                accessibilityLabel={`${c.name} plate colour. Tap to change`}
-              >
-                <View />
-              </Press>
-              <TextInput value={c.name} onChangeText={(t) => setColor(i, { name: t })} style={s.colorName} accessibilityLabel={`Colour ${i + 1} name`} />
-              <NumberField value={c.kg} onChange={(n) => n !== undefined && setColor(i, { kg: n })} label={`${c.name} plate kilograms`} />
-              <Text style={s.kg}>kg</Text>
-              <Press onPress={() => setGym({ colors: gym.colors.filter((_, j) => j !== i) })} style={s.del} accessibilityRole="button" accessibilityLabel={`Remove ${c.name}`}>
-                <Icon name="close" size={16} color={color.muted} />
-              </Press>
-            </View>
-          ))}
-          <Button
-            size="sm"
-            variant="secondary"
-            icon="plus"
-            label="Add colour"
-            onPress={() =>
-              setGym({ colors: [...gym.colors, { id: `c${gym.colors.length}-${Date.now().toString(36)}`, name: 'New', hex: SWATCHES[gym.colors.length % SWATCHES.length], kg: 2.5 }] })
-            }
-          />
-        </View>
-        <View style={{ gap: space.sm }}>
-          <Text style={type.h3}>Machine stacks</Text>
           {machines.length === 0 ? (
             <Text style={type.small}>Pick “Machine pin” on a machine or cable exercise, then set its kg per plate there.</Text>
           ) : (

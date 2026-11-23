@@ -4,13 +4,13 @@ import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { INJURY_REGIONS, type MuscleId } from './data/muscles';
 import { DEFAULT_WEEK, pickOption, type WorkoutDay } from './data/program';
 import { PROGRAMS, hasLegWork, type Program } from './data/programs';
-import { DEFAULT_GYM, stackKg, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
+import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
 /**
  * One set. `reps` holds seconds for timed exercises; `weight` is empty for reps-only ones.
  * `weight` is in the set's own unit `u` (kg or lb), so switching units never rewrites history.
- * `load` keeps the pin / plates / colours the set was logged with.
+ * `load` keeps the machine pin the set was logged with.
  */
 export type SetEntry = { weight: string; reps: string; done: boolean; u?: Unit; load?: LoadInfo };
 /** `carried`: sets of this slot done today on another exercise before a mid-workout swap. They stay
@@ -43,7 +43,6 @@ export type State = {
   swaps: Record<string, string>;
   loadTypes: Record<string, LoadType>;
   machines: Record<string, MachineSetup>;
-  gym: Gym;
   /** Date injury mode was turned off: shows the "ease in" card for two weeks. */
   easeInFrom: string | null;
   easeInDismissed: boolean;
@@ -69,7 +68,6 @@ export const DEFAULT_STATE: State = {
   swaps: {},
   loadTypes: {},
   machines: {},
-  gym: DEFAULT_GYM,
   easeInFrom: null,
   easeInDismissed: false,
 };
@@ -117,7 +115,7 @@ export async function loadState(): Promise<State | null> {
 
 /** Turn a saved state from any version into the current shape. */
 export function migrate(raw: unknown, fromOld: boolean): State {
-  const r = (raw ?? {}) as Partial<State> & { logs?: Record<string, Record<string, unknown>> };
+  const r = (raw ?? {}) as Partial<State> & { logs?: Record<string, Record<string, unknown>>; gym?: LegacyGym };
   // Sets saved before v3 have no unit of their own: they were typed in the unit chosen at the time.
   const legacyUnit: Unit = r.unit === 'kg' ? 'kg' : 'lb';
   const logs: State['logs'] = {};
@@ -130,11 +128,13 @@ export function migrate(raw: unknown, fromOld: boolean): State {
       const newId = fromOld ? OLD_IDS[id] : id;
       if (!newId || (fromOld && !EXERCISES[newId])) continue;
       const log = Array.isArray(v) ? { sets: v as SetEntry[] } : (v as ExerciseLog);
-      out[newId] = { ...log, sets: (log.sets ?? []).map((st) => (st.u ? st : { ...st, u: legacyUnit })) };
+      out[newId] = { ...log, sets: (log.sets ?? []).map((st) => plateToKg(st.u ? st : { ...st, u: legacyUnit }, r.gym)) };
     }
     if (Object.keys(out).length) logs[date] = out;
   }
-  const merged = { ...DEFAULT_STATE, ...(r as Partial<State>) };
+  const { gym: _gym, ...known } = r; // My gym settings were removed
+  void _gym;
+  const merged = { ...DEFAULT_STATE, ...(known as Partial<State>) };
   const program = programById(merged, merged.programId) ?? PROGRAMS[0];
   const validWeek =
     Array.isArray(r.week) && r.week.length === 7 && r.week.every((d) => d === null || program.days.some((x) => x.id === d));
@@ -145,8 +145,33 @@ export function migrate(raw: unknown, fromOld: boolean): State {
     logs,
     sessions: fromOld ? {} : (r.sessions ?? {}),
     variants: r.variants ?? {},
-    gym: { ...DEFAULT_GYM, ...(r.gym ?? {}) },
+    // Barbell-plate and colour-plate logging were removed: those exercises go back to kg/lb.
+    loadTypes: Object.fromEntries(Object.entries(r.loadTypes ?? {}).filter(([id, t]) => loadTypesFor(id).includes(t))),
   };
+}
+
+/** The "My gym" settings older versions saved (bar and colour-plate weights), for converting old sets. */
+type LegacyGym = { bar?: number; colors?: { id: string; kg: number }[] };
+type LegacyLoad = { t: string; pin?: number; plates?: number[]; colors?: string[]; bar?: number };
+const LEGACY_COLOURS: Record<string, number> = { red: 25, blue: 20, yellow: 15, green: 10, white: 5 };
+
+/**
+ * Sets logged with barbell plates or colour plates (removed) become plain kg sets. Those sets
+ * already saved their total in kg; it's recomputed from the plates only if it's missing, so history,
+ * charts and PRs stay exactly the same.
+ */
+export function plateToKg(st: SetEntry, gym?: LegacyGym): SetEntry {
+  const l = st.load as LegacyLoad | undefined;
+  if (!l || (l.t !== 'plates' && l.t !== 'colors')) return st;
+  const { load: _old, ...rest } = st;
+  void _old;
+  if (st.weight !== '' && Number.isFinite(Number(st.weight))) return { ...rest, u: st.u ?? 'kg' };
+  const side =
+    l.t === 'plates'
+      ? (l.plates ?? []).reduce((a, b) => a + b, 0)
+      : (l.colors ?? []).reduce((a, c) => a + (gym?.colors?.find((x) => x.id === c)?.kg ?? LEGACY_COLOURS[c] ?? 0), 0);
+  const kg = (l.bar ?? 0) + 2 * side;
+  return { ...rest, weight: String(Math.round(kg * 100) / 100), u: 'kg' };
 }
 
 // ---------- Programs ----------

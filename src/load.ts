@@ -1,19 +1,17 @@
-// Load types: how the weight on a set is entered, and how it turns into kilograms.
-// Plates and machine settings are always kilograms (that's what's printed on them); the
-// kg/lb switch only changes what is shown.
+// Load types: how the weight on a set is entered (kg/lb, machine pin, bodyweight, timed), and how
+// it turns into kilograms. Machine settings are always kilograms (that's what's printed on the
+// stack); the kg/lb switch only changes what is shown.
 
 import type { LogKind } from './data/exercises';
 import { EXERCISES } from './data/exercises';
 
 export type Unit = 'kg' | 'lb';
 
-export type LoadType = 'weight' | 'stack' | 'plates' | 'colors' | 'bodyweight' | 'timed';
+export type LoadType = 'weight' | 'stack' | 'bodyweight' | 'timed';
 
 export const LOAD_LABEL: Record<LoadType, string> = {
   weight: 'Weight',
   stack: 'Machine pin',
-  plates: 'Barbell plates',
-  colors: 'Colour plates',
   bodyweight: 'Bodyweight',
   timed: 'Timed',
 };
@@ -21,47 +19,19 @@ export const LOAD_LABEL: Record<LoadType, string> = {
 export const LOAD_HINT: Record<LoadType, string> = {
   weight: 'Type the weight in kg or lb',
   stack: 'Log the pin number; add kg per plate to see the weight',
-  plates: 'Tap the plates on one side; bar included',
-  colors: 'Tap the coloured plates on one side',
   bodyweight: 'Reps only',
   timed: 'Seconds only',
 };
 
-/** Extra detail saved with a set for the non-plain load types. */
+/** Extra detail saved with a set for the machine-pin load type. */
 export type LoadInfo = {
   t: LoadType;
   /** Machine stack pin / plate number. */
   pin?: number;
-  /** Plates on ONE side, in kg (plates load type). */
-  plates?: number[];
-  /** Colour ids on ONE side (colors load type). */
-  colors?: string[];
-  /** Bar or sled weight in kg used for this set. */
-  bar?: number;
 };
 
-export type PlateColor = { id: string; name: string; hex: string; kg: number };
-
-export type Gym = {
-  bar: number;
-  /** Plate sizes the gym has, kg. */
-  plates: number[];
-  colors: PlateColor[];
-};
-
-export type MachineSetup = { perPlate?: number; start?: number; bar?: number };
-
-export const DEFAULT_GYM: Gym = {
-  bar: 20,
-  plates: [25, 20, 15, 10, 5, 2.5, 1.25],
-  colors: [
-    { id: 'red', name: 'Red', hex: '#E5322D', kg: 25 },
-    { id: 'blue', name: 'Blue', hex: '#2F6BFF', kg: 20 },
-    { id: 'yellow', name: 'Yellow', hex: '#F5C518', kg: 15 },
-    { id: 'green', name: 'Green', hex: '#2DBE60', kg: 10 },
-    { id: 'white', name: 'White', hex: '#F2F2F2', kg: 5 },
-  ],
-};
+/** Machine setup: kg per stack plate and the weight at pin 1. */
+export type MachineSetup = { perPlate?: number; start?: number };
 
 export const LB = 0.45359237;
 
@@ -76,9 +46,6 @@ export const round1 = (n: number) => {
 
 export const fmtKg = (kg: number, u: Unit) => `${round1(fromKg(kg, u))} ${u}`;
 
-/** Plate sizes keep their real precision: 1.25 stays 1.25. */
-export const fmtPlate = (kg: number) => String(Math.round(kg * 100) / 100);
-
 /** Which load types make sense for an exercise. The first one is the default. */
 export function loadTypesFor(id: string): LoadType[] {
   const ex = EXERCISES[id];
@@ -90,12 +57,6 @@ export function loadTypesFor(id: string): LoadType[] {
     case 'machine':
     case 'cable':
       return ['stack', 'weight'];
-    case 'barbell':
-    case 'smith':
-    case 'ez_bar':
-    case 'trap_bar':
-    case 'plate_loaded':
-      return ['weight', 'plates', 'colors'];
     default:
       return ['weight'];
   }
@@ -109,50 +70,23 @@ export function loadTypeOf(id: string, saved: Record<string, LoadType>) {
   return s && loadTypesFor(id).includes(s) ? s : defaultLoadType(id);
 }
 
-/** Default bar/sled weight for an exercise: 0 for plate-loaded machines and Smith, gym bar otherwise. */
-export function barFor(id: string, gym: Gym, machine?: MachineSetup) {
-  if (machine?.bar !== undefined) return machine.bar;
-  const eq = EXERCISES[id]?.equipment;
-  if (eq === 'plate_loaded' || eq === 'smith') return 0;
-  if (eq === 'ez_bar') return 10;
-  return gym.bar;
-}
-
-export const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-
-export const platesTotal = (plates: number[], bar: number) => bar + 2 * sum(plates);
-
-export const colorsKg = (colors: string[], gym: Gym) =>
-  sum(colors.map((c) => gym.colors.find((x) => x.id === c)?.kg ?? 0));
-
 /** kg for a stack pin, or null when the machine isn't set up. Pin 1 = the starting weight. */
 export function stackKg(pin: number, m?: MachineSetup) {
   if (!m?.perPlate) return null;
   return (m.start ?? m.perPlate) + (pin - 1) * m.perPlate;
 }
 
-/** "2×20 + 2×5 + bar" style breakdown for one side of plates. */
-export function platesText(plates: number[], bar: number) {
-  const counts = new Map<number, number>();
-  for (const p of plates) counts.set(p, (counts.get(p) ?? 0) + 1);
-  const parts = [...counts.entries()].sort((a, b) => b[0] - a[0]).map(([kg, n]) => `${n * 2}×${fmtPlate(kg)}`);
-  if (bar > 0) parts.push('bar');
-  return parts.length ? parts.join(' + ') : 'Empty bar';
-}
-
 /** Does a set need a weight number for this kind? */
 export const isWeighted = (kind: LogKind) => kind === 'weight_reps' || kind === 'weight_time';
 
-/** kg for a load (pin, plates or colour plates), or null when it can't be known yet (pin on a machine without kg per plate). */
-export function loadKg(l: LoadInfo, gym: Gym, machine?: MachineSetup): number | null {
+/** kg for a machine pin, or null when it can't be known yet (machine without kg per plate). */
+export function loadKg(l: LoadInfo, machine?: MachineSetup): number | null {
   if (l.t === 'stack') return l.pin !== undefined ? stackKg(l.pin, machine) : null;
-  if (l.t === 'plates') return platesTotal(l.plates ?? [], l.bar ?? 0);
-  if (l.t === 'colors') return (l.bar ?? 0) + 2 * colorsKg(l.colors ?? [], gym);
   return null;
 }
 
-/** The saved weight for a set logged with a load: always kg (plates and pins are kg), plus the load itself. */
-export function weightFromLoad(l: LoadInfo, gym: Gym, machine?: MachineSetup): { weight: string; u: Unit; load: LoadInfo } {
-  const kg = loadKg(l, gym, machine);
+/** The saved weight for a set logged with a pin: always kg (stack plates are kg), plus the pin. */
+export function weightFromLoad(l: LoadInfo, machine?: MachineSetup): { weight: string; u: Unit; load: LoadInfo } {
+  const kg = loadKg(l, machine);
   return { weight: kg === null ? '' : String(Math.round(kg * 100) / 100), u: 'kg', load: l };
 }

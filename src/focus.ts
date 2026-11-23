@@ -39,7 +39,7 @@ export type Suggestion = {
  * 3. else last session's set i, one step heavier (or one pin up) when every set last time hit
  *    the top of the range, with reps back at the bottom of the range;
  * 4. else the plan's target reps, with no weight yet (first time).
- * The load type (pin, plates, colours) and any swap are remembered elsewhere and used as is.
+ * The load type (kg/lb or machine pin) and any swap are remembered elsewhere and used as is.
  */
 export function suggestSet(state: State, exerciseId: string, plan: PlannedExercise | undefined, date: string, i: number): Suggestion {
   const ex = EXERCISES[exerciseId];
@@ -54,7 +54,7 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
   const prev = previousSession(state.logs, exerciseId, date);
   const last = prev ? (prev.sets[i] ?? prev.sets[prev.sets.length - 1]) : undefined;
 
-  const withLoad = (l: LoadInfo, reps: string): SetEntry => ({ ...weightFromLoad(l, state.gym, machine), reps, done: false });
+  const withLoad = (l: LoadInfo, reps: string): SetEntry => ({ ...weightFromLoad(l, machine), reps, done: false });
   const plain = (w: number | null, reps: string): SetEntry =>
     weighted ? { weight: w === null ? '' : round1(w), u: unit, reps, done: false } : { weight: '', reps, done: false };
 

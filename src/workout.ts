@@ -2,7 +2,7 @@
 import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { pickOption, targetTop, type PlannedExercise, type WorkoutDay } from './data/program';
 import { dayTitle } from './theme';
-import { fmtKg, platesText, type Gym, type Unit } from './load';
+import { fmtKg, type Unit } from './load';
 import { doneSets, kgOf, num, type ExerciseLog, type SetEntry, type State } from './store';
 
 /** The exercise actually done for a slot: a remembered swap, else the plan's own pick. */
@@ -58,26 +58,20 @@ export function emptySets(n: number): SetEntry[] {
   return Array.from({ length: n }, () => ({ weight: '', reps: '', done: false }));
 }
 
-/** Colour names for a colour-plate set, e.g. "red + blue". */
-export const colorNames = (ids: string[], gym: Gym) =>
-  ids.map((c) => gym.colors.find((x) => x.id === c)?.name.toLowerCase() ?? c).join(' + ');
-
-/** The load part of a set: "Pin 7 · 49 kg", "2×20 + bar · 60 kg", "50 kg". */
-export function loadText(s: SetEntry, unit: Unit, gym: Gym) {
+/** The load part of a set: "Pin 7 · 49 kg", "Pin 7", "50 kg". */
+export function loadText(s: SetEntry, unit: Unit) {
   const kg = kgOf(s);
   const w = kg !== null ? fmtKg(kg, unit) : '';
   const l = s.load;
   if (l?.t === 'stack' && l.pin !== undefined) return w ? `Pin ${l.pin} · ${w}` : `Pin ${l.pin}`;
-  if (l?.t === 'plates' && l.plates) return `${platesText(l.plates, l.bar ?? 0)} · ${w}`;
-  if (l?.t === 'colors' && l.colors) return `${l.colors.length ? colorNames(l.colors, gym) : 'empty'}${l.bar ? ' + bar' : ''} · ${w}`;
   return w;
 }
 
 /** A whole set as text: "Pin 7 · 49 kg × 10", "12 reps", "45 s". */
-export function setText(s: SetEntry, kind: LogKind, unit: Unit, gym: Gym) {
+export function setText(s: SetEntry, kind: LogKind, unit: Unit) {
   if (kind === 'reps') return `${s.reps} reps`;
   if (kind === 'time') return `${s.reps} s`;
-  return `${loadText(s, unit, gym)} × ${s.reps}${kind === 'weight_time' ? ' s' : ''}`;
+  return `${loadText(s, unit)} × ${s.reps}${kind === 'weight_time' ? ' s' : ''}`;
 }
 
 export const logFor = (state: State, date: string, id: string): ExerciseLog | undefined => state.logs[date]?.[id];

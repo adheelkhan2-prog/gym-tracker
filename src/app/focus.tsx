@@ -180,7 +180,7 @@ export default function FocusScreen() {
     haptic.tap();
     if (lt === 'stack' && weighted) {
       const pin = Math.max(1, (value.load?.pin ?? 0) + dir);
-      setValue({ ...value, ...weightFromLoad({ t: 'stack', pin }, state.gym, machine) });
+      setValue({ ...value, ...weightFromLoad({ t: 'stack', pin }, machine) });
     } else {
       const w = Math.max(0, (num(value.weight) ?? 0) + dir * step);
       setValue({ ...value, weight: round1(w), u: unit, load: undefined });
@@ -280,10 +280,10 @@ export default function FocusScreen() {
       : value.reps;
   const bigUnit = weighted ? (lt === 'stack' && value.weight === '' ? '' : unit) : kind === 'time' ? 's' : 'reps';
   const repsLine = weighted ? `× ${value.reps || '—'}${kind === 'weight_time' ? ' s' : ' reps'}` : '';
-  const loadLine = weighted && lt !== 'weight' ? loadText({ ...value, done: false }, unit, state.gym) : '';
+  const loadLine = weighted && lt !== 'weight' ? loadText({ ...value, done: false }, unit) : '';
   const clay = howToImages(id);
   const fig = clay?.clay ? (exDone ? clay.end : clay.start) : null;
-  const lastLine = suggestion.last ? `Last time ${setText(suggestion.last, kind, unit, state.gym)}` : 'First time: pick a weight you can do with good form';
+  const lastLine = suggestion.last ? `Last time ${setText(suggestion.last, kind, unit)}` : 'First time: pick a weight you can do with good form';
   const why = editing !== null ? `Editing set ${editing + 1}` : suggestion.reason === 'up' ? `Up ${lt === 'stack' ? 'a pin' : `${step} ${unit}`}: you hit the top of the range last time` : suggestion.reason === 'today' ? 'Same as your last set' : '';
 
   return (
@@ -358,7 +358,7 @@ export default function FocusScreen() {
                   <DoneRow
                     key={`${id}-${k}-${x.weight}-${x.reps}`}
                     n={k + 1}
-                    text={setText(x, kind, unit, state.gym)}
+                    text={setText(x, kind, unit)}
                     editing={editing === k}
                     onEdit={() => {
                       haptic.setDone();
@@ -399,7 +399,7 @@ export default function FocusScreen() {
                     onType={(n) =>
                       setValue(
                         lt === 'stack'
-                          ? { ...value, ...weightFromLoad({ t: 'stack', pin: Math.max(1, Math.round(n)) }, state.gym, machine) }
+                          ? { ...value, ...weightFromLoad({ t: 'stack', pin: Math.max(1, Math.round(n)) }, machine) }
                           : { ...value, weight: round1(Math.max(0, n)), u: unit, load: undefined },
                       )
                     }
@@ -442,7 +442,7 @@ export default function FocusScreen() {
           endsAt={restEnd}
           total={restTotal}
           tint={color.accent}
-          nextLabel={next || !exDone ? (exDone && next ? EXERCISES[next.exerciseId].name : `Set ${Math.min(slotSet + 1, plan.sets)} · ${setText(suggestSet(state, id, plan, date, cur).set, kind, unit, state.gym)}`) : 'Finish'}
+          nextLabel={next || !exDone ? (exDone && next ? EXERCISES[next.exerciseId].name : `Set ${Math.min(slotSet + 1, plan.sets)} · ${setText(suggestSet(state, id, plan, date, cur).set, kind, unit)}`) : 'Finish'}
           skipLabel="Skip"
           sound={state.restSound}
           onAdd={() => {

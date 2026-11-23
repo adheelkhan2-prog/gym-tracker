@@ -6,23 +6,11 @@ import { howToImages } from '../data/how-to';
 import { Vignette } from './glass';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
-import { haptic } from '../feedback';
-import {
-  colorsKg,
-  fmtKg,
-  fmtPlate,
-  platesText,
-  platesTotal,
-  round1,
-  sum,
-  type Gym,
-  type MachineSetup,
-  type Unit,
-} from '../load';
+import { round1, type MachineSetup } from '../load';
 import { color, font, radius, size, space, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
-import { Badge, Button, Chip, Press } from './ui';
+import { Badge, Button, Press } from './ui';
 
 // ---------- How-to images ----------
 
@@ -170,122 +158,6 @@ export function SwapSheet({
   );
 }
 
-// ---------- Plate pickers ----------
-
-/** One side of the bar, drawn as plate chips. */
-function SideBar({ items, onRemove }: { items: { key: string; label: string; hex?: string; kg: number }[]; onRemove: (i: number) => void }) {
-  return (
-    <View style={s.bar}>
-      <View style={s.barShaft} />
-      <View style={s.barRow}>
-        {items.length === 0 && <Text style={type.small}>Tap plates below to load one side</Text>}
-        {items.map((p, i) => (
-          <Press
-            key={`${p.key}-${i}`}
-            onPress={() => onRemove(i)}
-            style={[s.plateOn, { height: 40 + Math.min(40, p.kg * 1.6), backgroundColor: p.hex ?? color.surface3 }]}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${p.label}`}
-          >
-            <Text style={[s.plateOnText, p.hex && { color: contrast(p.hex) }]}>{p.label}</Text>
-          </Press>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const contrast = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16);
-  const l = ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114;
-  return l > 150 ? color.ink : color.text;
-};
-
-export function PlateSheet({
-  mode,
-  gym,
-  unit,
-  initial,
-  bar: initialBar,
-  onSave,
-  onClose,
-}: {
-  mode: 'plates' | 'colors';
-  gym: Gym;
-  unit: Unit;
-  initial: (number | string)[];
-  bar: number;
-  onSave: (side: (number | string)[], bar: number) => void;
-  onClose: () => void;
-}) {
-  const [side, setSide] = useState<(number | string)[]>(initial);
-  const [bar, setBar] = useState(initialBar);
-  const kgOfItem = (x: number | string) => (typeof x === 'number' ? x : (gym.colors.find((c) => c.id === x)?.kg ?? 0));
-  const total = mode === 'plates' ? platesTotal(side as number[], bar) : bar + 2 * colorsKg(side as string[], gym);
-  const items = side.map((x) => {
-    if (typeof x === 'number') return { key: String(x), label: fmtPlate(x), kg: x };
-    const c = gym.colors.find((cc) => cc.id === x);
-    return { key: x, label: c ? fmtPlate(c.kg) : '?', hex: c?.hex, kg: c?.kg ?? 0 };
-  });
-  const add = (x: number | string) => {
-    haptic.tap();
-    setSide((v) => [...v, x].sort((a, b) => kgOfItem(b) - kgOfItem(a)));
-  };
-  return (
-    <Sheet
-      title={mode === 'plates' ? 'Load the bar' : 'Tap the colours'}
-      subtitle="One side only; the other side matches."
-      onClose={onClose}
-      testID="plate-sheet"
-      footer={
-        <View style={{ marginTop: space.sm, gap: space.sm }}>
-          <Text style={s.total} accessibilityLiveRegion="polite" testID="plate-total">
-            {mode === 'plates' ? platesText(side as number[], bar) : `${side.length ? `${side.length * 2} plates` : 'No plates'}${bar ? ' + bar' : ''}`} ={' '}
-            <Text style={{ color: color.accentText }}>{fmtKg(total, unit)}</Text>
-          </Text>
-          <Button label="Use this weight" icon="check" onPress={() => onSave(side, bar)} />
-        </View>
-      }
-    >
-      <SideBar items={items} onRemove={(i) => setSide((v) => v.filter((_, j) => j !== i))} />
-      <Text style={s.sub}>{mode === 'plates' ? 'Plates (kg)' : 'Your gym’s colours'}</Text>
-      <View style={s.plateGrid}>
-        {mode === 'plates'
-          ? gym.plates.map((p) => (
-              <Press key={p} onPress={() => add(p)} style={s.plateBtn} accessibilityRole="button" accessibilityLabel={`Add ${p} kg plate`}>
-                <Text style={s.plateBtnText}>{fmtPlate(p)}</Text>
-              </Press>
-            ))
-          : gym.colors.map((c) => (
-              <Press
-                key={c.id}
-                onPress={() => add(c.id)}
-                style={[s.plateBtn, { backgroundColor: c.hex, borderColor: c.hex }]}
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${c.name} plate, ${c.kg} kg`}
-              >
-                <Text style={[s.plateBtnText, { color: contrast(c.hex) }]}>{c.name}</Text>
-                <Text style={[s.plateKg, { color: contrast(c.hex) }]}>{fmtPlate(c.kg)} kg</Text>
-              </Press>
-            ))}
-      </View>
-      <Text style={s.sub}>Bar or sled (kg)</Text>
-      <View style={s.plateGrid}>
-        {[0, 10, 15, 20].map((b) => (
-          <Chip key={b} label={b === 0 ? 'None' : `${b}`} active={bar === b} onPress={() => setBar(b)} />
-        ))}
-        <NumberField value={bar} onChange={(n) => setBar(n ?? 0)} label="Bar weight in kg" />
-      </View>
-      {side.length > 0 && (
-        <Text style={[type.small, { marginTop: space.sm }]}>
-          Per side {round1(sum(side.map(kgOfItem)))} kg. Tap a plate on the bar to take it off.
-        </Text>
-      )}
-    </Sheet>
-  );
-}
-
-/** Small numeric input that keeps the raw text while typing. */
 export function NumberField({
   value,
   onChange,
@@ -333,13 +205,11 @@ export function NumberField({
 export function MachineSheet({
   name,
   setup,
-  showBar,
   onSave,
   onClose,
 }: {
   name: string;
   setup: MachineSetup;
-  showBar: boolean;
   onSave: (m: MachineSetup) => void;
   onClose: () => void;
 }) {
@@ -368,15 +238,6 @@ export function MachineSheet({
           </View>
           <NumberField value={m.start} onChange={(n) => setM((v) => ({ ...v, start: n }))} label="Starting weight in kg" placeholder={m.perPlate ? String(m.perPlate) : '7'} />
         </View>
-        {showBar && (
-          <View style={s.formRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={type.h3}>Bar / sled weight</Text>
-              <Text style={type.small}>Added to the plates you load.</Text>
-            </View>
-            <NumberField value={m.bar} onChange={(n) => setM((v) => ({ ...v, bar: n }))} label="Bar or sled weight in kg" placeholder="20" />
-          </View>
-        )}
         {preview !== null && <Text style={type.small}>Example: pin 7 ≈ {round1(preview)} kg</Text>}
       </View>
     </Sheet>
@@ -454,27 +315,6 @@ const s = StyleSheet.create({
   swapName: { fontFamily: font.bodyBlack, fontSize: size.body, color: color.text },
   swapTags: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   why: { fontFamily: font.bodySemi, fontSize: size.label, lineHeight: 16, color: color.muted },
-  bar: { height: 110, justifyContent: 'center', marginBottom: space.md },
-  barShaft: { position: 'absolute', left: 0, right: 0, height: 10, borderRadius: 5, backgroundColor: color.surface3 },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: space.xl, flexWrap: 'nowrap' },
-  plateOn: { minWidth: 32, paddingHorizontal: 6, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.glassBorder },
-  plateOnText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.text },
-  sub: { ...type.label, marginTop: space.md, marginBottom: space.sm },
-  plateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' },
-  plateBtn: {
-    minWidth: 64,
-    minHeight: touch.min,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.glassBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plateBtnText: { fontFamily: font.display, fontSize: size.h3, color: color.text },
-  plateKg: { fontFamily: font.bodyBold, fontSize: size.tiny },
-  total: { fontFamily: font.display, fontSize: size.h3, color: color.text, textAlign: 'center' },
   numField: {
     minWidth: 76,
     minHeight: touch.min,

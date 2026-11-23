@@ -19,7 +19,7 @@ import {
 const TODAY = '2026-11-20';
 
 /** A saved state that uses every feature: logs with every load type, PRs, streaks, a non-default
- * program, swaps, variants, load types, machines, gym, supplements and settings. */
+ * program, swaps, variants, load types, machines, supplements and settings. */
 function richState(): State {
   return {
     ...DEFAULT_STATE,
@@ -39,9 +39,8 @@ function richState(): State {
     },
     variants: { 'wed-3': 'cable_crossover' },
     swaps: { 'mon-1': 'flat_db_press' },
-    loadTypes: { lat_pulldown: 'stack', flat_bench: 'plates', bb_bent_row: 'colors' },
+    loadTypes: { lat_pulldown: 'stack', flat_bench: 'weight' },
     machines: { lat_pulldown: { perPlate: 7, start: 7 } },
-    gym: { ...DEFAULT_STATE.gym, bar: 15 },
     customPrograms: [],
     pending: null,
     easeInFrom: '2026-11-01',
@@ -56,7 +55,7 @@ function richState(): State {
       '2026-11-18': {
         flat_bench: {
           sets: [
-            { weight: '60', reps: '8', done: true, u: 'kg', load: { t: 'plates', plates: [20], bar: 20 } },
+            { weight: '60', reps: '8', done: true, u: 'kg' },
             { weight: '135', reps: '8', done: true, u: 'lb' },
           ],
         },
@@ -64,7 +63,7 @@ function richState(): State {
       },
       '2026-11-19': {
         flat_bench: { sets: [{ weight: '65', reps: '8', done: true, u: 'kg' }] },
-        bb_bent_row: { sets: [{ weight: '60', reps: '10', done: true, u: 'kg', load: { t: 'colors', colors: ['blue'], bar: 20 } }] },
+        bb_bent_row: { sets: [{ weight: '60', reps: '10', done: true, u: 'kg' }] },
         push_ups: { sets: [{ weight: '', reps: '20', done: true, u: 'kg' }] },
       },
       '2026-11-20': {
@@ -94,7 +93,7 @@ describe('update keeps saved data', () => {
     expect(supplementStreak(loaded, TODAY)).toBe(3);
   });
 
-  test('program choice, swaps, variants, load types, machines, gym and settings survive', async () => {
+  test('program choice, swaps, variants, load types, machines and settings survive', async () => {
     const saved = richState();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     const s = (await loadState())!;
@@ -104,18 +103,15 @@ describe('update keeps saved data', () => {
     expect(s.variants).toEqual(saved.variants);
     expect(s.loadTypes).toEqual(saved.loadTypes);
     expect(s.machines).toEqual(saved.machines);
-    expect(s.gym.bar).toBe(15);
     expect([s.unit, s.injured, s.restSound, s.blur, s.remindersOn]).toEqual(['kg', false, false, false, true]);
     expect(s.reminderTimes).toEqual(['07:30', '13:00', '19:00']);
   });
 
   test('settings added in a later version get defaults without touching old data', () => {
     const saved: Partial<State> = { ...richState() };
-    delete saved.gym;
     delete saved.machines;
     delete saved.blur;
     const s = migrate(JSON.parse(JSON.stringify(saved)), false);
-    expect(s.gym).toEqual(DEFAULT_STATE.gym);
     expect(s.machines).toEqual({});
     expect(s.blur).toBe(true);
     expect(s.logs).toEqual(richState().logs);

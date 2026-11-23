@@ -13,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BodyModel, type PaintMap } from '../../components/body/BodyModel';
-import { HowTo, MachineSheet, MuscleLegend, PlateSheet, SwapSheet } from '../../components/ExerciseParts';
+import { HowTo, MachineSheet, MuscleLegend, SwapSheet } from '../../components/ExerciseParts';
 import { Backdrop, Glass } from '../../components/glass';
 import { Icon } from '../../components/icons';
 import { Burst, Flash } from '../../components/motion';
@@ -28,7 +28,6 @@ import { haptic } from '../../feedback';
 import {
   LOAD_HINT,
   LOAD_LABEL,
-  barFor,
   fmtKg,
   fromKg,
   loadTypeOf,
@@ -75,7 +74,7 @@ function SetCheck({ done, onPress, label, checkRef }: { done: boolean; onPress: 
 }
 
 type Tab = 'howto' | 'muscles';
-type SheetState = { kind: 'swap' } | { kind: 'machine' } | { kind: 'plates'; set: number } | null;
+type SheetState = { kind: 'swap' } | { kind: 'machine' } | null;
 
 export default function ExerciseScreen() {
   const params = useLocalSearchParams<{ id: string; day?: string; slot?: string }>();
@@ -94,7 +93,6 @@ export default function ExerciseScreen() {
   const targetSets = Math.max(1, (plan?.sets ?? 3) - carried);
   const unit = state.unit;
   const step = unit === 'kg' ? 2.5 : 5;
-  const gym = state.gym;
   const machine = state.machines[id] ?? {};
   const lt: LoadType = loadTypeOf(id, state.loadTypes);
 
@@ -193,7 +191,7 @@ export default function ExerciseScreen() {
     return kg === null ? '' : round1(fromKg(kg, unit));
   };
   const ghostOf = (i: number) => prev?.sets[i] ?? prev?.sets[prev.sets.length - 1];
-  /** Pin / plates / colours: today's, else pre-filled from last session if it used the same load type. */
+  /** Machine pin: today's, else pre-filled from last session if it used the same load type. */
   const loadOf = (i: number): LoadInfo | undefined => {
     const own = sets[i]?.load;
     if (own?.t === lt) return own;
@@ -206,7 +204,7 @@ export default function ExerciseScreen() {
     return g?.t === lt ? g : undefined;
   };
   /** Turn a load into a saved weight (kg) for this set. */
-  const fromLoad = (l: LoadInfo): Pick<SetEntry, 'weight' | 'u' | 'load'> => weightFromLoad(l, gym, machine);
+  const fromLoad = (l: LoadInfo): Pick<SetEntry, 'weight' | 'u' | 'load'> => weightFromLoad(l, machine);
 
   const prevTopKg = prev ? Math.max(0, ...prev.sets.map((x) => kgOf(x) ?? 0)) : 0;
   const prevTopPin = prev ? Math.max(0, ...prev.sets.map((x) => x.load?.pin ?? 0)) : 0;
@@ -284,7 +282,6 @@ export default function ExerciseScreen() {
     if (!entry.reps || missingLoad) {
       haptic.tap();
       setNeedInput(i);
-      if (missingLoad && (lt === 'plates' || lt === 'colors')) setSheet({ kind: 'plates', set: i });
       return;
     }
     setNeedInput(null);
@@ -330,11 +327,9 @@ export default function ExerciseScreen() {
       : 'Last exercise done'
     : nextSetIdx < 0
       ? 'All sets done'
-      : `Set ${nextSetIdx + 1} · ${setText(resolved(nextSetIdx), kind, unit, gym).replace(/^ × /, '')}`;
+      : `Set ${nextSetIdx + 1} · ${setText(resolved(nextSetIdx), kind, unit).replace(/^ × /, '')}`;
 
   const types = loadTypesFor(id);
-  const plateSet = sheet?.kind === 'plates' ? sheet.set : -1;
-  const plateLoad = plateSet >= 0 ? loadOf(plateSet) : undefined;
 
   return (
     <Backdrop>
@@ -465,10 +460,10 @@ export default function ExerciseScreen() {
                     <View style={s.loadBox}>
                       <View style={s.loadHead}>
                         <Text style={type.label}>Log weight as</Text>
-                        {(lt === 'stack' || lt === 'plates' || lt === 'colors') && (
-                          <Press onPress={() => setSheet({ kind: 'machine' })} style={s.gear} accessibilityRole="button" accessibilityLabel="Machine and bar settings">
+                        {lt === 'stack' && (
+                          <Press onPress={() => setSheet({ kind: 'machine' })} style={s.gear} accessibilityRole="button" accessibilityLabel="Machine settings">
                             <Icon name="sliders" size={16} color={color.muted} />
-                            <Text style={s.gearText}>{lt === 'stack' ? (machine.perPlate ? `${round1(machine.perPlate)} kg / plate` : 'Set kg per plate') : `Bar ${round1(barFor(id, gym, machine))} kg`}</Text>
+                            <Text style={s.gearText}>{machine.perPlate ? `${round1(machine.perPlate)} kg / plate` : 'Set kg per plate'}</Text>
                           </Press>
                         )}
                       </View>
@@ -498,7 +493,7 @@ export default function ExerciseScreen() {
                     const lastText = ghost ? (weighted ? `${shown(ghost) || (ghost.load?.pin ? `P${ghost.load.pin}` : '?')}×${ghost.reps}` : `${ghost.reps}`) : '—';
                     const r = resolved(i);
                     const l = loadOf(i);
-                    const label = weighted && lt !== 'weight' ? loadText(set.done ? set : r, unit, gym) : '';
+                    const label = weighted && lt !== 'weight' ? loadText(set.done ? set : r, unit) : '';
                     return (
                       <Animated.View key={i} entering={reduce ? undefined : FadeInDown.delay(motion.stagger * (i + 2)).springify().damping(16)}>
                         <View style={[s.setRow, set.done && s.setRowDone, isPR && s.setRowPR]} testID={`set-row-${i}`}>
@@ -541,25 +536,6 @@ export default function ExerciseScreen() {
                               </Press>
                             </View>
                           )}
-                          {weighted && (lt === 'plates' || lt === 'colors') && (
-                            <Press
-                              onPress={() => setSheet({ kind: 'plates', set: i })}
-                              style={[s.field, s.plateField, { flex: 1.4 }]}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Set ${i + 1} plates: ${label || 'none'}. Change`}
-                            >
-                              {lt === 'colors' && !(set.done && set.load?.t !== 'colors') && l?.colors?.length ? (
-                                <View style={s.dots}>
-                                  {l.colors.map((c, k) => (
-                                    <View key={k} style={[s.dot, { backgroundColor: gym.colors.find((x) => x.id === c)?.hex ?? color.subtle }]} />
-                                  ))}
-                                </View>
-                              ) : null}
-                              <Text style={[s.plateKg, !set.load && { color: color.muted }]} numberOfLines={1}>
-                                {set.done && kgOf(set) !== null ? fmtKg(kgOf(set)!, unit) : r.weight ? fmtKg(Number(r.weight), unit) : 'Tap to load'}
-                              </Text>
-                            </Press>
-                          )}
                           <View style={[s.field, { flex: 1 }]}>
                             <TextInput
                               value={set.reps}
@@ -588,7 +564,7 @@ export default function ExerciseScreen() {
                           {needInput === i && (
                             <Text style={s.needInput} accessibilityLiveRegion="polite">
                               <Icon name="alert" size={11} color={color.warn} />{' '}
-                              {!r.reps ? 'Enter your reps first' : lt === 'stack' ? 'Pick a pin first' : lt === 'weight' ? 'Enter a weight first' : 'Load the plates first'}
+                              {!r.reps ? 'Enter your reps first' : lt === 'stack' ? 'Pick a pin first' : 'Enter a weight first'}
                             </Text>
                           )}
                         </View>
@@ -678,26 +654,9 @@ export default function ExerciseScreen() {
           <MachineSheet
             name={ex.name}
             setup={machine}
-            showBar={lt !== 'stack'}
             onClose={() => setSheet(null)}
             onSave={(m) => {
               update((st) => ({ ...st, machines: { ...st.machines, [id]: m } }));
-              setSheet(null);
-            }}
-          />
-        )}
-        {sheet?.kind === 'plates' && (lt === 'plates' || lt === 'colors') && (
-          <PlateSheet
-            mode={lt}
-            gym={gym}
-            unit={unit}
-            initial={(lt === 'plates' ? plateLoad?.plates : plateLoad?.colors) ?? []}
-            bar={plateLoad?.bar ?? barFor(id, gym, machine)}
-            onClose={() => setSheet(null)}
-            onSave={(side, bar) => {
-              const l: LoadInfo = lt === 'plates' ? { t: 'plates', plates: side as number[], bar } : { t: 'colors', colors: side as string[], bar };
-              edit(plateSet, { ...fromLoad(l), done: false });
-              setNeedInput(null);
               setSheet(null);
             }}
           />
@@ -773,10 +732,6 @@ const s = StyleSheet.create({
   gear: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: touch.min, paddingHorizontal: space.sm, borderRadius: radius.pill },
   gearText: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   pinText: { textAlignVertical: 'center', lineHeight: 56 },
-  plateField: { justifyContent: 'center', gap: space.xs, paddingHorizontal: space.sm, flexDirection: 'column' },
-  plateKg: { fontFamily: font.display, fontSize: size.body, color: color.text, textAlign: 'center' },
-  dots: { flexDirection: 'row', gap: 3, justifyContent: 'center' },
-  dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: color.glassBorder },
   loadLabel: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted, marginTop: -space.xs, marginBottom: space.sm, marginLeft: 64 + space.md + space.sm },
   prWrap: { position: 'absolute', left: space.lg, right: space.lg },
   prCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.accentEdge },

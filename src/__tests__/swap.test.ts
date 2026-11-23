@@ -59,7 +59,8 @@ describe('swap options', () => {
 });
 
 test('every offered swap is listed in exercise-sources.md with at least 2 sources', () => {
-  const md: string = require('fs').readFileSync(require('path').join(process.cwd(), 'src/data/exercise-sources.md'), 'utf8');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest runs in node
+  const md: string = require('fs').readFileSync(`${process.cwd()}/src/data/exercise-sources.md`, 'utf8');
   const table = md.split('## Swap pairs')[1].split('## Bibliography')[0];
   const rows = new Map(
     table
