@@ -48,7 +48,7 @@ export const color = {
   muscleContext: '#9C9CA4',
   muscleInjured: '#55555C',
   musclePrimary: '#E1283A',
-  muscleSecondary: '#EF8790',
+  muscleSecondary: '#C8685C', // muted terracotta: soft, never pink
 } as const;
 
 /** Day names. Every day shares the same identity; days differ by name and number. */
@@ -69,7 +69,7 @@ export const gradient = {
 
 /** Weekly muscle heat (sets per week): pale → deep red on the light figure. */
 export const heat = {
-  steps: ['#F2B3B8', '#EA7581', '#D93246', '#A80F24'] as const, // pale → deep crimson
+  steps: ['#B98A82', '#CF5E55', '#D93246', '#A80F24'] as const, // dusty red → deep crimson (no pink)
   thresholds: [1, 5, 10, 15] as const, // at least N sets reaches step i
 };
 
