@@ -17,6 +17,7 @@ from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
+import clay  # noqa: E402
 import figure  # noqa: E402
 import scene  # noqa: E402
 
@@ -124,8 +125,8 @@ def main():
         bpy.ops.wm.read_factory_settings(use_empty=True)
         body, rig, _ = figure.build(args.model)
         glow = {m: 'secondary' for m in ex['secondary']} | {m: 'primary' for m in ex['primary']}
-        for mat in body.data.materials:
-            scene.clay_material(mat, glow.get(mat.name))
+        clay.set_glow_mask(body, glow)
+        body.data.materials.append(clay.material())
         M = scene.materials()
         rims = scene.lights()
         figure_coll = bpy.data.collections.new('figure_only')
@@ -144,6 +145,18 @@ def main():
         if args.cam:
             x, y, z, az, el, dist = map(float, args.cam.split(','))
             cam_cfg = {'target': [x, y, z], 'azimuth': az, 'elevation': el, 'distance': dist, 'lens': 50}
+        # The lime rim sits behind the figure; on back views it would face the camera and tint the
+        # back green, so it is switched off there.
+        if abs(((cam_cfg['azimuth'] + 180) % 360) - 180) > 100:
+            from mathutils import Matrix
+            for r in rims:
+                r.data.energy = 0
+            # Turn the key/fill/top lights round so the back (the side we see) is modelled by light.
+            flip = Matrix.Rotation(3.14159265, 4, 'Z')
+            bpy.context.view_layer.update()
+            for o in bpy.data.objects:
+                if o.type == 'LIGHT' and o not in rims:
+                    o.matrix_world = flip @ o.matrix_world
         for frame in args.frames.split(','):
             clear_props()
             before = {o.name for o in bpy.data.objects}
@@ -164,9 +177,13 @@ def main():
             if hand_mat is None:
                 hand_mat = bpy.data.materials.new('hand_clay')
                 scene.clay_material(hand_mat)
+            before_fists = {o.name for o in bpy.data.objects}
             for side in ('L', 'R'):
                 wrist, d, palm, axis = figure.hand_basis(rig, side)
                 scene.fist(f'fist_{side}', wrist, d, palm, axis, figure.hand_frame(rig, side)[0], hand_mat)
+            for o in bpy.data.objects:
+                if o.name not in before_fists:
+                    figure_coll.objects.link(o)
             props = spec.get('props')
             if props == 'dumbbells':
                 for side in ('L', 'R'):
