@@ -34,6 +34,8 @@ jobs:
         run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libsm6 libxi6 libxrender1 libxfixes3
       - name: Blender (bpy) and image tools
         run: pip install bpy==5.3.0 pillow numpy
+      - name: Start from an empty image folder (only this shard's fresh renders are uploaded)
+        run: rm -f assets/exercises-3d/*.webp
       - name: Render shard ${{ matrix.shard }}
         run: python render/run_shard.py --shard ${{ matrix.shard }} --of 12 --samples ${{ inputs.samples || '96' }}
       - uses: actions/upload-artifact@v4
