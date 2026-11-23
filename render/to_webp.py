@@ -10,7 +10,7 @@ from check_renders import check  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'assets', 'exercises-3d')
 os.makedirs(OUT, exist_ok=True)
-names = sys.argv[1:] or sorted(f[:-4] for f in os.listdir(os.path.join(HERE, 'out')) if f.endswith('.png'))
+names = sys.argv[1:] or sorted(f[:-4] for f in os.listdir(os.path.join(HERE, 'out')) if f.endswith('.png') and not f.endswith('.mask.png'))
 rejected = []
 for n in names:
     src = os.path.join(HERE, 'out', n + '.png')

@@ -77,6 +77,24 @@ def figure_bounds(body):
     return mn, mx
 
 
+def write_body_mask(body, path):
+    """Cheap extra render: alpha = where the BODY is visible (equipment held out, so anything in
+    front of the body cuts it away). check_renders.py only inspects these pixels."""
+    sc = bpy.context.scene
+    saved = (sc.cycles.samples, sc.cycles.use_denoising, sc.render.filepath)
+    others = [o for o in bpy.data.objects if o.type == 'MESH' and o is not body and not o.name.startswith('fist_')
+              and not o.get('fist')]
+    for o in others:
+        o.is_holdout = True
+    sc.cycles.samples = 1
+    sc.cycles.use_denoising = False
+    sc.render.filepath = path[:-4] + '.mask.png'
+    bpy.ops.render.render(write_still=True)
+    for o in others:
+        o.is_holdout = False
+    sc.cycles.samples, sc.cycles.use_denoising, sc.render.filepath = saved
+
+
 def glare():
     """Soft bloom around the glowing muscles (Blender 5 compositor)."""
     sc = bpy.context.scene
@@ -198,6 +216,7 @@ def main():
             bpy.context.scene.render.filepath = path
             bpy.ops.render.render(write_still=True)
             print('wrote', path)
+            write_body_mask(body, path)
 
 
 if __name__ == '__main__':

@@ -4,9 +4,10 @@
 
 Works on the transparent PNGs from render.py. Inside the figure (alpha, eroded so the outline
 doesn't count), a pixel is "suspicious" when it is much darker than its neighbourhood
-(< 45% of the local median brightness) and dark in absolute terms. Real shading (armpits,
-under the chin) is a soft, wide gradient; holes and cracks are small sharp dark islands or thin
-streaks. Any connected suspicious blob bigger than MIN_AREA pixels (scaled to 1024 px) fails.
+(< 45% of the local median brightness) and dark in absolute terms. A connected suspicious blob
+bigger than MIN_AREA pixels (scaled to 1024 px) fails when it is either see-through (reaches
+near-background black: a hole or crack) or a thick dark patch. Thin, not-quite-black lines where
+the body presses on a seat are contact shadows and pass.
 """
 import sys
 
@@ -16,6 +17,7 @@ from PIL import Image, ImageFilter
 MIN_AREA = 40          # pixels at 1024 px
 RATIO = 0.45
 ABS_DARK = 70          # 0-255 luminance
+SEE_THROUGH = 24       # this dark = background showing through (app black is 10)
 
 
 def _components(mask):
@@ -48,7 +50,13 @@ def check(path):
     im = Image.open(path).convert('RGBA')
     scale = im.width / 1024
     alpha = im.getchannel('A')
-    if np.array(alpha).min() == 255:
+    mask_path = path[:-4] + '.mask.png' if path.endswith('.png') else None
+    import os
+    if mask_path and os.path.exists(mask_path):
+        # Body-only visibility from render.py: equipment and contact edges are excluded.
+        alpha = Image.open(mask_path).convert('RGBA').getchannel('A').point(lambda v: 255 if v > 128 else 0)
+        alpha = alpha.filter(ImageFilter.MinFilter(5))
+    elif np.array(alpha).min() == 255:
         # Already composited on black (the app's WebPs): the figure is whatever isn't background.
         alpha = im.convert('L').point(lambda v: 255 if v > 30 else 0)
         alpha = alpha.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5))  # close small holes in the mask itself
@@ -57,11 +65,21 @@ def check(path):
     lum = np.array(lum_img).astype(np.float32)
     med = np.array(lum_img.filter(ImageFilter.MedianFilter(21))).astype(np.float32)
     sus = inside & (lum < RATIO * med) & (lum < ABS_DARK)
-    blobs = [b for b in _components(sus) if b[0] >= MIN_AREA * scale * scale]
+    blobs = []
+    for area, x0, y0, x1, y1 in _components(sus):
+        if area < MIN_AREA * scale * scale:
+            continue
+        w, h = x1 - x0 + 1, y1 - y0 + 1
+        darkest = lum[y0:y1 + 1, x0:x1 + 1][sus[y0:y1 + 1, x0:x1 + 1]].min()
+        see_through = darkest < SEE_THROUGH
+        thick = min(w, h) >= 6 * scale and area / (w * h) > 0.35
+        if see_through or thick:
+            blobs.append((area, x0, y0, x1, y1))
     return blobs
 
 
 def main(paths):
+    paths = [p for p in paths if not p.endswith('.mask.png')]
     failed = 0
     for p in paths:
         blobs = check(p)

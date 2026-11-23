@@ -96,10 +96,11 @@ def incline_bench(seat_z, seat_y, back_deg, floor_z, M, back_y=0.10):
     """Adjustable bench: seat pad, inclined back pad, steel frame down to the floor."""
     box('seat', (0, seat_y, seat_z - 0.04), (0.30, 0.36, 0.07), M['pad'])
     ang = math.radians(back_deg)  # from vertical
-    length = 0.85
+    length = 0.95
     base = Vector((0, seat_y + back_y, seat_z - 0.02))
     up = Vector((0, math.sin(ang), math.cos(ang)))
-    pad = box('backpad', base + up * (length / 2) + Vector((0, 0.05 * math.cos(ang), -0.05 * math.sin(ang))), (0.30, 0.07, length), M['pad'])
+    # The pad starts slightly below the seat top so the two always meet (no see-through gap).
+    pad = box('backpad', base + up * (length / 2 - 0.1) + Vector((0, 0.05 * math.cos(ang), -0.05 * math.sin(ang))), (0.30, 0.07, length), M['pad'])
     pad.rotation_euler = (-ang, 0, 0)
     # Frame
     cyl('rail', (0, seat_y - 0.30, floor_z + 0.04), (0, seat_y + 0.55, floor_z + 0.04), 0.03, M['frame'])
