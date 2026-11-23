@@ -320,7 +320,7 @@ export const SWAPS: Record<string, Swap[]> = {
     same('glute_bridge', 'Same hip extension from the floor; similar glute activation.'),
     same('single_leg_bridge', 'Same bridge one leg at a time, bodyweight.'),
     close('cable_pull_through', 'Glute-dominant hip extension, standing.'),
-    close('back_squat', 'Squats build the glutes similarly over time (Barbalho 2020).'),
+    close('back_squat', 'Squats grew the glutes about as much as hip thrusts in a 9-week trial (Plotkin 2023).'),
   ],
   standing_calf_raise: [
     same('leg_press_calf_raise', 'Same straight-knee calf raise; gastrocnemius-focused.'),
