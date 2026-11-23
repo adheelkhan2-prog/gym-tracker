@@ -200,7 +200,13 @@ export function Button({
   accessibilityLabel?: string;
 }) {
   const fg =
-    variant === 'solid' ? color.onAccent : variant === 'default' || variant === 'link' ? color.accent : color.text;
+    disabled && variant !== 'solid'
+      ? color.subtle
+      : variant === 'solid'
+        ? color.onAccent
+        : variant === 'default' || variant === 'link'
+          ? color.accentText // label text: the AA-safe red; the edge stays true crimson
+          : color.text;
   // Warnings/deletes: amber icon + white label on an amber-tinted panel; never the red accent.
   const iconFg = variant === 'destructive' ? color.warn : fg;
   const h = sz === 'sm' ? touch.min : sz === 'lg' ? touch.primary + space.sm : touch.primary;
@@ -211,7 +217,8 @@ export function Button({
     variant === 'secondary' && { backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
     variant === 'outline' && { borderWidth: 1, borderColor: color.glassBorder },
     variant === 'destructive' && { backgroundColor: color.warnDim, borderWidth: 1, borderColor: color.warnEdge },
-    disabled && { opacity: 0.6 },
+    disabled && variant === 'default' && { borderColor: color.glassBorder },
+    disabled && variant === 'solid' && { opacity: 0.6 },
   ];
   const inner = (
     <>

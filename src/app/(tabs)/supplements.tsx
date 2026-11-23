@@ -211,7 +211,7 @@ export default function SupplementsScreen() {
           </View>
         </Glass>
       </Screen>
-      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentSoft, color.text]} />
+      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentPressed, color.text]} />
     </View>
   );
 }

@@ -159,7 +159,7 @@ const s = StyleSheet.create({
   cardRow: { flexDirection: 'row', gap: space.lg, marginTop: space.md },
   cardStat: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   cardStatLabel: { fontFamily: font.bodyBold, fontSize: size.small, color: color.muted },
-  cardPr: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentSoft, marginTop: space.xs },
+  cardPr: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText, marginTop: space.xs },
   cardFoot: { position: 'absolute', left: space.xl, right: space.xl, bottom: space.lg, flexDirection: 'row', justifyContent: 'space-between' },
   cardRank: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.accentText },
   cardBrand: { fontFamily: font.display, fontSize: size.label, letterSpacing: 2, color: color.text },

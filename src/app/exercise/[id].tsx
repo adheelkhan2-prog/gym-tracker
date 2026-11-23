@@ -446,7 +446,7 @@ export default function ExerciseScreen() {
               {(todayHitTop || prevHitTop) && (
                 <Glass r={radius.lg} style={[s.callout, { borderColor: color.accent }]}>
                   <Icon name="arrowUp" size={22} color={color.accent} />
-                  <Text style={[s.calloutText, { color: color.accentSoft }]}>{addHint()}</Text>
+                  <Text style={[s.calloutText, { color: color.accentText }]}>{addHint()}</Text>
                 </Glass>
               )}
 
@@ -507,7 +507,7 @@ export default function ExerciseScreen() {
                             </Text>
                           </View>
                           {weighted && lt === 'weight' && (
-                            <View style={[s.field, { flex: 1.4 }]}>
+                            <View style={[s.field, { flex: 2 }]}>
                               <Press onPress={() => nudge(i, -1)} style={s.stepBtn} accessibilityRole="button" accessibilityLabel={`Set ${i + 1} weight minus ${step}`}>
                                 <Icon name="minus" size={16} color={color.muted} />
                               </Press>
@@ -652,7 +652,7 @@ export default function ExerciseScreen() {
           />
         )}
         <Flash fire={flash} />
-        <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentSoft, color.text]} />
+        <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentPressed, color.text]} />
         {pr && (
           <Animated.View entering={reduce ? undefined : SlideInUp.springify().damping(14)} style={[s.prWrap, { top: insets.top + space.md }]}>
             <Press onPress={() => setPr(null)} accessibilityRole="button" accessibilityLabel={`New PR, ${pr.value}. ${pr.delta}. Tap to dismiss`} style={{ borderRadius: radius.xl }} glow={color.accent}>
@@ -780,5 +780,5 @@ const s = StyleSheet.create({
   prCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.accentEdge },
   prIcon: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
   prTitle: { fontFamily: font.display, fontSize: size.h2, color: color.text },
-  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentSoft, marginTop: space.xxs },
+  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText, marginTop: space.xxs },
 });

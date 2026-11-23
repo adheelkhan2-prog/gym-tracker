@@ -364,8 +364,8 @@ export default function CompleteScreen() {
       </ScrollView>
 
       <Flash fire={flash} />
-      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentSoft, color.text]} />
-      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.accent, color.accentSoft, color.text, color.flash]} />
+      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentPressed, color.text]} />
+      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.accent, color.accentPressed, color.text, color.flash]} />
       {share && (
         <ShareSheet
           onClose={() => setShare(null)}
@@ -420,7 +420,7 @@ const s = StyleSheet.create({
   statSmallNum: { fontFamily: font.display, fontSize: size.h3, color: color.text, flexShrink: 1 },
   prRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.accentEdge },
   prIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
-  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentSoft },
+  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText },
   prValue: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   xpCard: { padding: space.xl },
   xpTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },

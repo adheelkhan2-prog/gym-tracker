@@ -27,7 +27,6 @@ export const color = {
   accent: '#E0243A',
   accentPressed: '#FF3B4F',
   accentText: '#FF5466',
-  accentSoft: '#FF8A96', // secondary accent text (deltas under a PR)
   accentDim: 'rgba(224,36,58,0.10)',
   accentGlow: 'rgba(224,36,58,0.32)',
   accentEdge: 'rgba(224,36,58,0.62)', // thin crimson edge on dark-glass buttons

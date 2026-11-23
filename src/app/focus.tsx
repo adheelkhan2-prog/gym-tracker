@@ -361,17 +361,6 @@ export default function FocusScreen() {
         </Animated.View>
       </GestureDetector>
 
-      <Flash fire={flash} />
-      <Burst burst={flash} x={width / 2} y={300} colors={[color.accent, color.accentSoft, color.text]} count={28} />
-      {pr && (
-        <Animated.View entering={reduce ? undefined : FadeIn.duration(motion.fast)} exiting={reduce ? undefined : FadeOut.duration(motion.base)} style={[s.pr, { top: insets.top + 72 }]} pointerEvents="none">
-          <Icon name="trophy" size={18} color={color.accent} filled />
-          <Text style={s.prText} accessibilityLiveRegion="polite">
-            New PR · {pr}
-          </Text>
-        </Animated.View>
-      )}
-
       {restEnd && (
         <RestTimer
           endsAt={restEnd}
@@ -388,6 +377,18 @@ export default function FocusScreen() {
           onDone={() => setRestEnd(null)}
         />
       )}
+      {/* The PR moment draws above the rest timer that opens with it. */}
+      <Flash fire={flash} />
+      <Burst burst={flash} x={width / 2} y={300} colors={[color.accent, color.accentPressed, color.text]} count={28} />
+      {pr && (
+        <Animated.View entering={reduce ? undefined : FadeIn.duration(motion.fast)} exiting={reduce ? undefined : FadeOut.duration(motion.base)} style={[s.pr, { top: insets.top + 72 }]} pointerEvents="none">
+          <Icon name="trophy" size={18} color={color.accent} filled />
+          <Text style={s.prText} accessibilityLiveRegion="polite">
+            New PR · {pr}
+          </Text>
+        </Animated.View>
+      )}
+
     </Backdrop>
   );
 }
