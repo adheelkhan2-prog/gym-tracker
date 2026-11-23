@@ -390,7 +390,8 @@ export default function FocusScreen() {
                 {weighted && (lt === 'weight' || lt === 'stack') && (
                   <Stepper
                     name={lt === 'stack' ? 'pin' : 'weight'}
-                    shown={lt === 'stack' ? (pin !== undefined ? `Pin ${pin}` : 'Pin ?') : shownWeight ? `${shownWeight} ${unit}` : `— ${unit}`}
+                    shown={lt === 'stack' ? (pin !== undefined ? String(pin) : '?') : shownWeight || '—'}
+                    unit={lt === 'stack' ? 'pin' : unit}
                     raw={lt === 'stack' ? (pin !== undefined ? String(pin) : '') : shownWeight}
                     warn={!!warnLoad}
                     decimal={lt !== 'stack'}
@@ -407,7 +408,8 @@ export default function FocusScreen() {
                 )}
                 <Stepper
                   name={secs ? 'seconds' : 'reps'}
-                  shown={value.reps ? `${value.reps} ${secs ? 's' : 'reps'}` : `— ${secs ? 's' : 'reps'}`}
+                  shown={value.reps || '—'}
+                  unit={secs ? 'sec' : 'reps'}
                   raw={value.reps}
                   warn={!!warnReps}
                   decimal={false}
@@ -512,6 +514,7 @@ export default function FocusScreen() {
 function Stepper({
   name,
   shown,
+  unit,
   raw,
   warn,
   decimal,
@@ -520,7 +523,10 @@ function Stepper({
   onType,
 }: {
   name: string;
+  /** The number (or "—" / "?" when empty), shown big. */
   shown: string;
+  /** Small label under it: "kg", "lb", "pin", "reps", "s". */
+  unit: string;
   raw: string;
   warn: boolean;
   decimal: boolean;
@@ -561,10 +567,13 @@ function Stepper({
           }}
           style={s.stepValue}
           accessibilityRole="button"
-          accessibilityLabel={`${name}: ${shown}. Tap to type`}
+          accessibilityLabel={`${name}: ${unit === 'pin' ? `pin ${shown}` : `${shown} ${unit}`}. Tap to type`}
         >
           <Text style={[s.stepText, warn && { color: color.warn }]} numberOfLines={1} adjustsFontSizeToFit>
             {shown}
+          </Text>
+          <Text style={[s.stepUnit, warn && { color: color.warn }]} numberOfLines={1}>
+            {unit}
           </Text>
         </Press>
       )}
@@ -681,7 +690,8 @@ const s = StyleSheet.create({
   stepBtn: { width: touch.primary, height: touch.primary, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   stepperWarn: { borderColor: color.warnEdge, backgroundColor: color.warnDim },
   stepValue: { flex: 1, minWidth: 0, minHeight: touch.primary, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  stepText: { fontFamily: font.display, fontSize: size.h3, color: color.text, fontVariant: ['tabular-nums'] },
+  stepText: { fontFamily: font.display, fontSize: size.h3, lineHeight: size.h3 + 2, color: color.text, fontVariant: ['tabular-nums'] },
+  stepUnit: { fontFamily: font.bodySemi, fontSize: size.tiny, color: color.muted, marginTop: -1 },
   stepInput: { flex: 1, minWidth: 0, minHeight: touch.primary, textAlign: 'center', fontFamily: font.display, fontSize: size.h3, color: color.text, padding: 0 },
   bigPlaceholder: { fontFamily: font.display, fontSize: size.display, color: color.subtle, marginVertical: space.md },
   missing: { flexDirection: 'row', alignItems: 'center', gap: space.sm, alignSelf: 'center', paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: color.warnDim, borderWidth: 1, borderColor: color.warnEdge },

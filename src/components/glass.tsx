@@ -105,19 +105,15 @@ export function Backdrop({ children, intensity = 1, stage = false }: { children:
   const big = width * 1.4;
   const mid = width * 1.05;
   if (stage) {
-    // For screens that show a clay render or video: the ground is exactly the render's own
-    // background, and the room's light (spotlight, grain, vignette) is drawn over everything, so
-    // the image and the screen are lit the same way and no edge can show between them.
+    // For screens that show a clay render or video: the ground is exactly the render's own flat
+    // background (no spotlight, grain or vignette, which would light the screen differently from
+    // the image), so no edge can show between them. Nothing is drawn over the content, so text and
+    // buttons keep their full contrast.
     return (
       <BlurTarget.Provider value={target}>
         <View style={[s.root, { backgroundColor: color.stage }]}>
           <BlurTargetView ref={target} style={[StyleSheet.absoluteFill, { backgroundColor: color.stage }]} pointerEvents="none" />
           {children}
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Spotlight width={width} height={height} />
-            <Image source={GRAIN} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: 0.045 }]} />
-            <Vignette width={width} height={height} strength={0.6} id="stage-vignette" />
-          </View>
         </View>
       </BlurTarget.Provider>
     );

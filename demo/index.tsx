@@ -6,6 +6,7 @@ import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
 import { Figtree_800ExtraBold } from '@expo-google-fonts/figtree/800ExtraBold';
 import { registerRootComponent } from 'expo';
 import { useFonts } from 'expo-font';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -105,6 +106,8 @@ function Demo() {
   });
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<string>('index');
+  // Like the app's tab bar: report its measured height so screens pad above it.
+  const [barH, setBarH] = useState<number | undefined>(undefined);
   const [stack, setStack] = useState<Route[]>([]);
   const [example] = useState(() => {
     try {
@@ -163,6 +166,7 @@ function Demo() {
       )}
       {/* Tabs stay mounted under pushed screens, like the real app's stack. */}
       <View style={{ flex: 1, display: top ? 'none' : 'flex' }}>
+          <BottomTabBarHeightContext.Provider value={barH}>
           <View style={{ flex: 1 }}>
             {TABS.map((t) => (
               <View key={t.id} style={{ flex: 1, display: t.id === tab ? 'flex' : 'none' }}>
@@ -172,7 +176,12 @@ function Demo() {
               </View>
             ))}
           </View>
-          <View style={[s.barWrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none">
+          </BottomTabBarHeightContext.Provider>
+          <View
+            style={[s.barWrap, { paddingBottom: insets.bottom + space.sm }]}
+            pointerEvents="box-none"
+            onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+          >
             <View style={s.bar}>
               <View style={{ flexDirection: 'row' }} accessibilityRole="tablist">
                 {TABS.map((t) => {
