@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
+import React, { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,11 +39,14 @@ export default function TodayScreen() {
   const { state, update, commit } = useStore();
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
+  // Real heights, measured: the tab bar (incl. gesture-bar inset) and the floating main button.
+  const tabBar = useContext(BottomTabBarHeightContext);
+  const [ctaH, setCtaH] = useState<number>(floating.action);
   const now = new Date();
   const date = todayKey(now);
   const weekday = now.getDay();
   // A day tapped in the week strip: shown as a preview, with a clear way back to today.
-  const [picked, setPicked] = useState<{ id: string; wd: number } | null>(null);
+  const [picked, setPicked] = useState<{ id: string; wd: number; d: string } | null>(null);
   // A switch booked for "next Monday" kicks in when that day arrives.
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   const which = todayDayId(state, date, weekday, picked?.id);
@@ -52,9 +56,11 @@ export default function TodayScreen() {
   const day = hiddenDay ? undefined : chosen;
   const program = activeProgram(state);
   const pending = state.pending ? programById(state, state.pending.programId) : undefined;
-  const progress = day ? dayProgress(state, day, date) : null;
+  // The date being looked at: today, or the tapped day (a past day shows what you did that day).
+  const viewDate = picked?.d ?? date;
+  const progress = day ? dayProgress(state, day, viewDate) : null;
   const started = !!progress && progress.done > 0;
-  const finished = !!state.sessions[date]?.finishedAt && !which.preview;
+  const finished = !!state.sessions[viewDate]?.finishedAt;
   const lvl = levelFor(totalXp(state));
   const rank = rankFor(lvl.level);
 
@@ -98,15 +104,17 @@ export default function TodayScreen() {
     .map((x) => ({ ...x, id: state.week[x.wd]! }));
   const shownWd = picked ? picked.wd : weekday;
   const mins = progress ? Math.round(progress.total * 2.6) : 0;
-  const cta = finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
+  const cta = which.preview ? 'Train' : finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen padBottom={cta && day ? bottomClearance.tabsWithAction : bottomClearance.tabs}>
+      <Screen padBottom={cta && day ? floating.gap + ctaH + bottomClearance.tabs : bottomClearance.tabs}>
         {/* Header: date, a quiet line, streak and level */}
         <View style={s.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={s.date}>{now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+            <Text style={s.date} accessibilityLiveRegion="polite">
+              {longDate(viewDate)}
+            </Text>
             <Text style={s.greet} numberOfLines={2}>
               {line(day ? GREETING : REST_DAY, date)}
             </Text>
@@ -212,14 +220,18 @@ export default function TodayScreen() {
             return (
               <Press
                 key={d}
-                onPress={() => setPicked(isToday ? null : { id, wd })}
+                onPress={() => {
+                  haptic.tap();
+                  setPicked(isToday ? null : { id, wd, d });
+                }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: sel }}
-                accessibilityLabel={`${WEEKDAY_LONG[wd]}: ${done ? 'done' : isToday ? 'today' : 'not done'}${isToday ? '' : '. Preview'}`}
-                style={[s.passTile, isToday && s.passToday, sel && !isToday && s.passSel]}
+                accessibilityLabel={`${WEEKDAY_LONG[wd]}${isToday ? ', today' : ''}${done ? ', done' : ''}${sel ? ', selected' : ''}`}
+                style={[s.passTile, sel && s.passSel]}
               >
-                <Text style={[s.passDay, isToday && { color: color.text }]}>{WEEKDAY_SHORT[wd]}</Text>
-                {done ? <Icon name="check" size={18} color={color.accent} /> : <View style={[s.passDot, isToday && { backgroundColor: color.accent }]} />}
+                <Text style={[s.passDay, sel && s.passDaySel]}>{WEEKDAY_SHORT[wd]}</Text>
+                {/* Small markers only: ✓ for a finished day, a dot for today. The selection is the strong highlight. */}
+                {done ? <Icon name="check" size={16} color={color.accent} /> : <View style={[s.passDot, isToday && s.passDotToday]} />}
               </Press>
             );
           })}
@@ -344,9 +356,13 @@ export default function TodayScreen() {
 
       {/* The main action, in thumb reach above the tab bar */}
       {day && progress && cta && (
-        <View style={[s.ctaBar, { bottom: insets.bottom + TAB_BAR }]} pointerEvents="box-none">
+        <View
+          style={[s.ctaBar, { bottom: (tabBar || insets.bottom + floating.tabBar) + floating.gap }]}
+          pointerEvents="box-none"
+          onLayout={(e) => setCtaH(e.nativeEvent.layout.height)}
+        >
           <LinearGradient colors={['rgba(7,7,8,0)', color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
-          <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={progress.allDone ? finish : openFocus} />
+          <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!which.preview && progress.allDone ? finish : openFocus} />
         </View>
       )}
     </View>
@@ -354,8 +370,12 @@ export default function TodayScreen() {
 }
 
 const RING = 84;
-/** Where the floating main button sits: just above the tab bar. */
-const TAB_BAR = floating.tabBarOffset;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "Tuesday, 24 Nov" */
+const longDate = (key: string) => {
+  const d = dateFromKey(key);
+  return `${WEEKDAY_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+};
 
 const s = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
@@ -400,8 +420,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: space.sm,
   },
-  passToday: { borderColor: color.accentEdge },
-  passSel: { borderColor: color.muted },
+  passSel: { borderColor: color.accent, borderWidth: 2, backgroundColor: color.accentDim },
+  passDaySel: { color: color.text },
+  passDotToday: { backgroundColor: color.accent },
   passDay: { fontFamily: font.bodyBold, fontSize: size.label, color: color.subtle, letterSpacing: 0.4 },
   passDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
   card: { marginTop: space.lg, padding: space.lg, gap: space.sm },
@@ -433,5 +454,5 @@ const s = StyleSheet.create({
   programPending: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.accentText, marginTop: 2 },
   programChange: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   ctaBar: { position: 'absolute', left: space.lg, right: space.lg },
-  ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -TAB_BAR },
+  ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -(floating.tabBar + floating.gap) },
 });

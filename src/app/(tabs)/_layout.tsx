@@ -1,5 +1,5 @@
-import { Tabs, type BottomTabBarProps } from 'expo-router/tabs';
-import { useEffect, useState } from 'react';
+import { BottomTabBarHeightCallbackContext, Tabs, type BottomTabBarProps } from 'expo-router/tabs';
+import { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +22,7 @@ const TABS: Record<string, { title: string; icon: IconName }> = {
 function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
+  const onHeight = useContext(BottomTabBarHeightCallbackContext);
   const [w, setW] = useState(0);
   const x = useSharedValue(0);
   const tabW = w / state.routes.length;
@@ -32,7 +33,8 @@ function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
   }, [state.index, tabW, reduce]);
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
-    <View style={[s.wrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none">
+    // Report the bar's real height (incl. the gesture-bar inset) so screens can pad above it.
+    <View style={[s.wrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none" onLayout={(e) => onHeight?.(e.nativeEvent.layout.height)}>
       <LinearGradient colors={['rgba(7,7,8,0)', color.bg]} style={s.fade} pointerEvents="none" />
       <View style={s.bar}>
         <View style={s.row} onLayout={(e) => setW(e.nativeEvent.layout.width)} accessibilityRole="tablist">

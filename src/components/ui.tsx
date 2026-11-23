@@ -2,7 +2,8 @@
 // https://github.com/founded-labs/react-native-reusables): Button variants/sizes, Card
 // parts, Badge, Progress, Switch. Styling comes from src/theme.ts (no NativeWind).
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
+import React, { useContext, useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -83,14 +84,16 @@ export function Press({
   );
 }
 
-/** Screen scaffold: backdrop + scroll view with safe-area padding. `padBottom` is added to the bottom inset. */
+/** Screen scaffold: backdrop + scroll view. `padBottom` is extra room above the tab bar (or the bottom inset). */
 export function Screen({ children, padBottom = space.x5 }: { children: React.ReactNode; padBottom?: number }) {
   const insets = useSafeAreaInsets();
+  // Inside the tabs: the tab bar's measured height (it already includes the gesture-bar inset).
+  const tabBar = useContext(BottomTabBarHeightContext);
   return (
     <Backdrop>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: insets.bottom + padBottom }}
+        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: (tabBar || insets.bottom) + padBottom }}
         keyboardShouldPersistTaps="handled"
       >
         {children}

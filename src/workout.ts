@@ -31,7 +31,8 @@ export function slotStatuses(state: State, day: WorkoutDay, date: string): SlotS
   return visiblePlans(state, day).map((plan) => {
     const exerciseId = exerciseFor(state, plan);
     const log = state.logs[date]?.[exerciseId];
-    const done = doneSets(log, EXERCISES[exerciseId].kind).length;
+    // Sets done before a mid-workout swap count towards the slot too.
+    const done = doneSets(log, EXERCISES[exerciseId].kind).length + (log?.carried ?? 0);
     const skipped = !!log?.skipped;
     return { plan, exerciseId, done, skipped, complete: skipped || done >= plan.sets };
   });
@@ -102,4 +103,23 @@ export function todayDayId(state: State, date: string, weekday: number, picked?:
   const logged = Object.values(state.logs[date] ?? {}).some((l) => l.skipped || l.sets.some((s) => s.done));
   const id = sessionDay && logged ? sessionDay : scheduled;
   return { id, preview: false, scheduled, swappedDay: !!(sessionDay && logged && sessionDay !== scheduled) };
+}
+
+/**
+ * Swap a slot to another exercise mid-workout. Sets already logged stay under the exercise they
+ * were done on (history and PRs stay correct); the new exercise carries how many of the slot's
+ * sets are already done, so only the remaining sets are left. Swapping back works the same way.
+ */
+export function swapSlot(state: State, date: string, plan: PlannedExercise, to: string): State {
+  const from = exerciseFor(state, plan);
+  if (from === to) return state;
+  const day = state.logs[date] ?? {};
+  const slotDone = (id: string) => doneSets(day[id], EXERCISES[id]?.kind ?? 'weight_reps').length;
+  const total = slotDone(from) + (day[from]?.carried ?? 0);
+  const carried = Math.max(0, total - slotDone(to));
+  const swaps = { ...state.swaps };
+  if (to === pickOption(plan, state.variants)) delete swaps[plan.slot];
+  else swaps[plan.slot] = to;
+  const logs = total > 0 || day[to] ? { ...state.logs, [date]: { ...day, [to]: { ...(day[to] ?? { sets: [] }), carried } } } : state.logs;
+  return { ...state, swaps, logs };
 }

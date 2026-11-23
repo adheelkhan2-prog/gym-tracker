@@ -102,6 +102,7 @@ export function SwapSheet({
   onPick,
   onReset,
   onClose,
+  note,
 }: {
   original: string;
   current: string;
@@ -109,6 +110,8 @@ export function SwapSheet({
   onPick: (id: string) => void;
   onReset: () => void;
   onClose: () => void;
+  /** Extra line under the title (e.g. what happens to sets already logged). */
+  note?: string;
 }) {
   const options: (Swap & { original?: boolean })[] = [
     { id: original, match: 'same', why: 'The exercise your program planned.', original: true },
@@ -117,7 +120,7 @@ export function SwapSheet({
   return (
     <Sheet
       title="Swap exercise"
-      subtitle={`Alternatives for ${EXERCISES[original].name}. Each one is logged and charted on its own.`}
+      subtitle={note ?? `Only exercises with exactly the same primary muscles as ${EXERCISES[original].name}. Each one is logged and charted on its own.`}
       onClose={onClose}
       testID="swap-sheet"
       footer={
@@ -140,7 +143,7 @@ export function SwapSheet({
               style={[s.swapRow, on && s.swapOn]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
-              accessibilityLabel={`${ex.name}, ${EQUIPMENT_LABEL[ex.equipment]}, ${o.original ? 'original' : o.match === 'same' ? 'same muscles' : 'close match'}`}
+              accessibilityLabel={`${ex.name}, ${EQUIPMENT_LABEL[ex.equipment]}, ${o.original ? 'original' : 'same primary muscles'}: ${ex.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}`}
             >
               {img ? <Image source={img.start} style={s.thumb} /> : <View style={[s.thumb, s.noThumb]}><Icon name="barbell" size={22} color={color.muted} /></View>}
               <View style={{ flex: 1, minWidth: 0, gap: space.xxs }}>
@@ -149,12 +152,13 @@ export function SwapSheet({
                 </Text>
                 <View style={s.swapTags}>
                   <Badge label={EQUIPMENT_LABEL[ex.equipment]} variant="secondary" />
-                  {o.original ? (
-                    <Badge label="Original" variant="outline" />
-                  ) : (
-                    <Badge label={o.match === 'same' ? 'Same muscles' : 'Close match'} variant={o.match === 'same' ? 'default' : 'outline'} />
-                  )}
+                  {o.original && <Badge label="Original" variant="outline" />}
                 </View>
+                {/* The muscles it works: primary (the exact match) and secondary. */}
+                <Text style={s.swapMuscles} numberOfLines={2}>
+                  <Text style={{ color: color.text }}>{ex.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}</Text>
+                  {ex.secondary.length ? ` · also ${ex.secondary.map((m) => MUSCLE_LABEL[m]).join(', ')}` : ''}
+                </Text>
                 <Text style={s.why}>{o.why}</Text>
               </View>
               {on && <Icon name="checkCircle" size={24} color={color.accent} filled />}
@@ -402,6 +406,7 @@ export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
 }
 
 const s = StyleSheet.create({
+  swapMuscles: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
   photo: { height: 260, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.flash },
   img: { width: '100%', height: '100%' },
   clay: { backgroundColor: color.bg, height: 300 },

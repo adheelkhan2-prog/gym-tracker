@@ -99,11 +99,29 @@ function Spotlight({ width, height }: { width: number; height: number }) {
  * a very faint blood-red glow far back, film grain and a vignette. Smoke rests under reduce motion.
  * Wrap a screen's content in it; glass panels inside blur it.
  */
-export function Backdrop({ children, intensity = 1 }: { children: React.ReactNode; intensity?: number }) {
+export function Backdrop({ children, intensity = 1, stage = false }: { children: React.ReactNode; intensity?: number; stage?: boolean }) {
   const { width, height } = useWindowDimensions();
   const target = useRef<React.ComponentRef<typeof View>>(null);
   const big = width * 1.4;
   const mid = width * 1.05;
+  if (stage) {
+    // For screens that show a clay render or video: the ground is exactly the render's own
+    // background, and the room's light (spotlight, grain, vignette) is drawn over everything, so
+    // the image and the screen are lit the same way and no edge can show between them.
+    return (
+      <BlurTarget.Provider value={target}>
+        <View style={[s.root, { backgroundColor: color.stage }]}>
+          <BlurTargetView ref={target} style={[StyleSheet.absoluteFill, { backgroundColor: color.stage }]} pointerEvents="none" />
+          {children}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Spotlight width={width} height={height} />
+            <Image source={GRAIN} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: 0.045 }]} />
+            <Vignette width={width} height={height} strength={0.6} id="stage-vignette" />
+          </View>
+        </View>
+      </BlurTarget.Provider>
+    );
+  }
   return (
     <BlurTarget.Provider value={target}>
       <View style={s.root}>

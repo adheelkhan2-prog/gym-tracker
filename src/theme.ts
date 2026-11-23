@@ -8,6 +8,7 @@ export const color = {
   // Near-black and graphite ladder
   bg: '#070708',
   bgRaised: '#0C0C0E',
+  stage: '#0A0A0A', // the clay renders' own background: screens showing them sit on exactly this
   surface: '#111113', // opaque fallback for glass
   surface2: '#18181B',
   surface3: '#232327',
@@ -125,18 +126,14 @@ export const motion = {
 export const restBarClearance = 140;
 
 /*
- * Bottom clearance for scrolling screens under floating bars. Screens add the safe-area inset
- * (gesture bar) on top of these, so the last content can always scroll fully clear.
- * - tabBar: the floating tab bar's height above the inset ((tabs)/_layout.tsx: 60dp tab + padding).
- * - tabBarOffset: where Today's floating main button sits (just above the tab bar).
- * - action: that button's height (Button size lg).
+ * Bottom clearance for scrolling screens under floating bars. Screens add the measured tab-bar
+ * height (or the safe-area inset outside the tabs) to these, so the last content always scrolls
+ * fully clear of the tab bar, the fade above it, and any floating button.
  */
-export const floating = { tabBar: 78, tabBarOffset: 92, action: 64, fade: 32 } as const;
+export const floating = { tabBar: 78, gap: 14, action: 64, fade: 32 } as const;
 export const bottomClearance = {
-  /** Tab screens: clear of the tab bar and the fade above it. */
-  tabs: floating.tabBar + floating.fade + 24,
-  /** Today with the floating Start/Continue button: clear of the button and its fade. */
-  tabsWithAction: floating.tabBarOffset + floating.action + floating.fade + 24,
+  /** Above the tab bar: its fade plus breathing room. */
+  tabs: floating.fade + 24,
 } as const;
 
 /** Text style presets built from the tokens above. */

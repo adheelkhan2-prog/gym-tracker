@@ -13,7 +13,9 @@ export type { Unit } from './load';
  * `load` keeps the pin / plates / colours the set was logged with.
  */
 export type SetEntry = { weight: string; reps: string; done: boolean; u?: Unit; load?: LoadInfo };
-export type ExerciseLog = { sets: SetEntry[]; skipped?: boolean };
+/** `carried`: sets of this slot done today on another exercise before a mid-workout swap. They stay
+ * logged under that exercise (its history and PRs); here they only count towards the slot. */
+export type ExerciseLog = { sets: SetEntry[]; skipped?: boolean; carried?: number };
 export type DayLog = Record<string, ExerciseLog>; // exerciseId -> log
 export type Session = { dayId: string; startedAt?: number; finishedAt?: number };
 

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   FadeIn,
@@ -14,23 +14,26 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Backdrop, Vignette } from '../components/glass';
+import { Backdrop } from '../components/glass';
 import { Icon } from '../components/icons';
 import { Burst, Flash } from '../components/motion';
 import { RestTimer } from '../components/RestRing';
+import { HowTo, MuscleLegend, SwapSheet } from '../components/ExerciseParts';
+import { Sheet } from '../components/Sheet';
 import { Button, IconButton, Press } from '../components/ui';
-import { EXERCISES } from '../data/exercises';
+import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
 import { howToImages } from '../data/how-to';
 import { MUSCLE_LABEL } from '../data/muscles';
-import { restFor } from '../data/program';
+import { pickOption, restFor } from '../data/program';
+import { swapsFor } from '../data/swaps';
 import { crumb, logCrash } from '../crash';
 import { haptic } from '../feedback';
-import { readyToLog, stepFor, suggestSet, weightIn } from '../focus';
+import { missingFor, stepFor, suggestSet, weightIn } from '../focus';
 import { fmtKg, loadTypeOf, round1, weightFromLoad } from '../load';
 import { restCarry } from '../restCarry';
 import { bestBefore, dayById, num, prMetric, todayKey, useStore, type SetEntry } from '../store';
 import { color, font, leading, motion, radius, size, space, touch, type } from '../theme';
-import { loadText, setText, slotStatuses } from '../workout';
+import { loadText, setText, slotStatuses, swapSlot } from '../workout';
 
 /**
  * Focus mode: one exercise at a time, nothing else on screen. The current set is big in the
@@ -54,6 +57,8 @@ export default function FocusScreen() {
   const allDone = statuses.length > 0 && statuses.every((x) => x.complete);
 
   const [editing, setEditing] = useState<number | null>(null);
+  const [missing, setMissing] = useState<{ key: string; load: boolean; reps: boolean; message: string } | null>(null);
+  const [sheet, setSheet] = useState<'info' | 'swap' | null>(null);
   const [draft, setDraft] = useState<{ key: string; set: SetEntry } | null>(null);
   const [undo, setUndo] = useState<{ id: string; sets: SetEntry[]; n: number } | null>(null);
   const [restEnd, setRestEnd] = useState<number | null>(() => (restCarry.endsAt && restCarry.endsAt > Date.now() ? restCarry.endsAt : null));
@@ -119,7 +124,7 @@ export default function FocusScreen() {
 
   if (!day || !st) {
     return (
-      <Backdrop>
+      <Backdrop stage>
         <View style={[s.empty, { paddingTop: insets.top + space.x4 }]}>
           <Text style={type.title}>No workout today</Text>
           <Button variant="outline" label="Close" onPress={close} />
@@ -134,6 +139,7 @@ export default function FocusScreen() {
   const ex = EXERCISES[id];
   const kind = ex.kind;
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
+  const secs = kind === 'time' || kind === 'weight_time';
   const unit = state.unit;
   const step = stepFor(unit);
   const lt = loadTypeOf(id, state.loadTypes);
@@ -142,16 +148,25 @@ export default function FocusScreen() {
   const all = log?.sets ?? [];
   const done = all.filter((x) => x.done);
   const cur = done.length;
+  // Sets of this slot already done on another exercise before a swap (they stay logged there).
+  const carried = log?.carried ?? 0;
+  const slotSet = carried + cur;
+  const planned = pickOption(plan, state.variants);
   const key = `${id}:${editing ?? `n${cur}`}`;
   const suggestion = suggestSet(state, id, plan, date, editing ?? cur);
   const value: SetEntry = draft?.key === key ? draft.set : editing !== null ? { ...done[editing], done: false } : suggestion.set;
-  const setValue = (v: SetEntry) => setDraft({ key, set: v });
-  const exDone = cur >= plan.sets;
+  const setValue = (v: SetEntry) => {
+    setDraft({ key, set: v });
+    setMissing(null);
+  };
+  const warnLoad = missing?.key === key && missing.load;
+  const warnReps = missing?.key === key && missing.reps;
+  const exDone = slotSet >= plan.sets;
   const next = statuses.find((x, j) => j > i && !x.complete) ?? statuses.find((x) => !x.complete && x !== st);
 
   /** Save `done` sets (in order) for this exercise, keeping at least the planned number of rows. */
   const saveDone = (nextDone: SetEntry[]) => {
-    const pad = Math.max(0, plan.sets - nextDone.length);
+    const pad = Math.max(0, plan.sets - carried - nextDone.length);
     const rows = [...nextDone, ...Array.from({ length: pad }, () => ({ weight: '', reps: '', done: false }))];
     update((s) => ({
       ...s,
@@ -179,11 +194,15 @@ export default function FocusScreen() {
 
   // ----- Log (one tap) -----
   const logSet = () => {
-    if (!readyToLog(value, id)) {
-      haptic.tap();
-      if (weighted && lt !== 'weight' && lt !== 'stack') router.push({ pathname: '/exercise/[id]', params: { id, day: day.id, slot: plan.slot } });
+    const miss = missingFor(value, id, lt);
+    if (miss.message) {
+      // Nothing silent: say what's missing, mark the empty box amber, small warning buzz.
+      haptic.warn();
+      setMissing({ key, ...miss });
+      crumb(`log set blocked: ${miss.message}`);
       return;
     }
+    setMissing(null);
     const entry: SetEntry = { ...value, done: true };
     if (editing !== null) {
       saveDone(done.map((x, k) => (k === editing ? entry : x)));
@@ -202,7 +221,7 @@ export default function FocusScreen() {
       setPr(weighted ? fmtKg(metric, unit) : `${metric}${kind === 'time' ? ' s' : ' reps'}`);
       setTimeout(() => setPr(null), 2600);
     } else haptic.setDone();
-    const finishedExercise = cur + 1 >= plan.sets;
+    const finishedExercise = slotSet + 1 >= plan.sets;
     const finishedDay = finishedExercise && statuses.every((x) => x === st || x.complete);
     if (finishedDay) {
       setRestEnd(null);
@@ -247,7 +266,18 @@ export default function FocusScreen() {
   // ----- What the big number says -----
   const w = weighted && value.weight !== '' ? weightIn(value, unit) : null;
   const shownWeight = w === null ? '' : round1(w);
-  const bigMain = weighted ? (lt === 'stack' && value.load?.pin !== undefined && value.weight === '' ? `Pin ${value.load.pin}` : shownWeight || '—') : value.reps || '—';
+  const pin = value.load?.pin;
+  // Nothing entered yet: a quiet placeholder ("—" or "Pin ?"), never a blank bar.
+  const bigEmpty = weighted ? value.weight === '' && pin === undefined : !value.reps;
+  const bigMain = bigEmpty
+    ? weighted && lt === 'stack'
+      ? 'Pin ?'
+      : `— ${weighted ? unit : kind === 'time' ? 's' : 'reps'}`
+    : weighted
+      ? lt === 'stack' && value.weight === '' && pin !== undefined
+        ? `Pin ${pin}`
+        : shownWeight
+      : value.reps;
   const bigUnit = weighted ? (lt === 'stack' && value.weight === '' ? '' : unit) : kind === 'time' ? 's' : 'reps';
   const repsLine = weighted ? `× ${value.reps || '—'}${kind === 'weight_time' ? ' s' : ' reps'}` : '';
   const loadLine = weighted && lt !== 'weight' ? loadText({ ...value, done: false }, unit, state.gym) : '';
@@ -257,7 +287,7 @@ export default function FocusScreen() {
   const why = editing !== null ? `Editing set ${editing + 1}` : suggestion.reason === 'up' ? `Up ${lt === 'stack' ? 'a pin' : `${step} ${unit}`}: you hit the top of the range last time` : suggestion.reason === 'today' ? 'Same as your last set' : '';
 
   return (
-    <Backdrop>
+    <Backdrop stage>
       <GestureDetector gesture={pull}>
         <Animated.View style={[{ flex: 1 }, sheetStyle]}>
           {/* Top: close, where you are, details */}
@@ -268,7 +298,7 @@ export default function FocusScreen() {
                 <View key={x.plan.slot} style={[s.dot, x.complete && s.dotDone, j === i && s.dotOn]} />
               ))}
             </View>
-            <IconButton icon="info" label={`${ex.name} details`} onPress={() => router.push({ pathname: '/exercise/[id]', params: { id, day: day.id, slot: plan.slot } })} />
+            <IconButton icon="info" label={`How to do ${ex.name}, muscles and swap`} onPress={() => setSheet('info')} />
           </View>
 
           <GestureDetector gesture={swipe}>
@@ -281,6 +311,11 @@ export default function FocusScreen() {
                   {plan.sets} × {plan.target}
                   {kind === 'time' || kind === 'weight_time' ? ' s' : ''} · {ex.primary.map((m) => MUSCLE_LABEL[m]).slice(0, 2).join(', ')}
                 </Text>
+                {/* Swap mid-workout: logged sets stay under this exercise, the rest continue on the new one. */}
+                <Press onPress={() => setSheet('swap')} style={s.swapChip} accessibilityRole="button" accessibilityLabel={`Swap ${ex.name}`}>
+                  <Icon name="swap" size={16} color={color.accentText} />
+                  <Text style={s.swapChipText}>{id !== planned ? `Swapped · change` : 'Swap'}</Text>
+                </Press>
               </View>
 
               {allDone ? (
@@ -295,15 +330,18 @@ export default function FocusScreen() {
                   {fig ? (
                     <View style={s.figure} pointerEvents="none">
                       <Image source={fig} style={s.figureImg} resizeMode="contain" accessibilityIgnoresInvertColors />
-                      <Vignette width="100%" height="100%" strength={1} id={`focus-vig-${id}`} cy="48%" />
                     </View>
                   ) : null}
-                  <Text style={type.label}>{exDone && editing === null ? 'Exercise done' : editing !== null ? `Set ${editing + 1}` : `Set ${cur + 1} of ${plan.sets}`}</Text>
+                  <Text style={type.label}>{exDone && editing === null ? 'Exercise done' : editing !== null ? `Set ${editing + 1}` : `Set ${slotSet + 1} of ${plan.sets}`}</Text>
                   <View style={s.bigRow} accessibilityLabel={`${bigMain} ${bigUnit} ${repsLine}`}>
-                    <Text style={[s.big, value.weight !== '' || !weighted ? { color: color.accent } : null]} numberOfLines={1} adjustsFontSizeToFit>
-                      {bigMain}
-                    </Text>
-                    {bigUnit ? <Text style={s.bigUnit}>{bigUnit}</Text> : null}
+                    {bigEmpty ? (
+                      <Text style={[s.bigPlaceholder, warnLoad && { color: color.warn }]}>{bigMain}</Text>
+                    ) : (
+                      <Text style={[s.big, { color: color.accent }]} numberOfLines={1} adjustsFontSizeToFit>
+                        {bigMain}
+                      </Text>
+                    )}
+                    {bigUnit && !bigEmpty ? <Text style={s.bigUnit}>{bigUnit}</Text> : null}
                   </View>
                   {repsLine ? <Text style={s.reps}>{repsLine}</Text> : null}
                   {loadLine ? <Text style={type.small}>{loadLine}</Text> : null}
@@ -341,12 +379,42 @@ export default function FocusScreen() {
                 <Button size="sm" variant="ghost" label="Undo" onPress={undoDelete} />
               </Animated.View>
             )}
+            {missing?.key === key && (
+              <View style={s.missing} accessibilityLiveRegion="assertive" accessibilityRole="alert">
+                <Icon name="alert" size={18} color={color.warn} />
+                <Text style={s.missingText}>{missing.message}</Text>
+              </View>
+            )}
             {!allDone && (!exDone || editing !== null) && (
               <View style={s.adjust}>
                 {weighted && (lt === 'weight' || lt === 'stack') && (
-                  <Stepper label={lt === 'stack' ? 'Pin' : unit} onMinus={() => bump(-1)} onPlus={() => bump(1)} name={lt === 'stack' ? 'pin' : 'weight'} />
+                  <Stepper
+                    name={lt === 'stack' ? 'pin' : 'weight'}
+                    shown={lt === 'stack' ? (pin !== undefined ? `Pin ${pin}` : 'Pin ?') : shownWeight ? `${shownWeight} ${unit}` : `— ${unit}`}
+                    raw={lt === 'stack' ? (pin !== undefined ? String(pin) : '') : shownWeight}
+                    warn={!!warnLoad}
+                    decimal={lt !== 'stack'}
+                    onMinus={() => bump(-1)}
+                    onPlus={() => bump(1)}
+                    onType={(n) =>
+                      setValue(
+                        lt === 'stack'
+                          ? { ...value, ...weightFromLoad({ t: 'stack', pin: Math.max(1, Math.round(n)) }, state.gym, machine) }
+                          : { ...value, weight: round1(Math.max(0, n)), u: unit, load: undefined },
+                      )
+                    }
+                  />
                 )}
-                <Stepper label={kind === 'time' || kind === 'weight_time' ? 'sec' : 'reps'} onMinus={() => bumpReps(-1)} onPlus={() => bumpReps(1)} name={kind === 'time' || kind === 'weight_time' ? 'seconds' : 'reps'} />
+                <Stepper
+                  name={secs ? 'seconds' : 'reps'}
+                  shown={value.reps ? `${value.reps} ${secs ? 's' : 'reps'}` : `— ${secs ? 's' : 'reps'}`}
+                  raw={value.reps}
+                  warn={!!warnReps}
+                  decimal={false}
+                  onMinus={() => bumpReps(-1)}
+                  onPlus={() => bumpReps(1)}
+                  onType={(n) => setValue({ ...value, reps: String(Math.max(0, Math.round(n))) })}
+                />
               </View>
             )}
             <View style={s.navRow}>
@@ -374,7 +442,7 @@ export default function FocusScreen() {
           endsAt={restEnd}
           total={restTotal}
           tint={color.accent}
-          nextLabel={next || !exDone ? (exDone && next ? EXERCISES[next.exerciseId].name : `Set ${Math.min(cur + 1, plan.sets)} · ${setText(suggestSet(state, id, plan, date, cur).set, kind, unit, state.gym)}`) : 'Finish'}
+          nextLabel={next || !exDone ? (exDone && next ? EXERCISES[next.exerciseId].name : `Set ${Math.min(slotSet + 1, plan.sets)} · ${setText(suggestSet(state, id, plan, date, cur).set, kind, unit, state.gym)}`) : 'Finish'}
           skipLabel="Skip"
           sound={state.restSound}
           onAdd={() => {
@@ -397,18 +465,109 @@ export default function FocusScreen() {
         </Animated.View>
       )}
 
+      {sheet === 'info' && (
+        <Sheet title={ex.name} subtitle={`${plan.sets} × ${plan.target}${secs ? ' s' : ''} · ${EQUIPMENT_LABEL[ex.equipment]}`} onClose={() => setSheet(null)} testID="focus-info">
+          <View style={{ gap: space.lg }}>
+            <HowTo ex={ex} />
+            <View>
+              <Text style={type.label}>Muscles worked</Text>
+              <MuscleLegend ex={ex} />
+            </View>
+            <Button variant="outline" icon="swap" label={`Swap ${ex.name}`} onPress={() => setSheet('swap')} />
+          </View>
+        </Sheet>
+      )}
+      {sheet === 'swap' && (
+        <SwapSheet
+          original={planned}
+          current={id}
+          swaps={swapsFor(planned, state.injured).filter((x) => x.id === id || !statuses.some((o) => o !== st && o.exerciseId === x.id))}
+          note={
+            slotSet > 0
+              ? `Same primary muscles only. Your ${slotSet} logged set${slotSet === 1 ? '' : 's'} stay${slotSet === 1 ? 's' : ''} under ${EXERCISES[id].name}; the rest continue on the new exercise.`
+              : undefined
+          }
+          onPick={(to) => {
+            haptic.setDone();
+            crumb(`swap ${id} -> ${to}`);
+            update((cur) => swapSlot(cur, date, plan, to));
+            setEditing(null);
+            setSheet(null);
+          }}
+          onReset={() => {
+            update((cur) => swapSlot(cur, date, plan, planned));
+            setSheet(null);
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
     </Backdrop>
   );
 }
 
-/** −/+ pair for weight, pin, reps or seconds. 56dp targets for sweaty thumbs. */
-function Stepper({ label, name, onMinus, onPlus }: { label: string; name: string; onMinus: () => void; onPlus: () => void }) {
+/**
+ * −/+ pair with the current value between them (weight, pin, reps or seconds). Tap the value to
+ * type it. 56dp targets for sweaty thumbs; amber when Log set found it empty.
+ */
+function Stepper({
+  name,
+  shown,
+  raw,
+  warn,
+  decimal,
+  onMinus,
+  onPlus,
+  onType,
+}: {
+  name: string;
+  shown: string;
+  raw: string;
+  warn: boolean;
+  decimal: boolean;
+  onMinus: () => void;
+  onPlus: () => void;
+  onType: (n: number) => void;
+}) {
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const commit = () => {
+    setTyping(false);
+    const n = parseFloat(text.replace(',', '.'));
+    if (Number.isFinite(n)) onType(n);
+  };
   return (
-    <View style={s.stepper}>
+    <View style={[s.stepper, warn && s.stepperWarn]}>
       <Press onPress={onMinus} style={s.stepBtn} accessibilityRole="button" accessibilityLabel={`Less ${name}`}>
         <Icon name="minus" size={20} color={color.text} />
       </Press>
-      <Text style={s.stepLabel}>{label}</Text>
+      {typing ? (
+        <TextInput
+          autoFocus
+          value={text}
+          onChangeText={(t) => setText(t.replace(/[^0-9.,]/g, ''))}
+          onSubmitEditing={commit}
+          onBlur={commit}
+          keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
+          returnKeyType="done"
+          selectTextOnFocus
+          style={s.stepInput}
+          accessibilityLabel={`Type ${name}`}
+        />
+      ) : (
+        <Press
+          onPress={() => {
+            setText(raw);
+            setTyping(true);
+          }}
+          style={s.stepValue}
+          accessibilityRole="button"
+          accessibilityLabel={`${name}: ${shown}. Tap to type`}
+        >
+          <Text style={[s.stepText, warn && { color: color.warn }]} numberOfLines={1} adjustsFontSizeToFit>
+            {shown}
+          </Text>
+        </Press>
+      )}
       <Press onPress={onPlus} style={s.stepBtn} accessibilityRole="button" accessibilityLabel={`More ${name}`}>
         <Icon name="plus" size={20} color={color.text} />
       </Press>
@@ -469,6 +628,8 @@ function DoneRow({ n, text, editing, onEdit, onDelete }: { n: number; text: stri
 }
 
 const s = StyleSheet.create({
+  swapChip: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.sm, paddingHorizontal: space.lg, minHeight: touch.min, borderRadius: radius.pill, borderWidth: 1, borderColor: color.glassBorder },
+  swapChipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText },
   empty: { flex: 1, alignItems: 'center', gap: space.lg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg },
   dots: { flexDirection: 'row', gap: space.xs, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'center' },
@@ -479,8 +640,8 @@ const s = StyleSheet.create({
   titleRow: { marginTop: space.xl, gap: space.xs, alignItems: 'center' },
   exName: { fontFamily: font.display, fontSize: size.title, lineHeight: leading.title, color: color.text, textAlign: 'center', letterSpacing: -0.3 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', minHeight: 220, paddingBottom: space.lg },
-  // 'lighten' drops the render's near-black ground into the scene, so only the lit figure shows.
-  figure: { flex: 1, width: '100%', maxHeight: 300, minHeight: 120, opacity: 0.75, marginBottom: -space.xl, mixBlendMode: 'lighten' },
+  // The render's ground is exactly the stage colour, so it blends into the screen with no edge.
+  figure: { flex: 1, width: '100%', maxHeight: 300, minHeight: 120, opacity: 0.8, marginBottom: -space.xl },
   figureImg: { width: '100%', height: '100%' },
   bigRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm, marginTop: space.sm, maxWidth: '100%' },
   big: { fontFamily: font.display, fontSize: size.giga, lineHeight: leading.giga + 8, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -1.5 },
@@ -518,7 +679,13 @@ const s = StyleSheet.create({
     padding: space.xxs,
   },
   stepBtn: { width: touch.primary, height: touch.primary, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  stepLabel: { fontFamily: font.bodyBold, fontSize: size.small, color: color.muted, letterSpacing: 0.4 },
+  stepperWarn: { borderColor: color.warnEdge, backgroundColor: color.warnDim },
+  stepValue: { flex: 1, minWidth: 0, minHeight: touch.primary, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
+  stepText: { fontFamily: font.display, fontSize: size.h3, color: color.text, fontVariant: ['tabular-nums'] },
+  stepInput: { flex: 1, minWidth: 0, minHeight: touch.primary, textAlign: 'center', fontFamily: font.display, fontSize: size.h3, color: color.text, padding: 0 },
+  bigPlaceholder: { fontFamily: font.display, fontSize: size.display, color: color.subtle, marginVertical: space.md },
+  missing: { flexDirection: 'row', alignItems: 'center', gap: space.sm, alignSelf: 'center', paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: color.warnDim, borderWidth: 1, borderColor: color.warnEdge },
+  missingText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   undo: {
     flexDirection: 'row',

@@ -23,6 +23,7 @@ import { EXERCISES, type ExerciseInfo } from '../../data/exercises';
 import { MUSCLE_LABEL } from '../../data/muscles';
 import { pickOption, restFor, targetTop } from '../../data/program';
 import { swapsFor } from '../../data/swaps';
+import { crumb } from '../../crash';
 import { haptic } from '../../feedback';
 import {
   LOAD_HINT,
@@ -40,7 +41,7 @@ import {
 import { restCarry } from '../../restCarry';
 import { bestBefore, dayById, kgOf, num, previousSession, prMetric, todayKey, useStore, type SetEntry } from '../../store';
 import { color, fmtClock, font, leading, motion, radius, restBarClearance, size, space, touch, type } from '../../theme';
-import { emptySets, exerciseFor, hitTopOfRange, loadText, setText, titleOf, visiblePlans } from '../../workout';
+import { emptySets, exerciseFor, hitTopOfRange, loadText, setText, swapSlot, titleOf, visiblePlans } from '../../workout';
 
 type Rect = { x: number; y: number };
 
@@ -88,7 +89,9 @@ export default function ExerciseScreen() {
   const original = plan ? pickOption(plan, state.variants) : params.id;
   const id = plan ? exerciseFor(state, plan) : params.id;
   const ex: ExerciseInfo | undefined = EXERCISES[id];
-  const targetSets = plan?.sets ?? 3;
+  // After a mid-workout swap, the sets already done on the other exercise are carried over.
+  const carried = state.logs[todayKey()]?.[id]?.carried ?? 0;
+  const targetSets = Math.max(1, (plan?.sets ?? 3) - carried);
   const unit = state.unit;
   const step = unit === 'kg' ? 2.5 : 5;
   const gym = state.gym;
@@ -315,12 +318,9 @@ export default function ExerciseScreen() {
   const pickSwap = (to: string) => {
     if (!plan) return;
     haptic.setDone();
-    update((st) => {
-      const next = { ...st.swaps };
-      if (to === original) delete next[plan.slot];
-      else next[plan.slot] = to;
-      return { ...st, swaps: next };
-    });
+    crumb(`swap ${id} -> ${to}`);
+    // Sets already logged stay under this exercise; the rest continue on the new one.
+    update((st) => swapSlot(st, date, plan, to));
     setSheet(null);
   };
 
@@ -359,7 +359,7 @@ export default function ExerciseScreen() {
             </View>
             {plan && (
               <View style={s.swapRow}>
-                <Button size="sm" variant="outline" icon="swap" label="Swap" accessibilityLabel={`Swap ${ex.name}`} onPress={() => (canSwitch ? setSheet({ kind: 'swap' }) : setSwitchBlocked(true))} />
+                <Button size="sm" variant="outline" icon="swap" label="Swap" accessibilityLabel={`Swap ${ex.name}`} onPress={() => setSheet({ kind: 'swap' })} />
                 {swapped && (
                   <Text style={s.swappedText} numberOfLines={2}>
                     Swapped from {EXERCISES[original].name}.{' '}

@@ -2,7 +2,7 @@
  * Today screen day choice (the "Monday shows Wednesday" bug), the ease-in card rule, and focus
  * mode's one-tap prefill / progression suggestions.
  */
-import { suggestSet, targetBottom, weightIn } from '../focus';
+import { missingFor, suggestSet, targetBottom, weightIn } from '../focus';
 import { restBody } from '../restNotify';
 import { DEFAULT_STATE, easingIn, type State } from '../store';
 import { todayDayId } from '../workout';
@@ -105,5 +105,21 @@ describe('rest notification text', () => {
   test('counts down with the next set', () => {
     expect(restBody(1_000_000 + 90_000, 'Set 2 · 60 kg × 10', 1_000_000)).toBe('1:30 left · Next: Set 2 · 60 kg × 10');
     expect(restBody(1_000_000, 'x', 1_000_500)).toBe('0:00 left · Next: x');
+  });
+});
+
+describe('Log set validation message', () => {
+
+  test('pin and reps both missing', () => {
+    expect(missingFor({ weight: '', reps: '', done: false }, 'lat_pulldown', 'stack')).toEqual({ load: true, reps: true, message: 'Add your pin and reps first' });
+  });
+  test('only one missing', () => {
+    expect(missingFor({ weight: '', reps: '10', done: false }, 'flat_bench', 'weight').message).toBe('Add your weight first');
+    expect(missingFor({ weight: '60', reps: '', done: false, u: 'kg' }, 'flat_bench', 'weight').message).toBe('Add your reps first');
+    expect(missingFor({ weight: '60', reps: '0', done: false, u: 'kg' }, 'flat_bench', 'weight').message).toBe('Add your reps first');
+    expect(missingFor({ weight: '', reps: '', done: false }, 'plank', 'timed').message).toBe('Add your seconds first');
+  });
+  test('a set with a pin (no kg yet) and reps is ready', () => {
+    expect(missingFor({ weight: '', reps: '10', done: false, load: { t: 'stack', pin: 7 } }, 'lat_pulldown', 'stack').message).toBe('');
   });
 });

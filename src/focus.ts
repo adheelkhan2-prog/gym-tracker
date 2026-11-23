@@ -90,11 +90,23 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
   return { set: plain(null, String(top ?? bottom ?? '')), reason: 'target' };
 }
 
-/** True when the suggestion can be logged as is (has reps, and a weight or pin when weighted). */
-export function readyToLog(set: SetEntry, exerciseId: string) {
+/** What a set still needs before it can be logged, and how to say it. */
+export function missingFor(set: SetEntry, exerciseId: string, loadType: string) {
   const kind = EXERCISES[exerciseId].kind;
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
-  return !!set.reps && (!weighted || set.weight !== '' || set.load?.pin !== undefined);
+  const secs = kind === 'time' || kind === 'weight_time';
+  const load = weighted && set.weight === '' && set.load?.pin === undefined;
+  const reps = !(num(set.reps) && num(set.reps)! > 0);
+  const loadWord = loadType === 'stack' ? 'pin' : 'weight';
+  const repsWord = secs ? 'seconds' : 'reps';
+  const parts = [load && `your ${loadWord}`, reps && (load ? repsWord : `your ${repsWord}`)].filter(Boolean);
+  return { load, reps, message: parts.length ? `Add ${parts.join(' and ')} first` : '' };
+}
+
+/** True when the set can be logged as is (reps above zero, and a weight or pin when weighted). */
+export function readyToLog(set: SetEntry, exerciseId: string) {
+  const m = missingFor(set, exerciseId, set.load?.t ?? 'weight');
+  return !m.load && !m.reps;
 }
 
 /** Done sets for an exercise today. */
