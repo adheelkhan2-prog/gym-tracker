@@ -97,6 +97,42 @@ def _belly_corrective(body):
     key.value = 0.0
 
 
+def _shoulder_smooth(body):
+    """Raised shoulders (shrugs) pull the skin between the neck and the shoulder joint into a
+    sharp peak: the clavicle and shoulder bones lift while neck-weighted trap vertices stay put.
+    A Corrective Smooth modifier, limited to the trap/shoulder area, relaxes that pose-induced
+    distortion back towards the rest shape (muscle detail kept). pose() sets its strength from
+    how far the shoulders are raised, only for poses that set shoulder_L/R (the shrug)."""
+    vg = body.vertex_groups
+    src = [vg[n] for n in ('clavicle.L', 'clavicle.R', 'shoulder01.L', 'shoulder01.R', 'neck01', 'spine01') if n in vg]
+    idx = {g.index for g in src}
+    region = vg.new(name='shoulder_smooth')
+    for v in body.data.vertices:
+        w = sum(ge.weight for ge in v.groups if ge.group in idx)
+        if w > 0.02:
+            region.add([v.index], min(1.0, w * 1.5), 'REPLACE')
+    cs = body.modifiers.new('ShoulderSmooth', 'CORRECTIVE_SMOOTH')
+    cs.vertex_group = 'shoulder_smooth'
+    cs.rest_source = 'ORCO'
+    cs.smooth_type = 'LENGTH_WEIGHTED'
+    cs.iterations = 12
+    cs.scale = 1.0
+    cs.factor = 0.0
+    cs.use_only_smooth = False
+
+
+def _shoulder_elevation(rig):
+    """0 shoulders level .. 1 fully shrugged, from the clavicle angle above horizontal."""
+    import math
+    out = 0.0
+    for s in ('L', 'R'):
+        pb = rig.pose.bones[f'clavicle.{s}']
+        d = (pb.tail - pb.head).normalized()
+        rest = (rig.data.bones[f'clavicle.{s}'].tail_local - rig.data.bones[f'clavicle.{s}'].head_local).normalized()
+        out = max(out, math.degrees(math.asin(max(-1, min(1, d.z)))) - math.degrees(math.asin(max(-1, min(1, rest.z)))))
+    return max(0.0, min(1.0, (out - 6) / 10))
+
+
 def _hip_flexion(rig):
     """0 standing .. 1 deep sit, from the angle between torso and thighs."""
     pb = rig.pose.bones
@@ -217,6 +253,7 @@ def build():
     body.parent = rig
     _load_bake(body)
     _belly_corrective(body)
+    _shoulder_smooth(body)
     sub = body.modifiers.new('Subdivide', 'SUBSURF')
     sub.levels = 1
     sub.render_levels = 2
@@ -236,6 +273,9 @@ CHAINS = {
 for _s in ('L', 'R'):
     CHAINS.update({
         f'clav_{_s}': [f'clavicle.{_s}', f'shoulder01.{_s}'],
+        # Optional: re-aim just the shoulder cap after clav_X (a shrug lifts the collarbone while
+        # the deltoid cap stays nearly level; tilting both makes a tent-like peak).
+        f'shoulder_{_s}': [f'shoulder01.{_s}'],
         f'upper_{_s}': [f'upperarm01.{_s}', f'upperarm02.{_s}'],
         f'fore_{_s}': [f'lowerarm01.{_s}', f'lowerarm02.{_s}'],
         f'hand_{_s}': [f'wrist.{_s}'],
@@ -246,7 +286,7 @@ for _s in ('L', 'R'):
 
 ORDER = ['pelvis', 'spine', 'chest', 'neck', 'head']
 for _s in ('L', 'R'):
-    ORDER += [f'clav_{_s}', f'upper_{_s}', f'fore_{_s}', f'hand_{_s}', f'thigh_{_s}', f'shin_{_s}', f'foot_{_s}']
+    ORDER += [f'clav_{_s}', f'shoulder_{_s}', f'upper_{_s}', f'fore_{_s}', f'hand_{_s}', f'thigh_{_s}', f'shin_{_s}', f'foot_{_s}']
 
 FINGERS = [f'finger{i}-1' for i in range(2, 6)]
 
@@ -265,6 +305,12 @@ def pose(rig, dirs, aim):
     body = next((c for c in rig.children if c.type == 'MESH'), None)
     if body is not None and body.data.shape_keys and 'belly_flat' in body.data.shape_keys.key_blocks:
         body.data.shape_keys.key_blocks['belly_flat'].value = _hip_flexion(rig)
+    if body is not None and 'ShoulderSmooth' in body.modifiers:
+        # Opt-in (poses that set shoulder_L/R), so already-approved renders stay reproducible.
+        on = any(k.startswith('shoulder_') for k in dirs)
+        body.modifiers['ShoulderSmooth'].factor = _shoulder_elevation(rig) if on else 0.0
+        if os.environ.get('SHOULDER_DEBUG'):
+            print('shoulder smooth', round(body.modifiers['ShoulderSmooth'].factor, 3))
     # Fold the fingers away: the sculpted clay fist (scene.fist) wraps the handle instead.
     for s in ('L', 'R'):
         for f in FINGERS + ['finger1-1']:
