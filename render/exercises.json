@@ -31,14 +31,19 @@
     "why": "Bench press on a guided bar; pec activity is similar, less stabiliser demand."
    },
    {
+    "id": "push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "weighted_push_ups",
-    "match": "close",
-    "why": "Loaded push-ups match bench strength gains and pec activation at similar loads."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    },
    {
     "id": "db_floor_press",
-    "match": "close",
-    "why": "Same press, shorter range: stops at the floor, so a bit more triceps."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -70,11 +75,6 @@
     "id": "incline_machine_press",
     "match": "same",
     "why": "Incline pressing path on a machine; upper chest and front delts."
-   },
-   {
-    "id": "incline_cable_fly",
-    "match": "close",
-    "why": "Low-to-high fly hits the upper chest without the triceps."
    }
   ]
  },
@@ -107,11 +107,6 @@
     "id": "incline_machine_press",
     "match": "same",
     "why": "Incline machine press; same muscles on a fixed track."
-   },
-   {
-    "id": "incline_cable_fly",
-    "match": "close",
-    "why": "Isolates the upper chest without triceps."
    }
   ]
  },
@@ -146,9 +141,19 @@
     "why": "Guided bar press; similar stability to a machine."
    },
    {
+    "id": "push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "weighted_push_ups",
-    "match": "close",
-    "why": "Bodyweight press with load; similar pec and triceps work."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_floor_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -183,9 +188,19 @@
     "why": "Guided bar, same muscles, no balancing needed."
    },
    {
+    "id": "push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "weighted_push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "db_floor_press",
-    "match": "close",
-    "why": "Same dumbbell press with a shorter range; a little more triceps."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -216,11 +231,6 @@
     "id": "db_fly",
     "match": "same",
     "why": "Same fly motion with dumbbells; most tension at the stretch."
-   },
-   {
-    "id": "incline_cable_fly",
-    "match": "close",
-    "why": "Low-to-high cable fly; same move with an upper-chest bias."
    }
   ]
  },
@@ -251,11 +261,6 @@
     "id": "db_fly",
     "match": "same",
     "why": "Same fly motion with dumbbells."
-   },
-   {
-    "id": "chest_dips",
-    "match": "close",
-    "why": "Dips also bias the lower chest, with more triceps."
    }
   ]
  },
@@ -286,11 +291,6 @@
     "id": "db_fly",
     "match": "same",
     "why": "Same fly with dumbbells; more stretch, less tension at the top."
-   },
-   {
-    "id": "incline_cable_fly",
-    "match": "close",
-    "why": "Same fly from low pulleys; upper-chest bias."
    }
   ]
  },
@@ -322,14 +322,24 @@
     "why": "Same horizontal press for chest and triceps, adjustable load."
    },
    {
-    "id": "flat_db_press",
-    "match": "close",
-    "why": "Same pressing muscles with free weights."
+    "id": "flat_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    },
    {
-    "id": "chest_dips",
-    "match": "close",
-    "why": "Bodyweight press; more lower chest and triceps."
+    "id": "flat_db_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "smith_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_floor_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -348,28 +358,7 @@
   ],
   "equipment": "dumbbell",
   "pattern": "v_press",
-  "swaps": [
-   {
-    "id": "machine_shoulder_press",
-    "match": "same",
-    "why": "Same vertical press on a fixed path; front delts and triceps."
-   },
-   {
-    "id": "bb_ohp",
-    "match": "same",
-    "why": "Same overhead press with a barbell; heavier loading."
-   },
-   {
-    "id": "arnold_press",
-    "match": "same",
-    "why": "Dumbbell press with a twist; same front and side delt work."
-   },
-   {
-    "id": "smith_ohp",
-    "match": "same",
-    "why": "Overhead press on a guided bar."
-   }
-  ]
+  "swaps": []
  },
  {
   "id": "lateral_raise",
@@ -396,8 +385,8 @@
    },
    {
     "id": "cable_upright_row",
-    "match": "close",
-    "why": "Wide-grip upright row hits side delts and traps."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -423,11 +412,6 @@
     "id": "plate_front_raise",
     "match": "same",
     "why": "Same front raise holding a plate."
-   },
-   {
-    "id": "db_shoulder_press",
-    "match": "close",
-    "why": "Front delts are the prime mover in overhead pressing."
    }
   ]
  },
@@ -462,8 +446,8 @@
    },
    {
     "id": "face_pull",
-    "match": "close",
-    "why": "Rear delts plus mid traps and rotator cuff."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -497,8 +481,8 @@
    },
    {
     "id": "face_pull",
-    "match": "close",
-    "why": "Rear delts plus mid traps and rotator cuff."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -539,8 +523,8 @@
    },
    {
     "id": "single_arm_pulldown",
-    "match": "close",
-    "why": "One arm at a time; more range for each lat."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -578,6 +562,11 @@
     "id": "assisted_pull_ups",
     "match": "same",
     "why": "Pull-up with band help."
+   },
+   {
+    "id": "single_arm_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -608,14 +597,19 @@
     "why": "Same pull-up with a band taking some bodyweight."
    },
    {
-    "id": "chin_ups",
-    "match": "same",
-    "why": "Underhand pull-up; similar lats, more biceps."
-   },
-   {
     "id": "wide_pulldown",
     "match": "same",
     "why": "Wide-grip pulldown; same muscles."
+   },
+   {
+    "id": "vbar_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "single_arm_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -647,19 +641,24 @@
     "why": "Same row with your chest on a bench; no lower-back load."
    },
    {
-    "id": "single_arm_cable_row",
+    "id": "bb_bent_row",
     "match": "same",
-    "why": "Same cable row one arm at a time."
+    "why": "Same movement pattern and the same primary muscles."
    },
    {
-    "id": "bb_bent_row",
-    "match": "close",
-    "why": "Free-weight row; more lower-back work."
+    "id": "db_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "tbar_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    },
    {
     "id": "inverted_row",
-    "match": "close",
-    "why": "Bodyweight horizontal row."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -683,21 +682,6 @@
     "id": "single_arm_cable_row",
     "match": "same",
     "why": "Same one-arm row with a cable."
-   },
-   {
-    "id": "chest_supported_row",
-    "match": "same",
-    "why": "Same dumbbell row, both arms, chest supported."
-   },
-   {
-    "id": "seated_cable_row",
-    "match": "same",
-    "why": "Same horizontal row on a cable."
-   },
-   {
-    "id": "bb_bent_row",
-    "match": "close",
-    "why": "Two-arm barbell row; more lower-back work."
    }
   ]
  },
@@ -737,6 +721,16 @@
     "id": "seated_cable_row",
     "match": "same",
     "why": "Same horizontal row seated on a cable."
+   },
+   {
+    "id": "machine_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "inverted_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -776,6 +770,16 @@
     "id": "seated_cable_row",
     "match": "same",
     "why": "Same horizontal row on a cable."
+   },
+   {
+    "id": "machine_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "inverted_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -802,11 +806,6 @@
     "id": "db_pullover",
     "match": "same",
     "why": "Same shoulder-extension pattern for the lats with a dumbbell."
-   },
-   {
-    "id": "lat_pulldown",
-    "match": "close",
-    "why": "Vertical pull for the lats; adds biceps."
    }
   ]
  },
@@ -832,11 +831,6 @@
     "id": "cable_shrug",
     "match": "same",
     "why": "Same shrug on a cable."
-   },
-   {
-    "id": "farmers_walk",
-    "match": "close",
-    "why": "Heavy carry works the upper traps and grip."
    }
   ]
  },
@@ -867,11 +861,6 @@
     "id": "db_kickback",
     "match": "same",
     "why": "Same elbow extension with arms at your sides; ACE found kickbacks among the best."
-   },
-   {
-    "id": "triceps_dips",
-    "match": "close",
-    "why": "Bodyweight triceps press; ranked highly by ACE."
    }
   ]
  },
@@ -902,11 +891,6 @@
     "id": "db_kickback",
     "match": "same",
     "why": "Same elbow extension with dumbbells."
-   },
-   {
-    "id": "triceps_dips",
-    "match": "close",
-    "why": "Bodyweight triceps press."
    }
   ]
  },
@@ -927,16 +911,6 @@
     "id": "cable_overhead_ext",
     "match": "same",
     "why": "Same overhead extension; stretches the long head (Maeo 2022)."
-   },
-   {
-    "id": "skull_crusher",
-    "match": "same",
-    "why": "Lying extension; long head works at a long length."
-   },
-   {
-    "id": "triceps_pushdown",
-    "match": "close",
-    "why": "Arms-at-side extension; less long-head stretch."
    }
   ]
  },
@@ -959,21 +933,6 @@
     "id": "triceps_dips",
     "match": "same",
     "why": "Compound triceps press with bodyweight."
-   },
-   {
-    "id": "skull_crusher",
-    "match": "close",
-    "why": "Isolates all three triceps heads."
-   },
-   {
-    "id": "db_floor_press",
-    "match": "close",
-    "why": "Press that stops at the floor; triceps-heavy lockout."
-   },
-   {
-    "id": "weighted_push_ups",
-    "match": "close",
-    "why": "Narrow-hand push-ups load triceps and chest."
    }
   ]
  },
@@ -1006,9 +965,24 @@
     "why": "Same biceps curl, upper arm fixed."
    },
    {
+    "id": "ez_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "concentration_curl",
-    "match": "close",
-    "why": "Top-rated biceps move in the ACE study."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -1046,9 +1020,19 @@
     "why": "EZ curl on a preacher bench."
    },
    {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "concentration_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "machine_curl",
-    "match": "close",
-    "why": "Biceps curl on a machine."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -1074,16 +1058,6 @@
     "id": "cross_body_hammer",
     "match": "same",
     "why": "Same neutral grip, across the body."
-   },
-   {
-    "id": "bb_reverse_curl",
-    "match": "close",
-    "why": "Overhand curl; brachioradialis and forearm extensors."
-   },
-   {
-    "id": "reverse_cable_curl",
-    "match": "close",
-    "why": "Overhand curl on a cable."
    }
   ]
  },
@@ -1115,9 +1089,24 @@
     "why": "Same supinated dumbbell curl."
    },
    {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ez_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "cable_curl",
-    "match": "close",
-    "why": "Curl with constant cable tension."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -1142,11 +1131,6 @@
     "id": "cable_wrist_curl",
     "match": "same",
     "why": "Same wrist flexion on a cable."
-   },
-   {
-    "id": "wrist_roller",
-    "match": "close",
-    "why": "Rolls through flexion and extension."
    }
   ]
  },
@@ -1166,16 +1150,6 @@
     "id": "db_reverse_wrist_curl",
     "match": "same",
     "why": "Same wrist extension with dumbbells."
-   },
-   {
-    "id": "wrist_roller",
-    "match": "close",
-    "why": "Rolls through extension and flexion."
-   },
-   {
-    "id": "bb_reverse_curl",
-    "match": "close",
-    "why": "Overhand curl; forearm extensors work hard."
    }
   ]
  },
@@ -1197,16 +1171,6 @@
     "id": "reverse_cable_curl",
     "match": "same",
     "why": "Same overhand curl on a cable."
-   },
-   {
-    "id": "hammer_curl",
-    "match": "close",
-    "why": "Neutral-grip curl; brachioradialis and brachialis."
-   },
-   {
-    "id": "rope_hammer_curl",
-    "match": "close",
-    "why": "Neutral-grip curl with a rope."
    }
   ]
  },
@@ -1229,16 +1193,6 @@
     "id": "trap_bar_carry",
     "match": "same",
     "why": "Same loaded carry holding a trap bar."
-   },
-   {
-    "id": "db_hold",
-    "match": "same",
-    "why": "Same grip and trap work without walking."
-   },
-   {
-    "id": "db_shrug",
-    "match": "close",
-    "why": "Upper traps and grip under heavy load."
    }
   ]
  },
@@ -1257,7 +1211,38 @@
   ],
   "equipment": "smith",
   "pattern": "h_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "flat_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_chest_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "flat_db_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "weighted_push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_floor_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "weighted_push_ups",
@@ -1275,7 +1260,38 @@
   ],
   "equipment": "bodyweight",
   "pattern": "h_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "flat_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_chest_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "flat_db_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "smith_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_floor_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_floor_press",
@@ -1292,7 +1308,38 @@
   ],
   "equipment": "dumbbell",
   "pattern": "h_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "flat_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_chest_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "flat_db_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "smith_bench",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "weighted_push_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "incline_smith_press",
@@ -1308,7 +1355,23 @@
   ],
   "equipment": "smith",
   "pattern": "incline_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "incline_db_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "incline_bb_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "incline_machine_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "incline_machine_press",
@@ -1323,7 +1386,23 @@
   ],
   "equipment": "machine",
   "pattern": "incline_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "incline_db_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "incline_bb_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "incline_smith_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_fly",
@@ -1337,7 +1416,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "fly",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "cable_fly",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_crossover",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "pec_deck",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "incline_cable_fly",
@@ -1350,7 +1445,7 @@
   ],
   "equipment": "cable",
   "pattern": "fly",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "chest_dips",
@@ -1366,28 +1461,7 @@
   ],
   "equipment": "bodyweight",
   "pattern": "dip",
-  "swaps": [
-   {
-    "id": "weighted_push_ups",
-    "match": "same",
-    "why": "Bodyweight press for chest and triceps you can load."
-   },
-   {
-    "id": "cable_crossover",
-    "match": "close",
-    "why": "High-to-low cable path also biases the lower chest."
-   },
-   {
-    "id": "machine_chest_press",
-    "match": "close",
-    "why": "Same pressing muscles with less shoulder stretch."
-   },
-   {
-    "id": "triceps_dips",
-    "match": "close",
-    "why": "Same bars, upright torso: more triceps, less chest."
-   }
-  ]
+  "swaps": []
  },
  {
   "id": "bb_ohp",
@@ -1407,11 +1481,6 @@
   "pattern": "v_press",
   "swaps": [
    {
-    "id": "db_shoulder_press",
-    "match": "same",
-    "why": "Same vertical press with dumbbells; similar delt activation."
-   },
-   {
     "id": "machine_shoulder_press",
     "match": "same",
     "why": "Same press on a fixed path, less balance needed."
@@ -1423,8 +1492,8 @@
    },
    {
     "id": "arnold_press",
-    "match": "close",
-    "why": "Dumbbell press with rotation; more front delt."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -1442,7 +1511,23 @@
   ],
   "equipment": "machine",
   "pattern": "v_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "bb_ohp",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "arnold_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "smith_ohp",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "arnold_press",
@@ -1460,11 +1545,6 @@
   "pattern": "v_press",
   "swaps": [
    {
-    "id": "db_shoulder_press",
-    "match": "same",
-    "why": "Same dumbbell overhead press without the twist."
-   },
-   {
     "id": "machine_shoulder_press",
     "match": "same",
     "why": "Same vertical press on a machine."
@@ -1473,6 +1553,11 @@
     "id": "bb_ohp",
     "match": "same",
     "why": "Same overhead press with a barbell."
+   },
+   {
+    "id": "smith_ohp",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -1490,7 +1575,23 @@
   ],
   "equipment": "smith",
   "pattern": "v_press",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "bb_ohp",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_shoulder_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "arnold_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_lateral_raise",
@@ -1504,7 +1605,23 @@
   ],
   "equipment": "cable",
   "pattern": "lat_raise",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "seated_lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_upright_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "seated_lateral_raise",
@@ -1518,7 +1635,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "lat_raise",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_upright_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_upright_row",
@@ -1533,7 +1666,23 @@
   ],
   "equipment": "cable",
   "pattern": "lat_raise",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "seated_lateral_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_front_raise",
@@ -1547,7 +1696,18 @@
   ],
   "equipment": "cable",
   "pattern": "front_raise",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "front_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "plate_front_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "plate_front_raise",
@@ -1561,7 +1721,18 @@
   ],
   "equipment": "barbell",
   "pattern": "front_raise",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "front_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_front_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "face_pull",
@@ -1588,14 +1759,14 @@
     "why": "Rear delts on the reverse pec deck."
    },
    {
-    "id": "prone_rear_raise",
-    "match": "close",
-    "why": "Rear delt raise; less rotator cuff work."
+    "id": "rear_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    },
    {
-    "id": "rear_raise",
-    "match": "close",
-    "why": "Bent-over rear raise with dumbbells."
+    "id": "prone_rear_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -1611,7 +1782,28 @@
   ],
   "equipment": "cable",
   "pattern": "rear_delt",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "rear_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "rear_delt_fly",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "face_pull",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "prone_rear_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "prone_rear_raise",
@@ -1625,7 +1817,28 @@
   ],
   "equipment": "dumbbell",
   "pattern": "rear_delt",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "rear_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "rear_delt_fly",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "face_pull",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_rear_delt_fly",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "chin_ups",
@@ -1642,7 +1855,7 @@
   ],
   "equipment": "bodyweight",
   "pattern": "v_pull",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "assisted_pull_ups",
@@ -1658,7 +1871,33 @@
   ],
   "equipment": "bodyweight",
   "pattern": "v_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lat_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "wide_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "pull_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "vbar_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "single_arm_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "vbar_pulldown",
@@ -1674,7 +1913,33 @@
   ],
   "equipment": "cable",
   "pattern": "v_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lat_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "wide_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "pull_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "assisted_pull_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "single_arm_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "single_arm_pulldown",
@@ -1689,7 +1954,33 @@
   ],
   "equipment": "cable",
   "pattern": "v_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lat_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "wide_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "pull_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "assisted_pull_ups",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "vbar_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "chest_supported_row",
@@ -1706,7 +1997,38 @@
   ],
   "equipment": "dumbbell",
   "pattern": "h_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "seated_cable_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "tbar_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "inverted_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "tbar_row",
@@ -1724,7 +2046,38 @@
   ],
   "equipment": "plate_loaded",
   "pattern": "h_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "seated_cable_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "chest_supported_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "inverted_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "machine_row",
@@ -1741,7 +2094,38 @@
   ],
   "equipment": "machine",
   "pattern": "h_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "seated_cable_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "chest_supported_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "tbar_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "inverted_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "single_arm_cable_row",
@@ -1758,7 +2142,13 @@
   ],
   "equipment": "cable",
   "pattern": "h_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "single_arm_db_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "inverted_row",
@@ -1775,7 +2165,38 @@
   ],
   "equipment": "bodyweight",
   "pattern": "h_pull",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "seated_cable_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_bent_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "chest_supported_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "tbar_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_row",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_pullover",
@@ -1802,11 +2223,6 @@
     "id": "rope_straight_arm",
     "match": "same",
     "why": "Same pattern with a rope on a cable."
-   },
-   {
-    "id": "lat_pulldown",
-    "match": "close",
-    "why": "Vertical pull for the lats; adds biceps."
    }
   ]
  },
@@ -1824,7 +2240,18 @@
   ],
   "equipment": "cable",
   "pattern": "pullover",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "straight_arm_pulldown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_pullover",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "bb_shrug",
@@ -1838,7 +2265,18 @@
   ],
   "equipment": "barbell",
   "pattern": "shrug",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "db_shrug",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_shrug",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_shrug",
@@ -1852,7 +2290,18 @@
   ],
   "equipment": "cable",
   "pattern": "shrug",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "db_shrug",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_shrug",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "deadlift",
@@ -1873,28 +2322,7 @@
   ],
   "equipment": "barbell",
   "pattern": "hinge",
-  "swaps": [
-   {
-    "id": "trap_bar_deadlift",
-    "match": "same",
-    "why": "Same hip-and-knee pull; slightly more quads, less lower back."
-   },
-   {
-    "id": "rdl",
-    "match": "close",
-    "why": "Hip hinge with less knee bend; more hamstrings."
-   },
-   {
-    "id": "db_rdl",
-    "match": "close",
-    "why": "Dumbbell hinge; hamstrings and glutes."
-   },
-   {
-    "id": "back_extension",
-    "match": "close",
-    "why": "Lower back and glutes, no spinal loading from a bar."
-   }
-  ]
+  "swaps": []
  },
  {
   "id": "trap_bar_deadlift",
@@ -1913,7 +2341,7 @@
   ],
   "equipment": "trap_bar",
   "pattern": "hinge",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "back_extension",
@@ -1928,7 +2356,7 @@
   ],
   "equipment": "bodyweight",
   "pattern": "hinge",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "skull_crusher",
@@ -1941,28 +2369,7 @@
   "secondary": [],
   "equipment": "ez_bar",
   "pattern": "tri_overhead",
-  "swaps": [
-   {
-    "id": "overhead_db_ext",
-    "match": "same",
-    "why": "Overhead extension; same long-head stretch."
-   },
-   {
-    "id": "cable_overhead_ext",
-    "match": "same",
-    "why": "Overhead extension on a cable."
-   },
-   {
-    "id": "close_grip_bench",
-    "match": "close",
-    "why": "Compound triceps press; adds chest."
-   },
-   {
-    "id": "triceps_pushdown",
-    "match": "close",
-    "why": "Elbow extension with arms at your sides."
-   }
-  ]
+  "swaps": []
  },
  {
   "id": "cable_overhead_ext",
@@ -1976,7 +2383,13 @@
   ],
   "equipment": "cable",
   "pattern": "tri_overhead",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "overhead_db_ext",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "triceps_dips",
@@ -1992,7 +2405,7 @@
   ],
   "equipment": "bodyweight",
   "pattern": "dip",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "vbar_pushdown",
@@ -2006,7 +2419,23 @@
   ],
   "equipment": "cable",
   "pattern": "tri_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "triceps_pushdown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "rope_pushdown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_kickback",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_kickback",
@@ -2020,7 +2449,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "tri_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "triceps_pushdown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "rope_pushdown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "vbar_pushdown",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "bb_curl",
@@ -2051,9 +2496,24 @@
     "why": "Same curl with dumbbells."
    },
    {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "concentration_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
     "id": "preacher_curl",
-    "match": "close",
-    "why": "Curl with the upper arm fixed."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -2069,7 +2529,43 @@
   ],
   "equipment": "dumbbell",
   "pattern": "curl",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ez_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "concentration_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "preacher_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_curl",
@@ -2083,7 +2579,43 @@
   ],
   "equipment": "cable",
   "pattern": "curl",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ez_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "concentration_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "preacher_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "preacher_curl",
@@ -2096,7 +2628,43 @@
   ],
   "equipment": "ez_bar",
   "pattern": "curl",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ez_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "concentration_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "machine_curl",
@@ -2109,7 +2677,43 @@
   ],
   "equipment": "machine",
   "pattern": "curl",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "incline_db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ez_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "concentration_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "bb_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "preacher_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "rope_hammer_curl",
@@ -2123,7 +2727,18 @@
   ],
   "equipment": "cable",
   "pattern": "hammer",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "hammer_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cross_body_hammer",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cross_body_hammer",
@@ -2137,7 +2752,18 @@
   ],
   "equipment": "dumbbell",
   "pattern": "hammer",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "hammer_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "rope_hammer_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "reverse_cable_curl",
@@ -2152,7 +2778,13 @@
   ],
   "equipment": "cable",
   "pattern": "hammer",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "bb_reverse_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_wrist_curl",
@@ -2165,7 +2797,18 @@
   ],
   "equipment": "dumbbell",
   "pattern": "wrist_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "wrist_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "cable_wrist_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_wrist_curl",
@@ -2178,7 +2821,18 @@
   ],
   "equipment": "cable",
   "pattern": "wrist_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "wrist_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_wrist_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_reverse_wrist_curl",
@@ -2191,7 +2845,13 @@
   ],
   "equipment": "dumbbell",
   "pattern": "wrist_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "reverse_wrist_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "wrist_roller",
@@ -2206,7 +2866,7 @@
   ],
   "equipment": "barbell",
   "pattern": "wrist_ext",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "trap_bar_carry",
@@ -2222,7 +2882,13 @@
   ],
   "equipment": "trap_bar",
   "pattern": "carry",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "farmers_walk",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_hold",
@@ -2237,7 +2903,7 @@
   ],
   "equipment": "dumbbell",
   "pattern": "carry",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "back_squat",
@@ -2257,16 +2923,6 @@
   "pattern": "squat",
   "swaps": [
    {
-    "id": "front_squat",
-    "match": "same",
-    "why": "Same squat; similar quad and glute activity, less load on the lower back."
-   },
-   {
-    "id": "hack_squat",
-    "match": "same",
-    "why": "Machine squat; quads and glutes with a fixed path."
-   },
-   {
     "id": "leg_press",
     "match": "same",
     "why": "Same knee and hip extension, no spinal load."
@@ -2278,8 +2934,8 @@
    },
    {
     "id": "goblet_squat",
-    "match": "close",
-    "why": "Dumbbell squat; lighter, good for learning depth."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -2299,24 +2955,9 @@
   "pattern": "squat",
   "swaps": [
    {
-    "id": "back_squat",
-    "match": "same",
-    "why": "Same squat with the bar on your back."
-   },
-   {
     "id": "hack_squat",
     "match": "same",
     "why": "Upright machine squat; quad-focused."
-   },
-   {
-    "id": "goblet_squat",
-    "match": "same",
-    "why": "Front-loaded squat with a dumbbell."
-   },
-   {
-    "id": "leg_press",
-    "match": "close",
-    "why": "Quads and glutes, no spinal load."
    }
   ]
  },
@@ -2334,7 +2975,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "squat",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "back_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "leg_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "smith_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "leg_press",
@@ -2353,11 +3010,6 @@
   "pattern": "squat",
   "swaps": [
    {
-    "id": "hack_squat",
-    "match": "same",
-    "why": "Machine squat; same quads and glutes."
-   },
-   {
     "id": "back_squat",
     "match": "same",
     "why": "Free-weight squat; same muscles plus core."
@@ -2368,9 +3020,9 @@
     "why": "Guided squat; same muscles."
    },
    {
-    "id": "bulgarian_split_squat",
-    "match": "close",
-    "why": "Single-leg squat; quads and glutes one side at a time."
+    "id": "goblet_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -2387,7 +3039,13 @@
   ],
   "equipment": "plate_loaded",
   "pattern": "squat",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "front_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "smith_squat",
@@ -2404,7 +3062,23 @@
   ],
   "equipment": "smith",
   "pattern": "squat",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "back_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "goblet_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "leg_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "bulgarian_split_squat",
@@ -2437,11 +3111,6 @@
     "id": "step_up",
     "match": "same",
     "why": "Single-leg knee and hip extension."
-   },
-   {
-    "id": "leg_press",
-    "match": "close",
-    "why": "Bilateral; same quads and glutes."
    }
   ]
  },
@@ -2461,7 +3130,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "lunge",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "bulgarian_split_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "reverse_lunge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "step_up",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "reverse_lunge",
@@ -2479,7 +3164,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "lunge",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "bulgarian_split_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_lunge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "step_up",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "step_up",
@@ -2496,7 +3197,23 @@
   ],
   "equipment": "dumbbell",
   "pattern": "lunge",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "bulgarian_split_squat",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "db_lunge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "reverse_lunge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "leg_extension",
@@ -2513,21 +3230,6 @@
     "id": "sissy_squat",
     "match": "same",
     "why": "Knee extension with bodyweight; quads only."
-   },
-   {
-    "id": "hack_squat",
-    "match": "close",
-    "why": "Quad-dominant machine squat."
-   },
-   {
-    "id": "front_squat",
-    "match": "close",
-    "why": "Quad-dominant free-weight squat."
-   },
-   {
-    "id": "bulgarian_split_squat",
-    "match": "close",
-    "why": "Single-leg; quads with glutes."
    }
   ]
  },
@@ -2541,7 +3243,13 @@
   "secondary": [],
   "equipment": "bodyweight",
   "pattern": "knee_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "leg_extension",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "rdl",
@@ -2563,21 +3271,6 @@
     "id": "db_rdl",
     "match": "same",
     "why": "Same hip hinge with dumbbells."
-   },
-   {
-    "id": "good_morning",
-    "match": "same",
-    "why": "Hip hinge with the bar on your back; hamstrings and lower back."
-   },
-   {
-    "id": "back_extension",
-    "match": "close",
-    "why": "Hinge on a 45° bench; lower back and glutes."
-   },
-   {
-    "id": "cable_pull_through",
-    "match": "close",
-    "why": "Cable hinge; glute-biased."
    }
   ]
  },
@@ -2595,7 +3288,13 @@
   ],
   "equipment": "dumbbell",
   "pattern": "hinge",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "rdl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "good_morning",
@@ -2611,7 +3310,7 @@
   ],
   "equipment": "barbell",
   "pattern": "hinge",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "cable_pull_through",
@@ -2626,7 +3325,23 @@
   ],
   "equipment": "cable",
   "pattern": "hip_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "hip_thrust",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "glute_bridge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "single_leg_bridge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "lying_leg_curl",
@@ -2658,8 +3373,8 @@
    },
    {
     "id": "glute_ham_raise",
-    "match": "close",
-    "why": "Bodyweight knee flexion; hard."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -2692,9 +3407,9 @@
     "why": "Knee flexion with bodyweight."
    },
    {
-    "id": "rdl",
-    "match": "close",
-    "why": "Hamstrings via the hip, not the knee."
+    "id": "glute_ham_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -2710,7 +3425,28 @@
   ],
   "equipment": "machine",
   "pattern": "knee_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lying_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "seated_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ball_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "glute_ham_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "ball_leg_curl",
@@ -2724,7 +3460,28 @@
   ],
   "equipment": "bodyweight",
   "pattern": "knee_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lying_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "seated_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "standing_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "glute_ham_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "glute_ham_raise",
@@ -2739,7 +3496,28 @@
   ],
   "equipment": "bodyweight",
   "pattern": "knee_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "lying_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "seated_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "standing_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "ball_leg_curl",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "hip_thrust",
@@ -2768,13 +3546,8 @@
    },
    {
     "id": "cable_pull_through",
-    "match": "close",
-    "why": "Glute-dominant hip extension, standing."
-   },
-   {
-    "id": "back_squat",
-    "match": "close",
-    "why": "Squats grew the glutes about as much as hip thrusts in a 9-week trial (Plotkin 2023)."
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
    }
   ]
  },
@@ -2791,7 +3564,23 @@
   ],
   "equipment": "barbell",
   "pattern": "hip_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "cable_pull_through",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "hip_thrust",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "single_leg_bridge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "single_leg_bridge",
@@ -2806,7 +3595,23 @@
   ],
   "equipment": "bodyweight",
   "pattern": "hip_ext",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "cable_pull_through",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "hip_thrust",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "glute_bridge",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "standing_calf_raise",
@@ -2829,16 +3634,6 @@
     "id": "smith_calf_raise",
     "match": "same",
     "why": "Same straight-knee raise on a Smith machine."
-   },
-   {
-    "id": "db_calf_raise",
-    "match": "same",
-    "why": "Single-leg standing raise with a dumbbell."
-   },
-   {
-    "id": "seated_calf_raise",
-    "match": "close",
-    "why": "Bent knee shifts the work to the soleus."
    }
   ]
  },
@@ -2853,23 +3648,7 @@
   ],
   "equipment": "machine",
   "pattern": "calf",
-  "swaps": [
-   {
-    "id": "standing_calf_raise",
-    "match": "close",
-    "why": "Straight knee; more gastrocnemius."
-   },
-   {
-    "id": "leg_press_calf_raise",
-    "match": "close",
-    "why": "Straight knee calf raise on the leg press."
-   },
-   {
-    "id": "db_calf_raise",
-    "match": "close",
-    "why": "Standing single-leg raise."
-   }
-  ]
+  "swaps": []
  },
  {
   "id": "leg_press_calf_raise",
@@ -2882,7 +3661,18 @@
   ],
   "equipment": "plate_loaded",
   "pattern": "calf",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "standing_calf_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "smith_calf_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "smith_calf_raise",
@@ -2895,7 +3685,18 @@
   ],
   "equipment": "smith",
   "pattern": "calf",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "standing_calf_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "leg_press_calf_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "db_calf_raise",
@@ -2907,7 +3708,7 @@
   "secondary": [],
   "equipment": "dumbbell",
   "pattern": "calf",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "hanging_leg_raise",
@@ -2928,19 +3729,9 @@
     "why": "Same knee raise supported on your forearms."
    },
    {
-    "id": "reverse_crunch",
-    "match": "same",
-    "why": "Same pelvis curl on the floor."
-   },
-   {
     "id": "lying_leg_raise",
     "match": "same",
     "why": "Same leg raise lying on a bench."
-   },
-   {
-    "id": "ab_wheel",
-    "match": "close",
-    "why": "Top-rated rectus abdominis move in EMG studies."
    }
   ]
  },
@@ -2956,7 +3747,18 @@
   ],
   "equipment": "bodyweight",
   "pattern": "core_hip",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "hanging_leg_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "lying_leg_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "reverse_crunch",
@@ -2970,7 +3772,7 @@
   ],
   "equipment": "bodyweight",
   "pattern": "core_hip",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "lying_leg_raise",
@@ -2984,7 +3786,18 @@
   ],
   "equipment": "bodyweight",
   "pattern": "core_hip",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "hanging_leg_raise",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "captains_chair",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "cable_crunch",
@@ -3007,16 +3820,6 @@
     "id": "decline_crunch",
     "match": "same",
     "why": "Same crunch on a decline bench."
-   },
-   {
-    "id": "reverse_crunch",
-    "match": "close",
-    "why": "Abs flex from the bottom up."
-   },
-   {
-    "id": "ab_wheel",
-    "match": "close",
-    "why": "High rectus abdominis activity."
    }
   ]
  },
@@ -3031,7 +3834,18 @@
   ],
   "equipment": "machine",
   "pattern": "core_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "cable_crunch",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "decline_crunch",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "decline_crunch",
@@ -3044,7 +3858,18 @@
   ],
   "equipment": "bodyweight",
   "pattern": "core_flex",
-  "swaps": null
+  "swaps": [
+   {
+    "id": "cable_crunch",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
+   {
+    "id": "machine_crunch",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   }
+  ]
  },
  {
   "id": "ab_wheel",
@@ -3060,7 +3885,7 @@
   ],
   "equipment": "bodyweight",
   "pattern": "core_brace",
-  "swaps": null
+  "swaps": []
  },
  {
   "id": "plank",
@@ -3074,22 +3899,6 @@
   ],
   "equipment": "bodyweight",
   "pattern": "core_brace",
-  "swaps": [
-   {
-    "id": "ab_wheel",
-    "match": "same",
-    "why": "Anti-extension like the plank; much harder."
-   },
-   {
-    "id": "reverse_crunch",
-    "match": "close",
-    "why": "Rectus abdominis through a range of motion."
-   },
-   {
-    "id": "captains_chair",
-    "match": "close",
-    "why": "Rectus abdominis and hip flexors."
-   }
-  ]
+  "swaps": []
  }
 ]

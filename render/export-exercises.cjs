@@ -15,8 +15,8 @@ require.extensions['.ts'] = (m, filename) => {
   m._compile(out.code, filename);
 };
 const { EXERCISE_LIST } = require(path.join(__dirname, '../src/data/exercises.ts'));
-const { SWAPS } = require(path.join(__dirname, '../src/data/swaps.ts'));
-const out = EXERCISE_LIST.map((e) => ({ id: e.id, name: e.name, primary: e.primary, secondary: e.secondary, equipment: e.equipment, pattern: e.pattern, swaps: SWAPS[e.id] ?? null }));
+const { swapsFor } = require(path.join(__dirname, '../src/data/swaps.ts'));
+const out = EXERCISE_LIST.map((e) => ({ id: e.id, name: e.name, primary: e.primary, secondary: e.secondary, equipment: e.equipment, pattern: e.pattern, swaps: swapsFor(e.id, false) }));
 fs.writeFileSync(path.join(__dirname, 'exercises.json'), JSON.stringify(out, null, 1) + '\n');
 // The user's current Upper Body 5-Day split, in workout order: reviewed first on the contact sheet.
 const { DAYS } = require(path.join(__dirname, '../src/data/program.ts'));

@@ -57,3 +57,17 @@ describe('swap options', () => {
     expect(swapsFor('db_shoulder_press', false)).toEqual([]);
   });
 });
+
+test('every offered swap is listed in exercise-sources.md with at least 2 sources', () => {
+  const md: string = require('fs').readFileSync(require('path').join(process.cwd(), 'src/data/exercise-sources.md'), 'utf8');
+  const table = md.split('## Swap pairs')[1].split('## Bibliography')[0];
+  const rows = new Map(
+    table
+      .split('\n')
+      .filter((l) => l.startsWith('| ') && !l.startsWith('| Exercise'))
+      .map((l) => l.split('|').map((c) => c.trim()))
+      .map((c) => [`${c[1]}→${c[2]}`, (c[4].match(/\[[A-Z0-9]+\]/g) ?? []).length] as const),
+  );
+  for (const id of Object.keys(EXERCISES))
+    for (const sw of swapsFor(id, false)) expect(rows.get(`${EXERCISES[id].name}→${EXERCISES[sw.id].name}`)).toBeGreaterThanOrEqual(2);
+});
