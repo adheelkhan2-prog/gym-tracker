@@ -72,7 +72,8 @@ export function Backdrop({ children, intensity = 1 }: { children: React.ReactNod
   return (
     <BlurTarget.Provider value={target}>
       <View style={s.root}>
-        <BlurTargetView ref={target} style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* Clipped: the blobs drift past the screen edges, which must never widen the page. */}
+        <BlurTargetView ref={target} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
           <View style={[StyleSheet.absoluteFill, { backgroundColor: color.bg }]} />
           <Drift x={-big * 0.35} y={-big * 0.38} dx={width * 0.18} dy={height * 0.06} period={14000}>
             <Blob size={big} tint={color.lime} opacity={0.26 * intensity} />

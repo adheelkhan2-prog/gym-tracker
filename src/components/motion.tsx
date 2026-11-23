@@ -160,7 +160,7 @@ export function Burst({
   const ids = useMemo(() => Array.from({ length: count }, (_, i) => i), [count]);
   if (!burst || reduce) return null;
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
       {ids.map((i) => (
         <Particle key={`${burst}-${i}`} seed={i + burst * 31} x0={x} y0={y} colors={colors} power={power} />
       ))}
