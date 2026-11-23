@@ -256,7 +256,7 @@ export function PlateSheet({
         {[0, 10, 15, 20].map((b) => (
           <Chip key={b} label={b === 0 ? 'None' : `${b}`} active={bar === b} onPress={() => setBar(b)} />
         ))}
-        <NumberField value={bar} onChange={setBar} label="Bar weight in kg" />
+        <NumberField value={bar} onChange={(n) => setBar(n ?? 0)} label="Bar weight in kg" />
       </View>
       {side.length > 0 && (
         <Text style={[type.small, { marginTop: space.sm }]}>
@@ -268,16 +268,31 @@ export function PlateSheet({
 }
 
 /** Small numeric input that keeps the raw text while typing. */
-export function NumberField({ value, onChange, label, placeholder }: { value: number | undefined; onChange: (n: number) => void; label: string; placeholder?: string }) {
+export function NumberField({
+  value,
+  onChange,
+  label,
+  placeholder,
+}: {
+  value: number | undefined;
+  /** `undefined` when the field is cleared. */
+  onChange: (n: number | undefined) => void;
+  label: string;
+  placeholder?: string;
+}) {
   const [text, setText] = useState(value === undefined ? '' : String(value));
+  // Keep what's being typed ("2." etc.) while it still means the same number; otherwise follow the prop.
+  const parsed = text === '' ? undefined : parseFloat(text);
+  const shown = parsed === value || (parsed !== undefined && Number.isNaN(parsed) && value === undefined) ? text : value === undefined ? '' : String(value);
   return (
     <TextInput
-      value={text}
+      value={shown}
       onChangeText={(t) => {
         const clean = t.replace(/[^0-9.,]/g, '').replace(',', '.');
         setText(clean);
         const n = parseFloat(clean);
-        if (Number.isFinite(n)) onChange(n);
+        if (clean === '') onChange(undefined);
+        else if (Number.isFinite(n)) onChange(n);
       }}
       placeholder={placeholder}
       placeholderTextColor={color.subtle}

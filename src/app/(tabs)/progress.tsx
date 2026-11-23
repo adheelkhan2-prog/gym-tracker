@@ -58,8 +58,8 @@ export default function ProgressScreen() {
   // ----- Exercise charts -----
   // Every exercise has its own history, so swaps chart separately from the original.
   const histories = useMemo(
-    () => Object.fromEntries(EXERCISE_LIST.map((e) => [e.id, exerciseHistory(state.logs, e.id)])),
-    [state.logs],
+    () => Object.fromEntries(EXERCISE_LIST.map((e) => [e.id, exerciseHistory(state.logs, e.id, state.machines[e.id])])),
+    [state.logs, state.machines],
   );
   const withData = EXERCISE_LIST.map((e) => e.id).filter((x) => histories[x].length > 0);
   const [picked, setPicked] = useState<string | null>(null);

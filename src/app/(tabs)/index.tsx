@@ -25,6 +25,7 @@ import {
   applyPending,
   dateFromKey,
   dayById,
+  dayHasWork,
   easingIn,
   formatDate,
   num,
@@ -52,7 +53,10 @@ export default function TodayScreen() {
   // A switch booked for "next Monday" kicks in when that day arrives.
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   // Picked day, else the workout already started today, else the scheduled one.
-  const day = dayById(state, picked ?? state.sessions[date]?.dayId ?? scheduled);
+  const chosen = dayById(state, picked ?? state.sessions[date]?.dayId ?? scheduled);
+  // With injury mode on, a day of only leg/ab work becomes a rest day instead of an empty workout.
+  const hiddenDay = chosen && !dayHasWork(state, chosen.id) ? chosen : undefined;
+  const day = hiddenDay ? undefined : chosen;
   const program = activeProgram(state);
   const pending = state.pending ? programById(state, state.pending.programId) : undefined;
   const progress = day ? dayProgress(state, day, date) : null;
@@ -142,7 +146,7 @@ export default function TodayScreen() {
   const nextTraining = (() => {
     for (let i = 1; i <= 7; i++) {
       const id = state.week[(now.getDay() + i) % 7];
-      if (id) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(now.getDay() + i) % 7]}`, id };
+      if (id && dayHasWork(state, id)) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(now.getDay() + i) % 7]}`, id };
     }
     return null;
   })();
@@ -152,7 +156,7 @@ export default function TodayScreen() {
   // Battle pass: one tile per weekday that has a workout in your day order (Mon-first).
   const pass = weekKeys(date)
     .map((d) => ({ d, wd: new Date(d.replace(/-/g, '/')).getDay() }))
-    .filter((x) => state.week[x.wd])
+    .filter((x) => dayHasWork(state, state.week[x.wd]))
     .map((x) => ({ ...x, id: state.week[x.wd]! }));
   const ringSize = Math.min(150, width * 0.36);
 
@@ -213,7 +217,11 @@ export default function TodayScreen() {
             <Icon name="moon" size={36} color={color.lime} filled />
             <Text style={s.dayTitle}>Rest Day</Text>
             <Text style={s.focus}>
-              {nextTraining ? `${titleOf(dayById(state, nextTraining.id)!)} is ${nextTraining.when}.` : 'Recover and refuel.'}
+              {hiddenDay
+                ? `${hiddenDay.name} is resting while injury mode is on.`
+                : nextTraining
+                  ? `${titleOf(dayById(state, nextTraining.id)!)} is ${nextTraining.when}.`
+                  : 'Recover and refuel.'}
             </Text>
           </Glass>
         )}

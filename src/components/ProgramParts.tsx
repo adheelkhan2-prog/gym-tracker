@@ -73,22 +73,25 @@ export function WeekMapper({ program, week, onChange }: { program: Program; week
 /** "Switch to PPL from Monday?" — choose when it starts and which weekday gets which day. */
 export function SwitchSheet({
   program,
+  currentWeek,
   onConfirm,
   onClose,
 }: {
   program: Program;
+  /** The weekday mapping in use when this is already the active program: edit it, starting today. */
+  currentWeek?: (string | null)[];
   onConfirm: (week: (string | null)[], from: string) => void;
   onClose: () => void;
 }) {
   const today = todayKey();
   const monday = nextMonday(today);
-  const [week, setWeek] = useState(program.week);
-  const [from, setFrom] = useState(monday);
+  const [week, setWeek] = useState(currentWeek ?? program.week);
+  const [from, setFrom] = useState(currentWeek ? today : monday);
   const days = week.filter(Boolean).length;
   const when = from === today ? 'today' : `${WEEKDAY_LONG[dateFromKey(from).getDay()]} ${formatDate(from)}`;
   return (
     <Sheet
-      title={`Switch to ${program.name}?`}
+      title={currentWeek ? `Change days for ${program.name}` : `Switch to ${program.name}?`}
       subtitle="Your history stays. Every exercise keeps its own log and charts."
       onClose={onClose}
       testID="switch-sheet"

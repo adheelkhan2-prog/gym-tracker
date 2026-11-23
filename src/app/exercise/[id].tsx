@@ -172,7 +172,9 @@ export default function ExerciseScreen() {
   const doneCount = sets.filter((x) => x.done).length;
   const allSetsDone = doneCount >= targetSets;
   const nextSetIdx = sets.findIndex((x) => !x.done);
-  const swaps = swapsFor(original, state.injured);
+  // Never offer an exercise another slot already uses today: logs are kept per exercise, so two slots would share one log.
+  const taken = new Set(plans.filter((x) => x !== plan).map((x) => exerciseFor(state, x)));
+  const swaps = swapsFor(original, state.injured).filter((x) => !taken.has(x.id));
   const swapped = id !== original;
 
   // ----- Weights in your unit -----
@@ -328,7 +330,9 @@ export default function ExerciseScreen() {
     ? nextPlan
       ? `Next up: ${EXERCISES[exerciseFor(state, nextPlan)].name}`
       : 'Last exercise done'
-    : `Set ${nextSetIdx + 1} · ${setText(resolved(nextSetIdx), kind, unit, gym).replace(/^ × /, '')}`;
+    : nextSetIdx < 0
+      ? 'All sets done'
+      : `Set ${nextSetIdx + 1} · ${setText(resolved(nextSetIdx), kind, unit, gym).replace(/^ × /, '')}`;
 
   const types = loadTypesFor(id);
   const plateSet = sheet?.kind === 'plates' ? sheet.set : -1;

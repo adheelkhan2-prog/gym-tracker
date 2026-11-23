@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { EXERCISES, type LogKind } from './data/exercises';
+import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { INJURY_REGIONS, type MuscleId } from './data/muscles';
-import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
+import { DEFAULT_WEEK, pickOption, type WorkoutDay } from './data/program';
 import { PROGRAMS, type Program } from './data/programs';
-import { DEFAULT_GYM, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
+import { DEFAULT_GYM, stackKg, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
 /**
@@ -307,8 +307,14 @@ export type HistoryPoint = {
   pin?: number;
 };
 
-export function exerciseHistory(logs: State['logs'], exerciseId: string): HistoryPoint[] {
+/**
+ * One point per day. `machine` (the exercise's current stack setup) turns old pin-only sets into kg,
+ * so logging pins first and adding kg per plate later still charts one continuous line.
+ */
+export function exerciseHistory(logs: State['logs'], exerciseId: string, machine?: MachineSetup): HistoryPoint[] {
   const kind = kindOf(exerciseId);
+  const kgFor = (s: SetEntry) => kgOf(s) ?? (s.load?.pin !== undefined ? stackKg(s.load.pin, machine) : null);
+  const metric = (s: SetEntry) => (kind === 'weight_reps' || kind === 'weight_time' ? (kgFor(s) ?? 0) : num(s.reps)!);
   return Object.keys(logs)
     .sort()
     .flatMap((date) => {
@@ -320,16 +326,16 @@ export function exerciseHistory(logs: State['logs'], exerciseId: string): Histor
       let seconds = 0;
       let pin = 0;
       for (const s of sets) {
-        const w = kgOf(s) ?? 0;
+        const w = kgFor(s) ?? 0;
         const r = num(s.reps)!;
         if (kind === 'weight_time' || kind === 'time') seconds += r;
         else volume += kind === 'reps' ? r : w * r;
-        const better = prMetric(s, kind) > prMetric(top, kind) || (prMetric(s, kind) === prMetric(top, kind) && r > num(top.reps)!);
+        const better = metric(s) > metric(top) || (metric(s) === metric(top) && r > num(top.reps)!);
         if (better) top = s;
         if (kind === 'weight_reps') e1rm = Math.max(e1rm, est1RM(w, r));
-        if (s.load?.pin !== undefined && kgOf(s) === null) pin = Math.max(pin, s.load.pin);
+        if (s.load?.pin !== undefined && kgFor(s) === null) pin = Math.max(pin, s.load.pin);
       }
-      const point: HistoryPoint = { date, top: prMetric(top, kind), topReps: num(top.reps)!, e1rm, volume, seconds };
+      const point: HistoryPoint = { date, top: metric(top), topReps: num(top.reps)!, e1rm, volume, seconds };
       if (point.top === 0 && pin > 0) point.pin = pin;
       return [point];
     });
@@ -341,7 +347,18 @@ export function exerciseHistory(logs: State['logs'], exerciseId: string): Histor
 export const trainedOn = (state: State, date: string) =>
   Object.entries(state.logs[date] ?? {}).some(([id, l]) => l.skipped || doneSets(l, kindOf(id)).length > 0);
 
-const scheduled = (state: State, date: string) => state.week[dateFromKey(date).getDay()] !== null;
+/** False for a day whose every exercise is hidden by injury mode (e.g. leg day): it counts as rest. */
+export function dayHasWork(state: State, dayId: string | null | undefined) {
+  const day = dayById(state, dayId);
+  if (!day) return false;
+  if (!state.injured) return true;
+  return day.exercises.some((p) => {
+    const sw = state.swaps[p.slot];
+    return !loadsInjury(sw && EXERCISES[sw] ? sw : pickOption(p, state.variants));
+  });
+}
+
+const scheduled = (state: State, date: string) => dayHasWork(state, state.week[dateFromKey(date).getDay()]);
 
 /** Consecutive scheduled training days trained. Rest days don't break it; today doesn't until it's over. */
 export function trainingStreak(state: State, today = todayKey()) {

@@ -208,7 +208,10 @@ export default function ProgramsScreen() {
         </View>
       </ScrollView>
       {switching && (
-        <SwitchSheet program={switching} onClose={() => setSwitching(null)} onConfirm={(week, from) => confirm(switching, week, from)} />
+        <SwitchSheet
+          program={switching}
+          currentWeek={switching.id === state.programId ? state.week : undefined}
+          onClose={() => setSwitching(null)} onConfirm={(week, from) => confirm(switching, week, from)} />
       )}
     </Backdrop>
   );

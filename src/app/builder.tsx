@@ -63,7 +63,8 @@ export default function BuilderScreen() {
     if (!picking) return;
     haptic.tap();
     const { day, replace } = picking;
-    if (replace !== undefined) setEx(day, replace, { options: [exId] });
+    // A replaced exercise gets a fresh slot so an old swap or variant choice for the slot can't override it.
+    if (replace !== undefined) setDay(day, (d) => ({ ...d, exercises: d.exercises.map((e, j) => (j === replace ? { ...e, slot: `${d.id}-${uid()}`, options: [exId] } : e)) }));
     else
       setDay(day, (d) => ({
         ...d,
@@ -77,18 +78,26 @@ export default function BuilderScreen() {
   const save = () => {
     // Keep weekday choices for days that still exist; give new days the first free weekdays from Monday.
     const ids = draft.days.map((d) => d.id);
-    const week = draft.week.map((w) => (w && ids.includes(w) ? w : null));
-    for (const d of draft.days) {
-      if (week.includes(d.id)) continue;
-      const free = [1, 2, 3, 4, 5, 6, 0].find((wd) => week[wd] === null);
-      if (free !== undefined) week[free] = d.id;
-    }
-    const p: Program = { ...draft, name: draft.name.trim(), week, focus: `${draft.days.length} day${draft.days.length === 1 ? '' : 's'}: ${draft.days.map((d) => d.name).join(', ')}` };
+    const fit = (base: (string | null)[]) => {
+      const week = base.map((w) => (w && ids.includes(w) ? w : null));
+      for (const d of draft.days) {
+        if (week.includes(d.id)) continue;
+        const free = [1, 2, 3, 4, 5, 6, 0].find((wd) => week[wd] === null);
+        if (free !== undefined) week[free] = d.id;
+      }
+      return week;
+    };
+    const p: Program = { ...draft, name: draft.name.trim(), week: fit(draft.week), focus: `${draft.days.length} day${draft.days.length === 1 ? '' : 's'}: ${draft.days.map((d) => d.name).join(', ')}` };
     haptic.setDone();
     update((st) => {
       const others = st.customPrograms.filter((x) => x.id !== p.id);
-      const active = st.programId === p.id;
-      return { ...st, customPrograms: [...others, p], week: active ? p.week : st.week };
+      // The active split keeps the weekday mapping you chose; a booked switch is cleaned up the same way.
+      return {
+        ...st,
+        customPrograms: [...others, p],
+        week: st.programId === p.id ? fit(st.week) : st.week,
+        pending: st.pending?.programId === p.id ? { ...st.pending, week: fit(st.pending.week) } : st.pending,
+      };
     });
     router.back();
   };

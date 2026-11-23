@@ -151,7 +151,7 @@ export default function SettingsScreen() {
             <Text style={type.h3}>Bar weight</Text>
             <Text style={type.small}>kg, used for barbell plate maths.</Text>
           </View>
-          <NumberField value={gym.bar} onChange={(n) => setGym({ bar: n })} label="Bar weight in kilograms" />
+          <NumberField value={gym.bar} onChange={(n) => n !== undefined && setGym({ bar: n })} label="Bar weight in kilograms" />
         </View>
         <View style={{ gap: space.sm }}>
           <Text style={type.h3}>Plates you have (kg)</Text>
@@ -183,7 +183,7 @@ export default function SettingsScreen() {
                 <View />
               </Press>
               <TextInput value={c.name} onChangeText={(t) => setColor(i, { name: t })} style={s.colorName} accessibilityLabel={`Colour ${i + 1} name`} />
-              <NumberField value={c.kg} onChange={(n) => setColor(i, { kg: n })} label={`${c.name} plate kilograms`} />
+              <NumberField value={c.kg} onChange={(n) => n !== undefined && setColor(i, { kg: n })} label={`${c.name} plate kilograms`} />
               <Text style={s.kg}>kg</Text>
               <Press onPress={() => setGym({ colors: gym.colors.filter((_, j) => j !== i) })} style={s.del} accessibilityRole="button" accessibilityLabel={`Remove ${c.name}`}>
                 <Icon name="close" size={16} color={color.muted} />
