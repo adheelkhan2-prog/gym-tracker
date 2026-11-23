@@ -184,7 +184,7 @@ export default function BuilderScreen() {
                         accessibilityRole="button"
                         accessibilityLabel={`Rest ${e.rest ? fmtClock(e.rest) : 'automatic'}. Tap to change`}
                       >
-                        <Icon name="timer" size={14} color={color.lime} />
+                        <Icon name="timer" size={14} color={color.accent} />
                         <Text style={s.restText}>{e.rest ? fmtClock(e.rest) : 'Auto'}</Text>
                       </Press>
                     </View>
@@ -257,7 +257,7 @@ const s = StyleSheet.create({
   },
   day: { marginTop: space.lg, padding: space.lg, gap: space.sm },
   dayHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  dayName: { flex: 1, minWidth: 0, minHeight: touch.min, color: color.lime, fontFamily: font.display, fontSize: size.h2 },
+  dayName: { flex: 1, minWidth: 0, minHeight: touch.min, color: color.accent, fontFamily: font.display, fontSize: size.h2 },
   tiny: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   exRow: { backgroundColor: color.surface2, borderRadius: radius.lg, padding: space.sm, gap: space.xs },
   exTop: { flexDirection: 'row', alignItems: 'center' },
@@ -268,6 +268,6 @@ const s = StyleSheet.create({
   stepVal: { fontFamily: font.display, fontSize: size.h3, color: color.text, minWidth: 20, textAlign: 'center' },
   stepUnit: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted, marginRight: space.xs },
   target: { width: 72, minHeight: 40, borderRadius: radius.sm, backgroundColor: color.surface3, color: color.text, textAlign: 'center', fontFamily: font.display, fontSize: size.body },
-  rest: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, paddingHorizontal: space.sm, borderRadius: radius.pill, backgroundColor: color.limeDim, marginLeft: 'auto' },
-  restText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.lime },
+  rest: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, paddingHorizontal: space.sm, borderRadius: radius.pill, backgroundColor: color.accentDim, marginLeft: 'auto' },
+  restText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.accentText },
 });

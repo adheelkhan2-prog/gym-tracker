@@ -34,12 +34,12 @@ function SuppItem({ name, on, onPress, index, boxRef }: { name: string; on: bool
     <Animated.View entering={reduce ? undefined : FadeInDown.delay(index * motion.stagger).springify().damping(16)}>
       <Press onPress={onPress} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={name} style={{ borderRadius: radius.xxl }} tick={false}>
         <Glass r={radius.xxl} style={[s.item, on && s.itemOn]}>
-          <Animated.View ref={boxRef} collapsable={false} style={[s.box, on && s.boxOn, st]}>{on && <Icon name="check" size={28} color={color.ink} />}</Animated.View>
+          <Animated.View ref={boxRef} collapsable={false} style={[s.box, on && s.boxOn, st]}>{on && <Icon name="check" size={28} color={color.onAccent} />}</Animated.View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.itemText, on && { color: color.lime }]}>{name}</Text>
+            <Text style={[s.itemText, on && { color: color.accentText }]}>{name}</Text>
             <Text style={type.small}>{on ? 'Taken today' : 'Tap when you’ve had it'}</Text>
           </View>
-          <Icon name="flask" size={28} color={on ? color.lime : color.subtle} filled={on} />
+          <Icon name="flask" size={28} color={on ? color.accent : color.subtle} filled={on} />
         </Glass>
       </Press>
     </Animated.View>
@@ -99,13 +99,13 @@ export default function SupplementsScreen() {
   return (
     <View ref={rootRef} collapsable={false} style={{ flex: 1 }}>
       <Screen padBottom={140}>
-        {/* Hero: the streak, huge, in pink */}
+        {/* Hero: the streak, huge */}
         <View style={s.hero}>
           <View style={{ flex: 1 }}>
             <Text style={s.kicker}>Supplement streak</Text>
             <View style={s.megaRow}>
               <CountUp to={streak} style={s.mega} />
-              <Icon name="flame" size={56} color={streak > 0 ? color.lime : color.subtle} filled={streak > 0} />
+              <Icon name="flame" size={56} color={streak > 0 ? color.accent : color.subtle} filled={streak > 0} />
             </View>
             <Text style={s.sub}>{done ? 'All done today. Reminders are off until tomorrow.' : line(SUPPS, key)}</Text>
           </View>
@@ -142,7 +142,7 @@ export default function SupplementsScreen() {
           {days.map((d) => (
             <View key={d.k} style={s.dotCol}>
               <View style={[s.dot, d.full ? s.dotOn : d.k === key ? s.dotToday : null]}>
-                {d.full && <Icon name="check" size={12} color={color.ink} />}
+                {d.full && <Icon name="check" size={12} color={color.onAccent} />}
               </View>
               <Text style={s.dotLabel}>{d.d.toLocaleDateString(undefined, { weekday: 'narrow' })}</Text>
             </View>
@@ -211,7 +211,7 @@ export default function SupplementsScreen() {
           </View>
         </Glass>
       </Screen>
-      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.limeSoft, color.text]} />
+      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentSoft, color.text]} />
     </View>
   );
 }
@@ -223,15 +223,15 @@ const s = StyleSheet.create({
   mega: { fontFamily: font.display, fontSize: size.giga, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
   sub: { fontFamily: font.display, fontSize: size.h3, lineHeight: 24, color: color.muted },
   item: { flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.xl, minHeight: 92 },
-  itemOn: { borderColor: color.lime },
+  itemOn: { borderColor: color.accent },
   box: { width: 48, height: 48, borderRadius: radius.sm, borderWidth: 3, borderColor: color.subtle, alignItems: 'center', justifyContent: 'center' },
-  boxOn: { backgroundColor: color.lime, borderColor: color.lime },
+  boxOn: { backgroundColor: color.accent, borderColor: color.accent },
   itemText: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   dots: { flexDirection: 'row', justifyContent: 'space-between' },
   dotCol: { alignItems: 'center', gap: space.xs },
   dot: { width: 20, height: 20, borderRadius: radius.pill, backgroundColor: color.glassBorder, alignItems: 'center', justifyContent: 'center' },
-  dotOn: { backgroundColor: color.lime },
-  dotToday: { borderWidth: 1, borderColor: color.limeEdge, backgroundColor: color.bg },
+  dotOn: { backgroundColor: color.accent },
+  dotToday: { borderWidth: 1, borderColor: color.accentEdge, backgroundColor: color.bg },
   dotLabel: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm, minHeight: 72 },
   divider: { borderTopWidth: 1, borderTopColor: color.line },

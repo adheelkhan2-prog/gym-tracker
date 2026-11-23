@@ -168,8 +168,8 @@ export function Burst({
   );
 }
 
-/** One quick full-screen flash for big moments (lime by default: the PR moment in the dark). */
-export function Flash({ fire, tint = color.lime, peak = 0.22 }: { fire: number; tint?: string; peak?: number }) {
+/** One quick full-screen flash for big moments (crimson by default: the PR moment in the dark). */
+export function Flash({ fire, tint = color.accent, peak = 0.22 }: { fire: number; tint?: string; peak?: number }) {
   const reduce = useReducedMotion();
   const o = useSharedValue(0);
   useEffect(() => {

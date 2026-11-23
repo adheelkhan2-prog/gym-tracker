@@ -96,7 +96,7 @@ function Spotlight({ width, height }: { width: number; height: number }) {
 
 /**
  * Screen background: near-black, one spotlight from above, slow dark smoke drifting through it,
- * a faint deep-pink glow far back, film grain and a vignette. Smoke rests under reduce motion.
+ * a very faint blood-red glow far back, film grain and a vignette. Smoke rests under reduce motion.
  * Wrap a screen's content in it; glass panels inside blur it.
  */
 export function Backdrop({ children, intensity = 1 }: { children: React.ReactNode; intensity?: number }) {
@@ -111,7 +111,7 @@ export function Backdrop({ children, intensity = 1 }: { children: React.ReactNod
         <BlurTargetView ref={target} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
           <View style={[StyleSheet.absoluteFill, { backgroundColor: color.bg }]} />
           <Drift x={width - mid * 0.45} y={height * 0.62} dx={-width * 0.1} dy={-height * 0.04} period={36000}>
-            <Blob size={mid} tint={color.pinkDeep} opacity={0.55 * intensity} />
+            <Blob size={mid} tint={color.glowDeep} opacity={0.55 * intensity} />
           </Drift>
           <Drift x={-big * 0.45} y={height * 0.18} dx={width * 0.22} dy={height * 0.05} period={30000}>
             <Blob size={big} tint={color.smoke} opacity={0.5 * intensity} />
@@ -143,7 +143,7 @@ export function Glass({
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   r?: number;
-  /** Halo colour behind the panel (lime by default for heroes). */
+  /** Halo colour behind the panel (used rarely; a deep shadow otherwise). */
   glow?: string;
   /** Use real blur even when the panel is small (heroes, sheets, the rest ring). */
   strong?: boolean;

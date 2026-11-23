@@ -6,7 +6,7 @@ import { color, font, size, space, type } from '../theme';
 export type Point = { label: string; value: number; detail: string };
 
 /**
- * Single-series line chart: 2px lime line over a soft area fill, hairline solid grid,
+ * Single-series line chart: 2px crimson line over a soft area fill, hairline solid grid,
  * end dot with a surface ring. Tap anywhere to read the nearest session.
  */
 export function LineChart({ points, unit, height = 200 }: { points: Point[]; unit: string; height?: number }) {
@@ -63,8 +63,8 @@ export function LineChart({ points, unit, height = 200 }: { points: Point[]; uni
           <Svg width={width} height={height}>
             <Defs>
               <LinearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={color.lime} stopOpacity={0.28} />
-                <Stop offset="1" stopColor={color.lime} stopOpacity={0} />
+                <Stop offset="0" stopColor={color.accent} stopOpacity={0.28} />
+                <Stop offset="1" stopColor={color.accent} stopOpacity={0} />
               </LinearGradient>
             </Defs>
             {grid.map((g, i) => (
@@ -77,10 +77,10 @@ export function LineChart({ points, unit, height = 200 }: { points: Point[]; uni
             ))}
             {area ? <Path d={area} fill="url(#fill)" /> : null}
             {sel !== null && <Line x1={x(sel)} x2={x(sel)} y1={padT} y2={padT + plotH} stroke={color.muted} strokeWidth={1} />}
-            <Path d={line} stroke={color.lime} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+            <Path d={line} stroke={color.accent} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
             {points.map((p, i) =>
               i === active || i === last ? (
-                <Circle key={i} cx={x(i)} cy={y(p.value)} r={6} fill={color.lime} stroke={color.surface} strokeWidth={2} />
+                <Circle key={i} cx={x(i)} cy={y(p.value)} r={6} fill={color.accent} stroke={color.surface} strokeWidth={2} />
               ) : null,
             )}
             <SvgText x={padL} y={height - 6} fill={color.subtle} fontSize={11} fontFamily={font.body}>

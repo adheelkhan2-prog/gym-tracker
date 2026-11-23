@@ -277,7 +277,7 @@ export default function FocusScreen() {
 
               {allDone ? (
                 <View style={s.center}>
-                  <Icon name="checkCircle" size={40} color={color.lime} filled />
+                  <Icon name="checkCircle" size={40} color={color.accent} filled />
                   <Text style={[type.title, { marginTop: space.md }]}>Every set done</Text>
                   <Text style={[type.bodyMuted, { marginTop: space.xs }]}>Finish to bank the session.</Text>
                 </View>
@@ -292,7 +292,7 @@ export default function FocusScreen() {
                   ) : null}
                   <Text style={type.label}>{exDone && editing === null ? 'Exercise done' : editing !== null ? `Set ${editing + 1}` : `Set ${cur + 1} of ${plan.sets}`}</Text>
                   <View style={s.bigRow} accessibilityLabel={`${bigMain} ${bigUnit} ${repsLine}`}>
-                    <Text style={[s.big, value.weight !== '' || !weighted ? { color: color.lime } : null]} numberOfLines={1} adjustsFontSizeToFit>
+                    <Text style={[s.big, value.weight !== '' || !weighted ? { color: color.accent } : null]} numberOfLines={1} adjustsFontSizeToFit>
                       {bigMain}
                     </Text>
                     {bigUnit ? <Text style={s.bigUnit}>{bigUnit}</Text> : null}
@@ -362,10 +362,10 @@ export default function FocusScreen() {
       </GestureDetector>
 
       <Flash fire={flash} />
-      <Burst burst={flash} x={width / 2} y={300} colors={[color.lime, color.limeSoft, color.text]} count={28} />
+      <Burst burst={flash} x={width / 2} y={300} colors={[color.accent, color.accentSoft, color.text]} count={28} />
       {pr && (
         <Animated.View entering={reduce ? undefined : FadeIn.duration(motion.fast)} exiting={reduce ? undefined : FadeOut.duration(motion.base)} style={[s.pr, { top: insets.top + 72 }]} pointerEvents="none">
-          <Icon name="trophy" size={18} color={color.lime} filled />
+          <Icon name="trophy" size={18} color={color.accent} filled />
           <Text style={s.prText} accessibilityLiveRegion="polite">
             New PR · {pr}
           </Text>
@@ -376,7 +376,7 @@ export default function FocusScreen() {
         <RestTimer
           endsAt={restEnd}
           total={restTotal}
-          tint={color.lime}
+          tint={color.accent}
           nextLabel={next || !exDone ? (exDone && next ? EXERCISES[next.exerciseId].name : `Set ${Math.min(cur + 1, plan.sets)} · ${setText(suggestSet(state, id, plan, date, cur).set, kind, unit, state.gym)}`) : 'Finish'}
           skipLabel="Skip"
           sound={state.restSound}
@@ -430,7 +430,7 @@ function DoneRow({ n, text, editing, onEdit, onDelete }: { n: number; text: stri
   return (
     <View style={s.rowWrap}>
       <Animated.View style={[s.rowDelete, del]} pointerEvents="none">
-        <Icon name="trash" size={18} color={color.danger} />
+        <Icon name="trash" size={18} color={color.warn} />
       </Animated.View>
       <GestureDetector gesture={pan}>
         <Animated.View style={st}>
@@ -451,7 +451,7 @@ function DoneRow({ n, text, editing, onEdit, onDelete }: { n: number; text: stri
             <Text style={s.rowText} numberOfLines={1}>
               {text}
             </Text>
-            <Icon name="check" size={16} color={color.lime} />
+            <Icon name="check" size={16} color={color.accent} />
           </Press>
         </Animated.View>
       </GestureDetector>
@@ -465,7 +465,7 @@ const s = StyleSheet.create({
   dots: { flexDirection: 'row', gap: space.xs, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'center' },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.surface3 },
   dotDone: { backgroundColor: color.muted },
-  dotOn: { width: 18, backgroundColor: color.lime },
+  dotOn: { width: 18, backgroundColor: color.accent },
   page: { flex: 1, paddingHorizontal: space.xl },
   titleRow: { marginTop: space.xl, gap: space.xs, alignItems: 'center' },
   exName: { fontFamily: font.display, fontSize: size.title, lineHeight: leading.title, color: color.text, textAlign: 'center', letterSpacing: -0.3 },
@@ -477,7 +477,7 @@ const s = StyleSheet.create({
   big: { fontFamily: font.display, fontSize: size.giga, lineHeight: leading.giga + 8, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -1.5 },
   bigUnit: { fontFamily: font.displayBold, fontSize: size.h2, color: color.muted },
   reps: { fontFamily: font.displayBold, fontSize: size.title, color: color.text, marginTop: space.xxs },
-  why: { marginTop: space.sm, fontFamily: font.bodySemi, fontSize: size.small, color: color.lime, textAlign: 'center' },
+  why: { marginTop: space.sm, fontFamily: font.bodySemi, fontSize: size.small, color: color.accentText, textAlign: 'center' },
   doneList: { gap: space.xs, marginBottom: space.md },
   rowWrap: { justifyContent: 'center' },
   rowDelete: { position: 'absolute', right: space.lg },
@@ -492,7 +492,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-  rowEditing: { borderColor: color.limeEdge },
+  rowEditing: { borderColor: color.accentEdge },
   rowN: { fontFamily: font.bodyBold, fontSize: size.small, color: color.subtle, width: 16 },
   rowText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
   bottom: { paddingHorizontal: space.lg, gap: space.md },
@@ -530,8 +530,8 @@ const s = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: color.limeEdge,
+    borderColor: color.accentEdge,
     backgroundColor: 'rgba(7,7,8,0.9)',
   },
-  prText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.lime, letterSpacing: 0.3 },
+  prText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.accentText, letterSpacing: 0.3 },
 });

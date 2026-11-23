@@ -219,7 +219,7 @@ export default function CompleteScreen() {
             height={380}
             framing="torso"
             intro
-            tint={color.lime}
+            tint={color.accent}
             snapshotRef={snapshotRef}
             describe={(m) => `${MUSCLE_LABEL[m]}${data.muscles.some(([x]) => x === m) ? ' · trained today' : ''}`}
             showHint={false}
@@ -248,11 +248,11 @@ export default function CompleteScreen() {
               </View>
               {data.change !== null && (
                 <View style={s.changeRow}>
-                  <Animated.View style={[s.arrow, { backgroundColor: up ? color.lime : color.surface3 }, arrowStyle]}>
-                    <Icon name={up ? 'arrowUp' : 'arrowDown'} size={18} color={color.ink} />
+                  <Animated.View style={[s.arrow, { backgroundColor: up ? color.accent : color.surface3 }, arrowStyle]}>
+                    <Icon name={up ? 'arrowUp' : 'arrowDown'} size={18} color={color.onAccent} />
                   </Animated.View>
                   <Text style={s.changeText}>
-                    <Text style={{ color: up ? color.lime : color.muted }}>
+                    <Text style={{ color: up ? color.accent : color.muted }}>
                       {up ? '+' : ''}
                       {data.change}%
                     </Text>{' '}
@@ -273,13 +273,13 @@ export default function CompleteScreen() {
               <View style={{ flex: 1, gap: space.sm }}>
                 <Animated.View entering={enter(motion.stagger * 2)}>
                   <Glass r={radius.lg} style={s.statSmall}>
-                    <Icon name="clock" size={18} color={color.lime} />
+                    <Icon name="clock" size={18} color={color.accent} />
                     <Text style={s.statSmallNum}>{data.mins ? `${data.mins} min` : '—'}</Text>
                   </Glass>
                 </Animated.View>
                 <Animated.View entering={enter(motion.stagger * 3)}>
                   <Glass r={radius.lg} style={s.statSmall}>
-                    <Icon name="flame" size={18} color={color.lime} filled />
+                    <Icon name="flame" size={18} color={color.accent} filled />
                     <Text style={s.statSmallNum}>{trainingStreak(state, date)} day streak</Text>
                   </Glass>
                 </Animated.View>
@@ -301,7 +301,7 @@ export default function CompleteScreen() {
                       prIconRefs.current[data.prs.indexOf(p)] = v;
                     }}
                   >
-                    <Icon name="trophy" size={24} color={color.ink} filled />
+                    <Icon name="trophy" size={24} color={color.onAccent} filled />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={type.h3} numberOfLines={1}>
@@ -318,7 +318,7 @@ export default function CompleteScreen() {
 
         {showXp && (
           <Animated.View entering={enter(0)} style={[s.pad, { marginTop: space.xxl }]}>
-            <Glass strong r={radius.xxl} style={s.xpCard} glow={levelUp ? color.lime : undefined}>
+            <Glass strong r={radius.xxl} style={s.xpCard} glow={levelUp ? color.accent : undefined}>
               <View style={s.xpTop}>
                 <View>
                   <Text style={type.label}>XP earned</Text>
@@ -340,7 +340,7 @@ export default function CompleteScreen() {
               </Text>
               {levelUp && (skipped || lvlBurst > 0) && (
                 <Animated.View ref={levelRef} collapsable={false} entering={reduce || skipped ? undefined : ZoomIn.springify().damping(10)} style={s.levelUp}>
-                  <Icon name="star" size={22} color={color.ink} filled />
+                  <Icon name="star" size={22} color={color.onAccent} filled />
                   <Text style={s.levelUpText}>
                     LEVEL UP · {rankBefore.name !== rankAfter.name ? `${rankBefore.name} → ${rankAfter.name}` : `Level ${after.level}`}
                   </Text>
@@ -364,8 +364,8 @@ export default function CompleteScreen() {
       </ScrollView>
 
       <Flash fire={flash} />
-      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.limeSoft, color.text]} />
-      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.lime, color.limeSoft, color.text, color.flash]} />
+      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentSoft, color.text]} />
+      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.accent, color.accentSoft, color.text, color.flash]} />
       {share && (
         <ShareSheet
           onClose={() => setShare(null)}
@@ -406,7 +406,7 @@ const s = StyleSheet.create({
   mChip: { borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs, backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
   mChipHot: { borderColor: color.musclePrimary },
   mChipText: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
-  kicker: { ...type.label, color: color.lime, marginTop: space.xxl },
+  kicker: { ...type.label, color: color.accentText, marginTop: space.xxl },
   megaRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
   megaUnit: { fontFamily: font.display, fontSize: size.h2, color: color.muted },
@@ -415,17 +415,17 @@ const s = StyleSheet.create({
   changeText: { flex: 1, fontFamily: font.bodyBold, fontSize: size.body, color: color.text },
   statRow: { flexDirection: 'row', gap: space.sm, marginTop: space.xxl },
   statBig: { padding: space.xl, justifyContent: 'flex-end', minHeight: 140 },
-  statBigNum: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.lime, fontVariant: ['tabular-nums'] },
+  statBigNum: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.accent, fontVariant: ['tabular-nums'] },
   statSmall: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.lg, minHeight: 66 },
   statSmallNum: { fontFamily: font.display, fontSize: size.h3, color: color.text, flexShrink: 1 },
-  prRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.limeEdge },
-  prIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.lime, alignItems: 'center', justifyContent: 'center' },
-  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.limeSoft },
+  prRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.accentEdge },
+  prIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
+  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentSoft },
   prValue: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   xpCard: { padding: space.xl },
   xpTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  xpPlus: { fontFamily: font.display, fontSize: size.title, color: color.lime },
-  xpNum: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.lime, fontVariant: ['tabular-nums'] },
+  xpPlus: { fontFamily: font.display, fontSize: size.title, color: color.accent },
+  xpNum: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.accent, fontVariant: ['tabular-nums'] },
   rankName: { fontFamily: font.display, fontSize: size.title, color: color.text },
   levelUp: {
     marginTop: space.lg,
@@ -433,12 +433,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: space.sm,
     alignSelf: 'flex-start',
-    backgroundColor: color.lime,
+    backgroundColor: color.accent,
     borderRadius: radius.pill,
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
   },
-  levelUpText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.ink, letterSpacing: 0.6 },
+  levelUpText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.onAccent, letterSpacing: 0.6 },
   copy: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.text, marginBottom: space.lg },
   actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
 });

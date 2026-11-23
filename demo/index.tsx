@@ -180,7 +180,7 @@ function Demo() {
                   return (
                     <Press key={t.id} onPress={() => setTab(t.id)} style={s.tab} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={t.title}>
                       {on && <View style={s.tabLine} />}
-                      <Icon name={t.icon} size={22} color={on ? color.lime : color.subtle} filled={on} />
+                      <Icon name={t.icon} size={22} color={on ? color.accent : color.subtle} filled={on} />
                       <Text style={[s.tabText, { color: on ? color.text : color.subtle }]} numberOfLines={1}>
                         {t.title}
                       </Text>
@@ -215,7 +215,7 @@ const s = StyleSheet.create({
   barWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg },
   bar: { padding: space.xs, borderRadius: 30, backgroundColor: color.surface, borderWidth: 1, borderColor: color.glassBorder },
   tab: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 60, borderRadius: 24 },
-  tabLine: { position: 'absolute', top: 0, width: 28, height: 2, borderRadius: 1, backgroundColor: color.lime },
+  tabLine: { position: 'absolute', top: 0, width: 28, height: 2, borderRadius: 1, backgroundColor: color.accent },
   tabText: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
 });
 

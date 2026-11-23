@@ -211,7 +211,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-  bigBtnMain: { borderColor: color.limeEdge, backgroundColor: 'rgba(14,14,17,0.9)' },
+  bigBtnMain: { borderColor: color.accentEdge, backgroundColor: 'rgba(14,14,17,0.9)' },
   bigBtnText: { fontFamily: font.bodyBlack, fontSize: size.h3, color: color.text },
   hint: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle },
   bar: {

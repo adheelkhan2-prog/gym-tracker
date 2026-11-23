@@ -39,7 +39,7 @@ function ensureChannels() {
       // eslint-disable-next-line import/namespace -- exported at runtime
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 300, 120, 300],
-      lightColor: color.lime,
+      lightColor: color.accent,
       // eslint-disable-next-line import/namespace -- exported at runtime
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     }),
@@ -59,7 +59,7 @@ async function showLive(endsAt: number, next: string) {
       body: restBody(endsAt, next),
       sticky: true,
       autoDismiss: false,
-      color: color.lime,
+      color: color.accent,
       sound: false,
       data: { rest: true },
     },
@@ -74,7 +74,7 @@ export async function startRestNotification(endsAt: number, next: string, sound:
   await ensureChannels();
   await Notifications.scheduleNotificationAsync({
     identifier: END_ID,
-    content: { title: 'Rest is over', body: `Next: ${next}`, sound: sound ? 'default' : false, color: color.lime, data: { rest: true } },
+    content: { title: 'Rest is over', body: `Next: ${next}`, sound: sound ? 'default' : false, color: color.accent, data: { rest: true } },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(endsAt), channelId: END_CHANNEL },
   }).catch(() => {});
   await showLive(endsAt, next).catch(() => {});

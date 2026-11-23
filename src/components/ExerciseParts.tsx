@@ -66,9 +66,9 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
           {img.clay && <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />}
           <View style={s.phase}>
             <View style={[s.phaseDot, !end && s.phaseOn]} />
-            <Text style={[s.phaseText, !end && { color: color.lime }]}>Start</Text>
+            <Text style={[s.phaseText, !end && { color: color.accentText }]}>Start</Text>
             <View style={[s.phaseDot, end && s.phaseOn]} />
-            <Text style={[s.phaseText, end && { color: color.lime }]}>End</Text>
+            <Text style={[s.phaseText, end && { color: color.accentText }]}>End</Text>
           </View>
           {paused && (
             <View style={s.paused} testID="howto-paused">
@@ -157,7 +157,7 @@ export function SwapSheet({
                 </View>
                 <Text style={s.why}>{o.why}</Text>
               </View>
-              {on && <Icon name="checkCircle" size={24} color={color.lime} filled />}
+              {on && <Icon name="checkCircle" size={24} color={color.accent} filled />}
             </Press>
           );
         })}
@@ -237,7 +237,7 @@ export function PlateSheet({
         <View style={{ marginTop: space.sm, gap: space.sm }}>
           <Text style={s.total} accessibilityLiveRegion="polite" testID="plate-total">
             {mode === 'plates' ? platesText(side as number[], bar) : `${side.length ? `${side.length * 2} plates` : 'No plates'}${bar ? ' + bar' : ''}`} ={' '}
-            <Text style={{ color: color.lime }}>{fmtKg(total, unit)}</Text>
+            <Text style={{ color: color.accentText }}>{fmtKg(total, unit)}</Text>
           </Text>
           <Button label="Use this weight" icon="check" onPress={() => onSave(side, bar)} />
         </View>
@@ -428,10 +428,10 @@ const s = StyleSheet.create({
     paddingVertical: space.xs,
   },
   phaseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.subtle },
-  phaseOn: { backgroundColor: color.lime },
+  phaseOn: { backgroundColor: color.accent },
   phaseText: { fontFamily: font.bodyBlack, fontSize: size.tiny, color: color.muted, marginRight: space.xs },
   step: { flexDirection: 'row', gap: space.md, marginTop: space.md },
-  stepNo: { fontFamily: font.display, fontSize: size.h3, color: color.lime, width: 20 },
+  stepNo: { fontFamily: font.display, fontSize: size.h3, color: color.accentText, width: 20 },
   credit: { ...type.small, fontSize: size.tiny, marginTop: space.md, color: color.subtle },
   swapRow: {
     flexDirection: 'row',
@@ -443,7 +443,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-  swapOn: { borderColor: color.lime, backgroundColor: color.limeDim },
+  swapOn: { borderColor: color.accent, backgroundColor: color.accentDim },
   thumb: { width: 72, height: 72, borderRadius: radius.md, backgroundColor: color.flash },
   noThumb: { backgroundColor: color.surface3, alignItems: 'center', justifyContent: 'center' },
   swapName: { fontFamily: font.bodyBlack, fontSize: size.body, color: color.text },

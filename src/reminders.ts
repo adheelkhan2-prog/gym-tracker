@@ -46,7 +46,7 @@ export async function setupNotifications(): Promise<boolean> {
       // eslint-disable-next-line import/namespace -- exported at runtime; the lint parser misses it
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 150, 250],
-      lightColor: color.lime,
+      lightColor: color.accent,
     });
   }
   await Notifications.setNotificationCategoryAsync(CATEGORY, [
@@ -127,7 +127,7 @@ export function syncReminders(state: State): Promise<void> {
           body: r.body,
           categoryIdentifier: CATEGORY,
           data: { date: r.date, slot: r.slot },
-          ...(Platform.OS === 'android' ? { color: color.lime } : {}),
+          ...(Platform.OS === 'android' ? { color: color.accent } : {}),
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.when, channelId: CHANNEL },
       });

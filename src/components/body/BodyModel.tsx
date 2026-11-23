@@ -216,7 +216,7 @@ export function BodyModel({
   intro = false,
   describe,
   startYaw = 0,
-  tint = color.lime,
+  tint = color.accent,
   background = 'transparent',
   showHint = true,
   interactive = true,

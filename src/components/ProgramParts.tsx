@@ -202,7 +202,7 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
                   {EQUIPMENT_LABEL[e.equipment]} · {e.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}
                 </Text>
               </View>
-              <Icon name="plus" size={20} color={color.lime} />
+              <Icon name="plus" size={20} color={color.accent} />
             </Press>
           );
         }}
@@ -216,7 +216,7 @@ const LibrarySpacer = () => <View style={{ height: space.xs }} />;
 const s = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   weekRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  wd: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.lime, width: 40 },
+  wd: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.accentText, width: 40 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

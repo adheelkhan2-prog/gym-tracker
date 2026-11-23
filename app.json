@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0D0E10",
+        "backgroundColor": "#070708",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -36,7 +36,7 @@
       [
         "expo-notifications",
         {
-          "color": "#C8FF2E"
+          "color": "#E0243A"
         }
       ],
       "expo-font",
@@ -48,9 +48,22 @@
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#070708",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#070708",
+            "image": "./assets/splash-icon.png"
+          }
+        }
       ]
     ],
     "scheme": "gymtracker",
-    "backgroundColor": "#0D0E10"
+    "backgroundColor": "#070708"
   }
 }

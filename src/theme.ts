@@ -1,7 +1,8 @@
 // Design tokens. Every colour, font, size, spacing, radius and motion value used by the app lives here.
 // Dark, low-key: near-black with graphite layers, film grain and a vignette, lit like a
-// spotlight in a dark room. Lime is a rare accent (thin edges, small glows, active states, PRs);
-// hot pink is only a faint deep glow far in the background. See DESIGN.md.
+// spotlight in a dark room. Deep crimson is the rare accent (thin lines, small glows, active states,
+// the key number, PR moments); a very faint blood-red glow sits far back. Red never means "error":
+// warnings and deletes use amber/white with an icon. See DESIGN.md.
 
 export const color = {
   // Near-black and graphite ladder
@@ -21,34 +22,37 @@ export const color = {
   text: '#ECECEF',
   muted: '#A3A3AD',
   subtle: '#868690',
-  // Accents
-  lime: '#C8FF2E',
-  limeSoft: '#E4FF99',
-  limeDim: 'rgba(200,255,46,0.08)',
-  limeGlow: 'rgba(200,255,46,0.30)',
-  limeEdge: 'rgba(200,255,46,0.55)', // thin lime edge on dark-glass buttons
-  pink: '#FF3D9A',
-  pinkSoft: '#FF9CCB',
-  pinkDim: 'rgba(255,61,154,0.10)',
-  pinkGlow: 'rgba(255,61,154,0.22)',
-  pinkDeep: '#5A0F33', // the faint far-away glow
-  danger: '#FF5C7A',
-  ink: '#070708', // text on lime
+  // Accent: deep crimson. 4.3:1 on black, so it is for lines, rings, icons, glows and large
+  // numbers; small accent text uses accentText (≥5:1 on every surface).
+  accent: '#E0243A',
+  accentPressed: '#FF3B4F',
+  accentText: '#FF5466',
+  accentSoft: '#FF8A96', // secondary accent text (deltas under a PR)
+  accentDim: 'rgba(224,36,58,0.10)',
+  accentGlow: 'rgba(224,36,58,0.32)',
+  accentEdge: 'rgba(224,36,58,0.62)', // thin crimson edge on dark-glass buttons
+  onAccent: '#FFFFFF', // text/icons on a solid crimson fill (4.7:1)
+  glowDeep: '#7A0C17', // very faint dark blood red, far in the background
+  // Warnings, errors and deletes: amber/white with an icon, never red.
+  warn: '#FFB020',
+  warnDim: 'rgba(255,176,32,0.10)',
+  warnEdge: 'rgba(255,176,32,0.55)',
+  ink: '#070708', // dark text on light fills
   scrim: 'rgba(4,4,5,0.78)',
   scrimDeep: 'rgba(4,4,5,0.92)',
   smoke: '#2A2A30', // slow drifting smoke in the backdrop
   inkTrack: 'rgba(10,10,10,0.18)',
   noGlow: '#000000',
   flash: '#FFFFFF',
-  // 3D anatomy: light-grey figure, worked muscles red
+  // 3D anatomy: light-grey figure, worked muscles red (nudged toward the crimson accent)
   muscleIdle: '#C9C9CF',
   muscleContext: '#9C9CA4',
   muscleInjured: '#55555C',
-  musclePrimary: '#E5322D',
-  muscleSecondary: '#F08F86',
+  musclePrimary: '#E1283A',
+  muscleSecondary: '#EF8790',
 } as const;
 
-/** Day names. Every day shares the lime/pink identity; days differ by name and number. */
+/** Day names. Every day shares the same identity; days differ by name and number. */
 export const dayTitle: Record<string, string> = {
   mon: 'Push Day',
   tue: 'Pull Day',
@@ -57,16 +61,16 @@ export const dayTitle: Record<string, string> = {
   fri: 'Back & Chest',
 };
 
-/** Gradients: lime only for the rare PR moment; the sheen is the top light on glass. */
+/** Gradients: the sheen is the top light on glass. Crimson is never a big gradient; `accent` is the
+ * solid fill reserved for the rare PR action. */
 export const gradient = {
-  lime: ['#D9FF6B', '#C8FF2E', '#9EE000'] as const,
-  limeFade: ['rgba(200,255,46,0.22)', 'rgba(200,255,46,0)'] as const,
+  accent: ['#E0243A', '#E0243A'] as const,
   sheen: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0)'] as const,
 };
 
 /** Weekly muscle heat (sets per week): pale → deep red on the light figure. */
 export const heat = {
-  steps: ['#F4B6AE', '#EC7A6C', '#DD3F31', '#B5120A'] as const,
+  steps: ['#F2B3B8', '#EA7581', '#D93246', '#A80F24'] as const, // pale → deep crimson
   thresholds: [1, 5, 10, 15] as const, // at least N sets reaches step i
 };
 

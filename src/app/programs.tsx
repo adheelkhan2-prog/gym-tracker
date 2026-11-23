@@ -28,7 +28,7 @@ function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, 
 }) {
   const days = trainingDays(p.week);
   return (
-    <Glass strong={live} glow={live ? color.lime : undefined} r={radius.xxl} style={[s.card, { width }]}>
+    <Glass strong={live} glow={live ? color.accent : undefined} r={radius.xxl} style={[s.card, { width }]}>
       <View style={s.cardTop}>
         <Badge label={`${days} day${days === 1 ? '' : 's'} / week`} />
         {current && <Badge label="Current" variant="outline" icon="check" />}
@@ -49,8 +49,8 @@ function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, 
           const d = p.days.find((x) => x.id === p.week[wd]);
           return (
             <View key={wd} style={[s.wdTile, d && s.wdOn]}>
-              <Text style={[s.wdDay, d && { color: color.ink }]}>{WEEKDAY_SHORT[wd][0]}</Text>
-              <Text style={[s.wdName, d && { color: color.ink }]} numberOfLines={1}>
+              <Text style={[s.wdDay, d && { color: color.onAccent }]}>{WEEKDAY_SHORT[wd][0]}</Text>
+              <Text style={[s.wdName, d && { color: color.onAccent }]} numberOfLines={1}>
                 {d ? d.name.split(/[\s&/]+/)[0] : '–'}
               </Text>
             </View>
@@ -128,7 +128,7 @@ export default function ProgramsScreen() {
           <Text style={type.bodyMuted}>Swipe through splits. Switching keeps every log you’ve made.</Text>
           {toast && (
             <Animated.View entering={reduce ? undefined : FadeInDown.springify()} style={s.toast}>
-              <Icon name="checkCircle" size={20} color={color.lime} filled />
+              <Icon name="checkCircle" size={20} color={color.accent} filled />
               <Text style={[type.small, { flex: 1, color: color.text }]}>{toast}</Text>
             </Animated.View>
           )}
@@ -196,7 +196,7 @@ export default function ProgramsScreen() {
           )}
           {state.pending && (
             <Glass r={radius.xl} style={s.note}>
-              <Icon name="calendar" size={22} color={color.lime} />
+              <Icon name="calendar" size={22} color={color.accent} />
               <Text style={[type.small, { flex: 1, color: color.text }]}>
                 {programById(state, state.pending.programId)?.name} starts {pendingFrom}.
               </Text>
@@ -219,11 +219,11 @@ export default function ProgramsScreen() {
 
 const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md },
-  counter: { fontFamily: font.display, fontSize: size.h2, color: color.lime, fontVariant: ['tabular-nums'], paddingRight: space.md },
+  counter: { fontFamily: font.display, fontSize: size.h2, color: color.accent, fontVariant: ['tabular-nums'], paddingRight: space.md },
   of: { fontFamily: font.bodyBold, fontSize: size.small, color: color.subtle },
   pad: { paddingHorizontal: space.lg },
   title: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, letterSpacing: -2, color: color.text, marginTop: space.md },
-  toast: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md, padding: space.md, borderRadius: radius.lg, backgroundColor: color.limeDim, borderWidth: 1, borderColor: color.limeGlow },
+  toast: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md, padding: space.md, borderRadius: radius.lg, backgroundColor: color.accentDim, borderWidth: 1, borderColor: color.accentGlow },
   card: { padding: space.xl },
   cardTop: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   name: { fontFamily: font.display, fontSize: size.title, lineHeight: 32, letterSpacing: -0.8, color: color.text, marginTop: space.md },
@@ -231,13 +231,13 @@ const s = StyleSheet.create({
   model: { marginHorizontal: -space.md, marginTop: space.sm },
   week: { flexDirection: 'row', gap: 4, marginTop: space.sm },
   wdTile: { flex: 1, alignItems: 'center', paddingVertical: space.sm, borderRadius: radius.sm, backgroundColor: color.surface2, gap: 2 },
-  wdOn: { backgroundColor: color.lime },
+  wdOn: { backgroundColor: color.accent },
   wdDay: { fontFamily: font.bodyBlack, fontSize: size.tiny, color: color.muted },
   wdName: { fontFamily: font.bodyBold, fontSize: 9, color: color.subtle },
   cardBtns: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
   dots: { flexDirection: 'row', justifyContent: 'center', marginTop: space.sm },
   dotHit: { minWidth: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.glassBorder },
-  dotOn: { width: 20, backgroundColor: color.lime },
+  dotOn: { width: 20, backgroundColor: color.accent },
   note: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
 });

@@ -138,7 +138,7 @@ export default function TodayScreen() {
                   </Text>
                 </View>
                 <Ring progress={progress.total ? progress.done / progress.total : 0} size={RING} stroke={4} track={color.surface3}>
-                  <CountUp to={progress.done} style={[s.ringNum, progress.done > 0 && { color: color.lime }]} />
+                  <CountUp to={progress.done} style={[s.ringNum, progress.done > 0 && { color: color.accent }]} />
                   <Text style={s.ringOf}>of {progress.total}</Text>
                 </Ring>
               </View>
@@ -149,7 +149,7 @@ export default function TodayScreen() {
                 {finished && (
                   <>
                     <View style={s.metaDot} />
-                    <Text style={[s.metaText, { color: color.lime }]}>Done</Text>
+                    <Text style={[s.metaText, { color: color.accentText }]}>Done</Text>
                   </>
                 )}
               </View>
@@ -175,7 +175,7 @@ export default function TodayScreen() {
         {easingIn(state, date) && (
           <Glass style={s.card} r={radius.xl}>
             <View style={s.row}>
-              <Icon name="bandage" size={22} color={color.lime} />
+              <Icon name="bandage" size={22} color={color.accent} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={type.h3}>Welcome back. Ease in.</Text>
                 <Text style={type.small}>
@@ -189,7 +189,7 @@ export default function TodayScreen() {
           </Glass>
         )}
 
-        {/* The week: done days get a thin lime check, today a thin lime edge */}
+        {/* The week: done days get a thin crimson check, today a thin crimson edge */}
         <View style={s.sectionHead}>
           <Text style={type.label}>This week</Text>
           <Text style={s.sectionCount}>
@@ -211,7 +211,7 @@ export default function TodayScreen() {
                 style={[s.passTile, isToday && s.passToday, sel && !isToday && s.passSel]}
               >
                 <Text style={[s.passDay, isToday && { color: color.text }]}>{WEEKDAY_SHORT[wd]}</Text>
-                {done ? <Icon name="check" size={18} color={color.lime} /> : <View style={[s.passDot, isToday && { backgroundColor: color.lime }]} />}
+                {done ? <Icon name="check" size={18} color={color.accent} /> : <View style={[s.passDot, isToday && { backgroundColor: color.accent }]} />}
               </Press>
             );
           })}
@@ -240,7 +240,7 @@ export default function TodayScreen() {
             {!which.preview && (
               <Glass style={s.card} r={radius.xl}>
                 <View style={s.row}>
-                  <Icon name={warmDone ? 'checkCircle' : 'flame'} size={22} color={warmDone ? color.lime : color.muted} filled={warmDone} />
+                  <Icon name={warmDone ? 'checkCircle' : 'flame'} size={22} color={warmDone ? color.accent : color.muted} filled={warmDone} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={type.h3}>5-minute warm-up</Text>
                     <Text style={type.small}>{warmDone ? 'Joints are ready.' : 'Shoulders, elbows and wrists first.'}</Text>
@@ -289,7 +289,7 @@ export default function TodayScreen() {
                     accessibilityLabel={`${ex.name} details, ${st.done} of ${st.plan.sets} sets`}
                   >
                     <View style={[s.exState, st.complete && s.exStateDone]}>
-                      {st.complete ? <Icon name="check" size={14} color={color.lime} /> : <Text style={s.exIdx}>{i + 1}</Text>}
+                      {st.complete ? <Icon name="check" size={14} color={color.accent} /> : <Text style={s.exIdx}>{i + 1}</Text>}
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[s.exName, st.complete && { color: color.muted }]} numberOfLines={1}>
@@ -392,7 +392,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: space.sm,
   },
-  passToday: { borderColor: color.limeEdge },
+  passToday: { borderColor: color.accentEdge },
   passSel: { borderColor: color.muted },
   passDay: { fontFamily: font.bodyBold, fontSize: size.label, color: color.subtle, letterSpacing: 0.4 },
   passDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
@@ -406,7 +406,7 @@ const s = StyleSheet.create({
   exRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 64, paddingHorizontal: space.lg, borderRadius: radius.lg },
   exRowLine: { borderTopWidth: 1, borderTopColor: color.line, borderRadius: 0 },
   exState: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: color.glassBorder, alignItems: 'center', justifyContent: 'center' },
-  exStateDone: { borderColor: color.limeEdge },
+  exStateDone: { borderColor: color.accentEdge },
   exIdx: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
   exName: { fontFamily: font.bodyBold, fontSize: size.body, color: color.text },
   exCount: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle, fontVariant: ['tabular-nums'] },
@@ -422,7 +422,7 @@ const s = StyleSheet.create({
     borderColor: color.glassBorder,
   },
   programName: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
-  programPending: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.lime, marginTop: 2 },
+  programPending: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.accentText, marginTop: 2 },
   programChange: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   ctaBar: { position: 'absolute', left: space.lg, right: space.lg },
   ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -TAB_BAR },

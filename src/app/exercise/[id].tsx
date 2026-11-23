@@ -66,7 +66,7 @@ function SetCheck({ done, onPress, label, checkRef }: { done: boolean; onPress: 
         tick={false}
       >
         <Animated.View style={st}>
-          <Icon name="check" size={28} color={done ? color.ink : color.subtle} />
+          <Icon name="check" size={28} color={done ? color.onAccent : color.subtle} />
         </Animated.View>
       </Press>
     </View>
@@ -381,8 +381,8 @@ export default function ExerciseScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: tab === t }}
                 >
-                  <Icon name={t === 'howto' ? 'info' : 'body'} size={16} color={tab === t ? color.ink : color.muted} />
-                  <Text style={[s.tabText, tab === t && { color: color.lime }]}>{t === 'howto' ? 'How to' : 'Muscles'}</Text>
+                  <Icon name={t === 'howto' ? 'info' : 'body'} size={16} color={tab === t ? color.accent : color.muted} />
+                  <Text style={[s.tabText, tab === t && { color: color.accentText }]}>{t === 'howto' ? 'How to' : 'Muscles'}</Text>
                 </Press>
               ))}
             </View>
@@ -395,7 +395,7 @@ export default function ExerciseScreen() {
                     <BodyModel
                       paint={paint}
                       height={320}
-                      tint={color.lime}
+                      tint={color.accent}
                       describe={(m) => `${MUSCLE_LABEL[m]}${ex.primary.includes(m) ? ' · primary' : ex.secondary.includes(m) ? ' · secondary' : ''}`}
                     />
                   </Glass>
@@ -444,9 +444,9 @@ export default function ExerciseScreen() {
                 </Glass>
               )}
               {(todayHitTop || prevHitTop) && (
-                <Glass r={radius.lg} style={[s.callout, { borderColor: color.lime }]}>
-                  <Icon name="arrowUp" size={22} color={color.lime} />
-                  <Text style={[s.calloutText, { color: color.limeSoft }]}>{addHint()}</Text>
+                <Glass r={radius.lg} style={[s.callout, { borderColor: color.accent }]}>
+                  <Icon name="arrowUp" size={22} color={color.accent} />
+                  <Text style={[s.calloutText, { color: color.accentSoft }]}>{addHint()}</Text>
                 </Glass>
               )}
 
@@ -501,7 +501,7 @@ export default function ExerciseScreen() {
                       <Animated.View key={i} entering={reduce ? undefined : FadeInDown.delay(motion.stagger * (i + 2)).springify().damping(16)}>
                         <View style={[s.setRow, set.done && s.setRowDone, isPR && s.setRowPR]} testID={`set-row-${i}`}>
                           <View style={s.setCol}>
-                            <Text style={[s.setNo, set.done && { color: color.lime }]}>{i + 1}</Text>
+                            <Text style={[s.setNo, set.done && { color: color.accent }]}>{i + 1}</Text>
                             <Text style={s.last} numberOfLines={1} accessibilityLabel={ghost ? `Last time ${lastText}` : 'No previous set'}>
                               {lastText}
                             </Text>
@@ -585,6 +585,7 @@ export default function ExerciseScreen() {
                           )}
                           {needInput === i && (
                             <Text style={s.needInput} accessibilityLiveRegion="polite">
+                              <Icon name="alert" size={11} color={color.warn} />{' '}
                               {!r.reps ? 'Enter your reps first' : lt === 'stack' ? 'Pick a pin first' : lt === 'weight' ? 'Enter a weight first' : 'Load the plates first'}
                             </Text>
                           )}
@@ -637,7 +638,7 @@ export default function ExerciseScreen() {
             key={restId}
             endsAt={restEnd}
             total={restTotal}
-            tint={color.lime}
+            tint={color.accent}
             nextLabel={nextLabel}
             skipLabel={allSetsDone ? (nextPlan ? 'Next' : 'Done') : 'Skip'}
             sound={state.restSound}
@@ -651,13 +652,13 @@ export default function ExerciseScreen() {
           />
         )}
         <Flash fire={flash} />
-        <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.limeSoft, color.text]} />
+        <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentSoft, color.text]} />
         {pr && (
           <Animated.View entering={reduce ? undefined : SlideInUp.springify().damping(14)} style={[s.prWrap, { top: insets.top + space.md }]}>
-            <Press onPress={() => setPr(null)} accessibilityRole="button" accessibilityLabel={`New PR, ${pr.value}. ${pr.delta}. Tap to dismiss`} style={{ borderRadius: radius.xl }} glow={color.lime}>
-              <Glass strong r={radius.xl} style={s.prCard} glow={color.lime}>
+            <Press onPress={() => setPr(null)} accessibilityRole="button" accessibilityLabel={`New PR, ${pr.value}. ${pr.delta}. Tap to dismiss`} style={{ borderRadius: radius.xl }} glow={color.accent}>
+              <Glass strong r={radius.xl} style={s.prCard} glow={color.accent}>
                 <View style={s.prIcon}>
-                  <Icon name="trophy" size={28} color={color.ink} filled />
+                  <Icon name="trophy" size={28} color={color.onAccent} filled />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.prTitle}>NEW PR · {pr.value}</Text>
@@ -732,8 +733,8 @@ const s = StyleSheet.create({
     marginBottom: space.sm,
     minHeight: 76,
   },
-  setRowDone: { borderColor: color.limeEdge },
-  setRowPR: { borderColor: color.lime, borderWidth: 2 },
+  setRowDone: { borderColor: color.accentEdge },
+  setRowPR: { borderColor: color.accent, borderWidth: 2 },
   setCol: { width: 52, gap: space.xxs },
   setNo: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.muted },
   last: { fontFamily: font.bodySemi, fontSize: size.label, color: color.subtle, fontVariant: ['tabular-nums'] },
@@ -751,18 +752,18 @@ const s = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   check: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: color.surface3, alignItems: 'center', justifyContent: 'center' },
-  checkOn: { backgroundColor: color.lime },
+  checkOn: { backgroundColor: color.accent },
   prBadge: { position: 'absolute', top: -12, right: space.md },
-  needInput: { position: 'absolute', bottom: space.xxs, left: 52 + space.md + space.sm, fontFamily: font.bodyBold, fontSize: size.tiny, color: color.lime },
+  needInput: { position: 'absolute', bottom: space.xxs, left: 52 + space.md + space.sm, fontFamily: font.bodyBold, fontSize: size.tiny, color: color.warn },
   setBtns: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   skipBtn: { marginTop: space.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, minHeight: touch.min, borderRadius: radius.pill },
   skipText: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
   swapRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.md },
   swappedText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.label, color: color.muted },
-  reset: { fontFamily: font.bodyBlack, color: color.lime, textDecorationLine: 'underline' },
+  reset: { fontFamily: font.bodyBlack, color: color.accentText, textDecorationLine: 'underline' },
   tabs: { flexDirection: 'row', gap: space.xs, padding: space.xs, borderRadius: radius.pill, backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
   tab: { flex: 1, flexDirection: 'row', gap: space.xs, alignItems: 'center', justifyContent: 'center', minHeight: touch.min, borderRadius: radius.pill },
-  tabOn: { backgroundColor: color.limeDim, borderWidth: 1, borderColor: color.limeEdge },
+  tabOn: { backgroundColor: color.accentDim, borderWidth: 1, borderColor: color.accentEdge },
   tabText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.muted },
   loadBox: { marginTop: space.xl, gap: space.xs },
   loadHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -776,8 +777,8 @@ const s = StyleSheet.create({
   dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: color.glassBorder },
   loadLabel: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted, marginTop: -space.xs, marginBottom: space.sm, marginLeft: 64 + space.md + space.sm },
   prWrap: { position: 'absolute', left: space.lg, right: space.lg },
-  prCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.limeEdge },
-  prIcon: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: color.lime, alignItems: 'center', justifyContent: 'center' },
+  prCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.accentEdge },
+  prIcon: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
   prTitle: { fontFamily: font.display, fontSize: size.h2, color: color.text },
-  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.limeSoft, marginTop: space.xxs },
+  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentSoft, marginTop: space.xxs },
 });

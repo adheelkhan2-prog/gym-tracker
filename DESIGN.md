@@ -1,56 +1,64 @@
 # Design: Gym Tracker
 
-Base: Spotify's dark, tactile, pill-and-circle system (`~/.claude/design-md/spotify/DESIGN.md`),
-pushed much bolder: two loud accents instead of one, gradient hero surfaces, chunkier shapes
-and a playful display face. Goal: Duolingo-style energy for the gym that never slows logging.
+A dark room lit by one spotlight. Near-black and graphite layers, film grain, a vignette, slow
+dark smoke. Deep crimson is the only accent, and it is rare. Premium and quiet, never a poster.
 
-Taste settings: boldness high, animation high, density low–medium.
+Taste settings: boldness 7/10, animation 7/10, density 3/10.
 
 ## World
 
-A night-time gym floor under neon: deep blue-black ground, chalk-white type, and two
-"plate colours" that mean something:
-
-- **Electric lime**: the *do it* colour. Primary actions, completed sets, primary muscles, progress.
-- **Hot orange**: the *heat* colour. Streak flames, rest timer, supplements, weekly muscle heat.
-- **Gold** is reserved for personal records only.
-
-The lime→orange gradient is the "energy bar". It appears on exactly three things: today's
-workout hero card, the main Start/Finish button, and the workout-complete screen.
+- **Ground**: near-black `#070708` with graphite surfaces; one soft spotlight from above,
+  slow-drifting dark smoke, a very faint dark blood-red glow far back (`#7A0C17`), film grain,
+  and a vignette at the edges.
+- **Glass**: dark and fairly transparent, low blur, a faint 1px border, a brighter top edge
+  (lit from above) and a deep shadow underneath.
+- **Crimson `#E0243A`** is the rare accent: thin lines, small glows, active states, the one
+  number that matters, PR moments. Pressed: `#FF3B4F`. No big red gradients, no solid red blocks
+  (small active fills like a checked set or a level bubble are the limit).
+- **Red never means "wrong"**. Warnings, errors and deletes are amber `#FFB020` / white with an
+  icon.
+- **Main buttons** are dark glass with a thin crimson edge and a crimson label. A solid crimson
+  button is reserved for the PR/finish moment.
+- **Clay exercise renders** sit in the same room: on black, with a vignette; their muscle glow is
+  red-orange, close enough to the crimson UI to read as one family.
 
 ## Tokens
 
-All tokens live in `src/theme.ts`. No component uses a raw colour, size, radius or spacing value.
+All tokens live in `src/theme.ts`.
 
 | Role | Token | Value |
 |---|---|---|
-| Ground | `color.bg` | `#0B0B10` |
-| Card | `color.surface` | `#16161F` |
-| Raised / input | `color.surface2` | `#20202C` |
-| Hairline | `color.line` | `#2C2C3A` |
-| Text | `color.text` | `#F7F7FA` |
-| Secondary text | `color.muted` | `#A9A9BC` (≥6.9:1 on every surface) |
-| Tertiary text | `color.subtle` | `#8C8CA3` (≥4.9:1 on every surface) |
-| Accent 1 | `color.lime` | `#C8FF2E` |
-| Accent 2 | `color.orange` | `#FF6A2B` |
-| PR | `color.gold` | `#FFD23F` |
-| Ink on accents | `color.ink` | `#0B0B10` (never white on orange: 2.9:1) |
+| Ground | `color.bg` | `#070708` |
+| Surfaces | `color.surface` / `surface2` / `surface3` | `#111113` / `#18181B` / `#232327` |
+| Glass tint / border | `color.glass` / `glassBorder` | `rgba(16,16,19,0.46)` / `rgba(255,255,255,0.075)` |
+| Text | `color.text` | `#ECECEF` |
+| Secondary / tertiary text | `color.muted` / `subtle` | `#A3A3AD` / `#868690` (≥4.5:1) |
+| Accent (lines, rings, icons, big numbers) | `color.accent` | `#E0243A` (4.3:1 on black: not for small text) |
+| Accent pressed | `color.accentPressed` | `#FF3B4F` |
+| Accent small text | `color.accentText` | `#FF5466` (≥5.0:1 on every surface) |
+| On a crimson fill | `color.onAccent` | `#FFFFFF` (4.7:1) |
+| Far background glow | `color.glowDeep` | `#7A0C17` |
+| Warning / delete | `color.warn` | `#FFB020` with an icon |
 
-Type: **Bricolage Grotesque** (800/700) for display and every number, **Figtree** (500–800) for
-UI text. Numbers are always tabular. Scale: 56 / 40 / 28 / 22 / 18 / 16 / 14 / 12.
+Type: **Bricolage Grotesque** (800/700) for display and numbers, **Figtree** (500–800) for UI
+text; numbers tabular. Bold but quiet: one big number per screen. Scale: 76 / 64 / 48 / 32 / 28 /
+24 / 20 / 18 / 16 / 14 / 12.
 
-Shape: chunky radii 12 / 18 / 24 / 32, pills for chips and primary buttons. Touch targets ≥48 dp,
-primary actions 56 dp. Spacing on a 4 dp grid.
+Shape: radii 12 / 18 / 24 / 30 / 36, pills for buttons and chips. Touch targets ≥48 dp, primary
+actions 56 dp, all main actions in the bottom third (thumb reach). Spacing on a 4 dp grid.
 
 ## Motion
 
-- Every pressable scales to 0.96 on press-in (spring back, ~160 ms).
-- A completed set's check pops with a spring (overshoot, <300 ms) and a light haptic.
-- Rest timer is an orange ring that drains; it buzzes when done.
-- A new PR fires confetti and a gold "NEW PR!" banner that never blocks input.
-- System "Remove animations" turns all of this into instant state changes.
+- Pressables spring to 0.95 with a crimson ring and a light haptic.
+- Focus mode: swipe between exercises, pull down to close, long-press a set to edit, swipe to
+  delete (with undo); every gesture also has a button or a screen-reader action.
+- Rest: full-screen dark ring that drains; haptic (and optional sound) at zero; ongoing
+  countdown notification.
+- PR: one crimson flash, crimson particles, a haptic, a small "New PR" pill.
+- Smoke drifts slowly; under reduce motion everything rests and state changes are instant.
+- Loading shows skeletons, never spinners.
 
 ## Don'ts
 
-No gradient text, no emoji as icons (Ionicons only), no one-sided accent bars on cards, no
-eyebrow labels above headings, no white text on orange.
+No gradient text, no emoji as icons (the app's own SVG icon set), no one-sided accent bars on
+cards, no pink, no lime, no red for errors, no small text in `#E0243A` (use `accentText`).

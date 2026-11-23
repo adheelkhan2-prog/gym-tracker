@@ -31,10 +31,10 @@ function StoryCard({ d, width }: { d: ShareData; width: number }) {
     <View style={[s.card, { width, height: h }]}>
       <LinearGradient colors={['#151515', '#0A0A0A']} style={StyleSheet.absoluteFill} />
       <View style={{ position: 'absolute', left: -width * 0.45, top: -width * 0.4 }}>
-        <Blob size={width * 1.3} tint={color.lime} opacity={0.3} />
+        <Blob size={width * 1.3} tint={color.accent} opacity={0.3} />
       </View>
       <View style={{ position: 'absolute', right: -width * 0.4, top: h * 0.4 }}>
-        <Blob size={width * 1.1} tint={color.pinkDeep} opacity={0.5} />
+        <Blob size={width * 1.1} tint={color.glowDeep} opacity={0.5} />
       </View>
       <Text style={s.cardDate}>{d.date}</Text>
       <Text style={s.cardTitle}>{d.title}</Text>
@@ -151,17 +151,17 @@ const s = StyleSheet.create({
   sheet: { padding: space.lg, paddingTop: space.md },
   grabber: { alignSelf: 'center', width: 44, height: 5, borderRadius: radius.pill, backgroundColor: color.glassBorder, marginBottom: space.md },
   card: { padding: space.xl, justifyContent: 'flex-start' },
-  cardDate: { ...type.label, color: color.lime },
+  cardDate: { ...type.label, color: color.accentText },
   cardTitle: { fontFamily: font.display, fontSize: size.title, lineHeight: leading.title, color: color.text, letterSpacing: -0.8 },
-  cardBig: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.lime, letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  cardBig: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.accent, letterSpacing: -2, fontVariant: ['tabular-nums'] },
   cardUnit: { fontFamily: font.bodyBold, fontSize: size.h3, color: color.muted },
   cardLabel: { ...type.label, marginTop: -space.xs },
   cardRow: { flexDirection: 'row', gap: space.lg, marginTop: space.md },
   cardStat: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   cardStatLabel: { fontFamily: font.bodyBold, fontSize: size.small, color: color.muted },
-  cardPr: { fontFamily: font.bodyBold, fontSize: size.small, color: color.limeSoft, marginTop: space.xs },
+  cardPr: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentSoft, marginTop: space.xs },
   cardFoot: { position: 'absolute', left: space.xl, right: space.xl, bottom: space.lg, flexDirection: 'row', justifyContent: 'space-between' },
-  cardRank: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.lime },
+  cardRank: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.accentText },
   cardBrand: { fontFamily: font.display, fontSize: size.label, letterSpacing: 2, color: color.text },
 });
 

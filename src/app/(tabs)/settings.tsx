@@ -56,7 +56,7 @@ function Toggle({ icon, title, sub, checked, onChange }: { icon: IconName; title
   return (
     <View style={s.toggle}>
       <View style={s.toggleIcon}>
-        <Icon name={icon} size={20} color={checked ? color.lime : color.muted} filled={checked} />
+        <Icon name={icon} size={20} color={checked ? color.accent : color.muted} filled={checked} />
       </View>
       <View style={{ flex: 1, gap: space.xxs }}>
         <Text style={type.h3}>{title}</Text>
@@ -122,7 +122,7 @@ export default function SettingsScreen() {
         />
       </Glass>
       {easingIn(state) && (
-        <Glass r={radius.xl} style={s.welcome} glow={color.lime}>
+        <Glass r={radius.xl} style={s.welcome} glow={color.accent}>
           <Text style={type.h3}>Welcome back. Ease in.</Text>
           <Text style={type.small}>
             Legs and abs are back. For the first 2 weeks, use about half your old leg weights, stop 3–4 reps short of failure, and add load only when it feels easy.
@@ -274,7 +274,7 @@ export default function SettingsScreen() {
             <Text style={type.small}>{g.note}</Text>
             {g.links.map((c) => (
               <Press key={c.url} onPress={() => Linking.openURL(c.url).catch(() => {})} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
-                <Icon name="link" size={16} color={color.lime} />
+                <Icon name="link" size={16} color={color.accent} />
                 <Text style={s.creditText}>{c.label}</Text>
               </Press>
             ))}
@@ -321,7 +321,7 @@ const s = StyleSheet.create({
   divider: { borderTopWidth: 1, borderTopColor: color.line },
   welcome: { marginTop: space.md, padding: space.lg, gap: space.xs },
   link: { minHeight: touch.min, justifyContent: 'center', paddingHorizontal: space.sm, borderRadius: radius.pill },
-  linkText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.lime },
+  linkText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText },
   formRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
