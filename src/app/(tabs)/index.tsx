@@ -29,7 +29,7 @@ import {
   useStore,
   weekKeys,
 } from '../../store';
-import { color, font, leading, motion, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, floating, font, leading, motion, radius, size, space, touch, type } from '../../theme';
 import { WARMUP, dayProgress, subtitleOf, titleOf, todayDayId } from '../../workout';
 import { levelFor, rankFor, totalXp } from '../../xp';
 
@@ -94,7 +94,7 @@ export default function TodayScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen padBottom={cta && day ? 230 : 150}>
+      <Screen padBottom={cta && day ? bottomClearance.tabsWithAction : bottomClearance.tabs}>
         {/* Header: date, a quiet line, streak and level */}
         <View style={s.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -346,8 +346,8 @@ export default function TodayScreen() {
 }
 
 const RING = 84;
-/** Height of the floating tab bar (see (tabs)/_layout.tsx) plus a gap. */
-const TAB_BAR = 92;
+/** Where the floating main button sits: just above the tab bar. */
+const TAB_BAR = floating.tabBarOffset;
 
 const s = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },

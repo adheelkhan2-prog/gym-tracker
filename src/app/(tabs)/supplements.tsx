@@ -10,7 +10,7 @@ import { SUPPS, line } from '../../copy';
 import { haptic } from '../../feedback';
 import { SUPPORTED } from '../../reminders';
 import { addDays, allTaken, dateFromKey, supplementStreak, todayKey, useStore } from '../../store';
-import { color, fmtTime, font, leading, motion, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, fmtTime, font, leading, motion, radius, size, space, touch, type } from '../../theme';
 
 const SLOT_NAMES = ['Morning reminder', 'If not taken', 'Last call'];
 
@@ -98,7 +98,7 @@ export default function SupplementsScreen() {
 
   return (
     <View ref={rootRef} collapsable={false} style={{ flex: 1 }}>
-      <Screen padBottom={140}>
+      <Screen padBottom={bottomClearance.tabs}>
         {/* Hero: the streak, huge */}
         <View style={s.hero}>
           <View style={{ flex: 1 }}>

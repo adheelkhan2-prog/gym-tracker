@@ -12,7 +12,7 @@ import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
 import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, round1 } from '../../load';
 import { addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
-import { color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
+import { bottomClearance, color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
 import { RANKS, levelFor, pctChange, rankFor, totalXp, volumeOn } from '../../xp';
 
 type Metric = 'top' | 'e1rm';
@@ -92,7 +92,7 @@ export default function ProgressScreen() {
   const up = (change ?? 0) >= 0;
 
   return (
-    <Screen padBottom={140}>
+    <Screen padBottom={bottomClearance.tabs}>
       {/* Hero: one huge number */}
       <Animated.View entering={enter(0)}>
         <Text style={s.kicker}>Volume this week</Text>

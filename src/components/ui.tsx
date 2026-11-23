@@ -83,14 +83,14 @@ export function Press({
   );
 }
 
-/** Screen scaffold: drifting glow backdrop + scroll view with safe-area padding. */
+/** Screen scaffold: backdrop + scroll view with safe-area padding. `padBottom` is added to the bottom inset. */
 export function Screen({ children, padBottom = space.x5 }: { children: React.ReactNode; padBottom?: number }) {
   const insets = useSafeAreaInsets();
   return (
     <Backdrop>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: padBottom }}
+        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: insets.bottom + padBottom }}
         keyboardShouldPersistTaps="handled"
       >
         {children}

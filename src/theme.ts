@@ -124,6 +124,21 @@ export const motion = {
 /** Room left under scrolling content so a floating bar never hides the last row. */
 export const restBarClearance = 140;
 
+/*
+ * Bottom clearance for scrolling screens under floating bars. Screens add the safe-area inset
+ * (gesture bar) on top of these, so the last content can always scroll fully clear.
+ * - tabBar: the floating tab bar's height above the inset ((tabs)/_layout.tsx: 60dp tab + padding).
+ * - tabBarOffset: where Today's floating main button sits (just above the tab bar).
+ * - action: that button's height (Button size lg).
+ */
+export const floating = { tabBar: 78, tabBarOffset: 92, action: 64, fade: 32 } as const;
+export const bottomClearance = {
+  /** Tab screens: clear of the tab bar and the fade above it. */
+  tabs: floating.tabBar + floating.fade + 24,
+  /** Today with the floating Start/Continue button: clear of the button and its fade. */
+  tabsWithAction: floating.tabBarOffset + floating.action + floating.fade + 24,
+} as const;
+
 /** Text style presets built from the tokens above. */
 export const type = {
   display: { fontFamily: font.display, fontSize: size.display, lineHeight: leading.display, letterSpacing: -0.6, color: color.text },

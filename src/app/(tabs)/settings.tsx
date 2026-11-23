@@ -10,7 +10,7 @@ import { EXERCISES } from '../../data/exercises';
 import { exerciseFor } from '../../workout';
 import { DEFAULT_GYM, fmtPlate, type PlateColor } from '../../load';
 import { activeProgram, easingIn, todayKey, useStore } from '../../store';
-import { color, font, leading, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, font, leading, radius, size, space, touch, type } from '../../theme';
 
 const ALL_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5];
 const SWATCHES = ['#E5322D', '#2F6BFF', '#F5C518', '#2DBE60', '#F2F2F2', '#1A1A1A', '#FF7A1A', '#8E5CFF'];
@@ -79,7 +79,7 @@ export default function SettingsScreen() {
   const machines = Object.entries(state.machines).filter(([id]) => EXERCISES[id]);
 
   return (
-    <Screen padBottom={140}>
+    <Screen padBottom={bottomClearance.tabs}>
       <Text style={s.title} accessibilityRole="header">
         Settings
       </Text>
