@@ -23,6 +23,7 @@ import { EXERCISES } from '../data/exercises';
 import { howToImages } from '../data/how-to';
 import { MUSCLE_LABEL } from '../data/muscles';
 import { restFor } from '../data/program';
+import { crumb, logCrash } from '../crash';
 import { haptic } from '../feedback';
 import { readyToLog, stepFor, suggestSet, weightIn } from '../focus';
 import { fmtKg, loadTypeOf, round1, weightFromLoad } from '../load';
@@ -39,7 +40,7 @@ import { loadText, setText, slotStatuses } from '../workout';
  */
 export default function FocusScreen() {
   const params = useLocalSearchParams<{ day?: string }>();
-  const { state, update } = useStore();
+  const { state, update, commit } = useStore();
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -230,9 +231,16 @@ export default function FocusScreen() {
     setUndo(null);
   };
 
-  const finishWorkout = () => {
+  // Save the finished session to disk first; only then open the celebration (heavy: 3D model,
+  // particles), so a crash there can never lose the workout.
+  const finishWorkout = async () => {
     haptic.pr();
-    update((s) => ({ ...s, sessions: { ...s.sessions, [date]: { ...s.sessions[date], dayId: s.sessions[date]?.dayId ?? day.id, finishedAt: Date.now() } } }));
+    crumb('finish workout (focus)');
+    // eslint-disable-next-line react-hooks/purity -- runs in the tap handler, not during render
+    const at = Date.now();
+    await commit((s) => ({ ...s, sessions: { ...s.sessions, [date]: { ...s.sessions[date], dayId: s.sessions[date]?.dayId ?? day.id, finishedAt: at } } })).catch((e) =>
+      logCrash('error', e, 'saving finished workout'),
+    );
     router.replace({ pathname: '/complete', params: { date } });
   };
 

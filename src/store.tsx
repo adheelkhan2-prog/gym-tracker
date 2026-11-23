@@ -191,7 +191,14 @@ export const addDays = (key: string, n: number) => {
   return todayKey(d);
 };
 
-type Ctx = { state: State; ready: boolean; update: (fn: (s: State) => State) => void };
+type Ctx = {
+  state: State;
+  ready: boolean;
+  update: (fn: (s: State) => State) => void;
+  /** Apply a change and write it to storage now (not after the usual short delay). Use before
+   * anything heavy that could crash, e.g. the workout-complete celebration. */
+  commit: (fn: (s: State) => State) => Promise<void>;
+};
 const StoreContext = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -214,8 +221,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, 250);
   }, [state, ready]);
 
-  const update = useCallback((fn: (s: State) => State) => setState(fn), []);
-  const value = useMemo(() => ({ state, ready, update }), [state, ready, update]);
+  // Latest state, so commit() can compute and save the next state synchronously.
+  const latest = useRef(state);
+  useEffect(() => {
+    latest.current = state;
+  }, [state]);
+  const update = useCallback(
+    (fn: (s: State) => State) =>
+      setState((prev) => {
+        const next = fn(prev);
+        latest.current = next;
+        return next;
+      }),
+    [],
+  );
+  const commit = useCallback(async (fn: (s: State) => State) => {
+    const next = fn(latest.current);
+    latest.current = next;
+    setState(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }, []);
+  const value = useMemo(() => ({ state, ready, update, commit }), [state, ready, update, commit]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

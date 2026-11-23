@@ -9,6 +9,7 @@ import { Icon } from '../../components/icons';
 import { CountUp } from '../../components/motion';
 import { Button, Flame, Press, Ring, Screen } from '../../components/ui';
 import { GREETING, REST_DAY, line } from '../../copy';
+import { crumb, logCrash } from '../../crash';
 import { EXERCISES } from '../../data/exercises';
 import { MUSCLE_LABEL } from '../../data/muscles';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
@@ -34,7 +35,7 @@ import { WARMUP, dayProgress, subtitleOf, titleOf, todayDayId } from '../../work
 import { levelFor, rankFor, totalXp } from '../../xp';
 
 export default function TodayScreen() {
-  const { state, update } = useStore();
+  const { state, update, commit } = useStore();
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
   const now = new Date();
@@ -64,12 +65,19 @@ export default function TodayScreen() {
     router.push({ pathname: '/focus', params: { day: day!.id } });
   };
 
-  const finish = () => {
+  // Save the finished session to disk first; only then open the celebration, so a crash there
+  // can never lose the workout.
+  const [finishing, setFinishing] = useState(false);
+  const finish = async () => {
+    if (finishing) return;
+    setFinishing(true);
+    crumb('finish workout (Today)');
     const at = Date.now();
-    update((s) => ({
+    await commit((s) => ({
       ...s,
       sessions: { ...s.sessions, [date]: { ...s.sessions[date], dayId: s.sessions[date]?.dayId ?? day!.id, finishedAt: at } },
-    }));
+    })).catch((e) => logCrash('error', e, 'saving finished workout'));
+    setFinishing(false);
     router.push({ pathname: '/complete', params: { date } });
   };
 

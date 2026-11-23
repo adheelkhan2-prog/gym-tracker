@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -62,7 +62,8 @@ export default function CompleteScreen() {
     const volume = Math.round(fromKg(volumeOn(state, date), state.unit));
     const prevDate = dayId ? previousSameDay(state, date, dayId) : null;
     const change = prevDate ? pctChange(volume, Math.round(fromKg(volumeOn(state, prevDate), state.unit))) : null;
-    const prs = prSetsOn(state.logs, date).map((p) => {
+    // Logs can hold exercises this version no longer knows (kept on update): skip those here.
+    const prs = prSetsOn(state.logs, date).filter((p) => EXERCISES[p.exerciseId]).map((p) => {
       const kind = EXERCISES[p.exerciseId].kind;
       const before = bestBefore(state.logs, p.exerciseId, date);
       if (kind === 'reps' || kind === 'time') {
@@ -150,7 +151,7 @@ export default function CompleteScreen() {
         );
       }
       setT(e >= tEnd ? Infinity : e);
-    }, 40);
+    }, 80);
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skipped]);
@@ -187,6 +188,17 @@ export default function CompleteScreen() {
     transform: [{ translateY: (1 - arrow.value) * (up ? 14 : -14) }, { scale: 0.6 + arrow.value * 0.4 }],
   }));
 
+  // The 3D model starts after the screen transition, so the new GL context never competes with
+  // the navigation animation (and the previous screen's teardown) for the GPU.
+  const [show3d, setShow3d] = useState(false);
+  useEffect(() => {
+    // The screen's fade-in transition takes ~300 ms (see _layout.tsx).
+    const t = setTimeout(() => setShow3d(true), 350);
+    return () => clearTimeout(t);
+  }, []);
+  const trained = useMemo(() => new Set(data.muscles.map(([m]) => m)), [data.muscles]);
+  const describe = useCallback((m: MuscleId) => `${MUSCLE_LABEL[m]}${trained.has(m) ? ' · trained today' : ''}`, [trained]);
+
   const [share, setShare] = useState<{ img: string | null } | null>(null);
   const openShare = async () => {
     const img = (await snapshotRef.current?.().catch(() => null)) ?? null;
@@ -213,17 +225,11 @@ export default function CompleteScreen() {
 
         {/* Hero: the body you just trained */}
         <View style={{ marginTop: space.sm }}>
-          <BodyModel
-            paint={paint}
-            pulses={pulses}
-            height={380}
-            framing="torso"
-            intro
-            tint={color.accent}
-            snapshotRef={snapshotRef}
-            describe={(m) => `${MUSCLE_LABEL[m]}${data.muscles.some(([x]) => x === m) ? ' · trained today' : ''}`}
-            showHint={false}
-          />
+          {show3d ? (
+            <BodyModel paint={paint} pulses={pulses} height={380} framing="torso" intro tint={color.accent} snapshotRef={snapshotRef} describe={describe} showHint={false} />
+          ) : (
+            <View style={{ height: 380 }} />
+          )}
         </View>
         {lit > 0 && (
           <View style={[s.pad, s.muscleRow]}>

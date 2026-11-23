@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NumberField } from '../../components/ExerciseParts';
+import { clearCrashLog, readCrashLog } from '../../crash';
+import { shareCrashLog } from '../../crashShare';
 import { Glass } from '../../components/glass';
 import { Icon, type IconName } from '../../components/icons';
 import { WeekMapper } from '../../components/ProgramParts';
@@ -285,6 +287,8 @@ export default function SettingsScreen() {
         </Text>
       </Glass>
 
+      <CrashLogSection />
+
       <SectionTitle>Data</SectionTitle>
       <Text style={[type.small, { marginBottom: space.md }]}>Everything is stored on this phone only.</Text>
       {confirmDelete ? (
@@ -314,7 +318,67 @@ export default function SettingsScreen() {
   );
 }
 
+/** Crash log: what went wrong and the last steps before it, kept on the phone. */
+function CrashLogSection() {
+  const [entries, setEntries] = useState(() => readCrashLog());
+  const [open, setOpen] = useState(false);
+  const shown = open ? entries : entries.slice(0, 3);
+  return (
+    <>
+      <SectionTitle>Crash log</SectionTitle>
+      <Glass r={radius.xl} style={{ gap: space.md, padding: space.lg }}>
+        {entries.length === 0 ? (
+          <Text style={type.small}>No crashes recorded. If the app ever closes or shows an error, the details are saved here so you can share them.</Text>
+        ) : (
+          <>
+            <Text style={type.small}>
+              {entries.length} recorded. Share the log so the problem can be found; your workouts are not included.
+            </Text>
+            {shown.map((c) => (
+              <View key={c.at + c.message} style={s.crashRow}>
+                <Icon name="alert" size={16} color={color.warn} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.crashWhen}>
+                    {new Date(c.at).toLocaleString()} · {c.kind === 'unclean-exit' ? 'closed unexpectedly' : c.kind}
+                  </Text>
+                  <Text style={type.small} numberOfLines={open ? 6 : 2}>
+                    {c.message}
+                  </Text>
+                  {open && c.trail.length > 0 && <Text style={s.crashTrail}>Last steps: {c.trail.slice(-6).join(' → ')}</Text>}
+                </View>
+              </View>
+            ))}
+            {entries.length > 3 && <Button size="sm" variant="ghost" label={open ? 'Show less' : `Show all ${entries.length}`} onPress={() => setOpen(!open)} />}
+          </>
+        )}
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <View style={{ flex: 1 }}>
+            <Button size="sm" variant="secondary" icon="share" label="Share log" onPress={() => void shareCrashLog().catch(() => {})} />
+          </View>
+          {entries.length > 0 && (
+            <View style={{ flex: 1 }}>
+              <Button
+                size="sm"
+                variant="destructive"
+                icon="trash"
+                label="Clear"
+                onPress={() => {
+                  clearCrashLog();
+                  setEntries([]);
+                }}
+              />
+            </View>
+          )}
+        </View>
+      </Glass>
+    </>
+  );
+}
+
 const s = StyleSheet.create({
+  crashRow: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
+  crashWhen: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
+  crashTrail: { fontFamily: font.body, fontSize: size.label, color: color.subtle, marginTop: space.xxs },
   title: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, letterSpacing: -2, color: color.text },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
   toggleIcon: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },

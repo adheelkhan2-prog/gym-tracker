@@ -116,7 +116,9 @@ export default function ExerciseScreen() {
     restCarry.total = restTotal;
   }, [restEnd, restTotal]);
 
-  const [tab, setTab] = useState<Tab>('muscles');
+  // How to first: the 3D model (a GL context) only starts when you open Muscles, which keeps
+  // memory low while moving through exercises.
+  const [tab, setTab] = useState<Tab>('howto');
   const [sheet, setSheet] = useState<SheetState>(null);
   const [needInput, setNeedInput] = useState<number | null>(null);
   // PR moment

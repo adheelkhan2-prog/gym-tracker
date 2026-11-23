@@ -108,9 +108,16 @@ function Body({
     });
   }, [paint, idle, materials]);
 
+  // Snapshot without preserveDrawingBuffer (heavy, and unreliable on some Android GPUs): draw a
+  // fresh frame and read it straight back.
+  const scene = useThree((st) => st.scene);
   useEffect(() => {
-    if (snapshotRef) snapshotRef.current = () => snapshotGL(gl as never);
-  }, [gl, snapshotRef]);
+    if (snapshotRef)
+      snapshotRef.current = () => {
+        gl.render(scene, camera);
+        return snapshotGL(gl as never);
+      };
+  }, [gl, scene, camera, snapshotRef]);
 
   useEffect(onReady, [onReady]);
 
@@ -206,7 +213,7 @@ function LoadingPulse({ tint }: { tint: string }) {
  * Interactive 3D muscle model. Drag to rotate, pinch to zoom, tap a muscle for its name.
  * `paint` colours muscles; everything else uses `idle`. `pulses` flashes muscles.
  */
-export function BodyModel({
+export const BodyModel = React.memo(function BodyModel({
   paint,
   pulses,
   idle = color.muscleIdle,
@@ -288,7 +295,7 @@ export function BodyModel({
       <GLBoundary>
         <Canvas
           camera={{ fov: 30, near: 0.05, far: 20, position: [0, 0.4, 1.7] }}
-          gl={{ antialias: true, preserveDrawingBuffer: !!snapshotRef }}
+          gl={{ antialias: true }}
           style={{ flex: 1 }}
           onPointerMissed={() => setPicked(null)}
         >
@@ -328,7 +335,7 @@ export function BodyModel({
       )}
     </View>
   );
-}
+});
 
 const s = StyleSheet.create({
   wrap: { width: '100%', overflow: 'hidden', borderRadius: radius.xl },

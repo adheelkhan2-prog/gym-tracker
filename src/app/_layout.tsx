@@ -5,15 +5,33 @@ import { Figtree_600SemiBold } from '@expo-google-fonts/figtree/600SemiBold';
 import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
 import { Figtree_800ExtraBold } from '@expo-google-fonts/figtree/800ExtraBold';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Loading } from '../components/ui';
+import { crumb, installCrashReporting, setForeground } from '../crash';
+import { shareCrashLog } from '../crashShare';
 import { applyReminderAction, onReminderResponse, setupNotifications, syncReminders } from '../reminders';
 import { StoreProvider, useStore } from '../store';
 import { color } from '../theme';
+
+// Before anything renders: log an unexpected close from last time, catch fatal JS errors.
+installCrashReporting();
+
+/** Breadcrumbs for the crash log: every screen opened, and the app going to/from the background. */
+function CrashTrail() {
+  const path = usePathname();
+  useEffect(() => crumb(`screen ${path}`), [path]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => setForeground(st === 'active'));
+    return () => sub.remove();
+  }, []);
+  return null;
+}
 
 function ReminderBridge() {
   const { state, ready, update } = useStore();
@@ -59,6 +77,7 @@ function Gate() {
   if (!ready || (!fontsLoaded && !fontError)) return <Loading />;
   return (
     <>
+      <CrashTrail />
       <ReminderBridge />
       <Stack
         screenOptions={{
@@ -81,7 +100,9 @@ export default function RootLayout() {
       <SafeAreaProvider style={{ backgroundColor: color.bg }}>
         <StoreProvider>
           <StatusBar style="light" />
-          <Gate />
+          <ErrorBoundary onShareLog={() => void shareCrashLog().catch(() => {})}>
+            <Gate />
+          </ErrorBoundary>
         </StoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
