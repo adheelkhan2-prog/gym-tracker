@@ -137,6 +137,12 @@ export function syncReminders(state: State): Promise<void> {
   return queue;
 }
 
+/** What a tap on a reminder does: "Taken" marks every supplement for that day; "Not yet" and a plain tap change nothing. */
+export function applyReminderAction<S extends Pick<State, 'taken' | 'supplements'>>(state: S, date: string, action: 'taken' | 'later' | 'open'): S {
+  if (action !== 'taken') return state;
+  return { ...state, taken: { ...state.taken, [date]: Object.fromEntries(state.supplements.map((x) => [x, true])) } };
+}
+
 /** Listen for taps on reminder notifications / their buttons. */
 export function onReminderResponse(handler: (date: string, action: 'taken' | 'later' | 'open') => void) {
   if (!SUPPORTED) return () => {};

@@ -28,14 +28,12 @@ import {
   LOAD_HINT,
   LOAD_LABEL,
   barFor,
-  colorsKg,
   fmtKg,
   fromKg,
   loadTypeOf,
   loadTypesFor,
-  platesTotal,
   round1,
-  stackKg,
+  weightFromLoad,
   type LoadInfo,
   type LoadType,
 } from '../../load';
@@ -203,13 +201,7 @@ export default function ExerciseScreen() {
     return g?.t === lt ? g : undefined;
   };
   /** Turn a load into a saved weight (kg) for this set. */
-  const fromLoad = (l: LoadInfo): Pick<SetEntry, 'weight' | 'u' | 'load'> => {
-    let kg: number | null = null;
-    if (l.t === 'stack' && l.pin !== undefined) kg = stackKg(l.pin, machine);
-    if (l.t === 'plates') kg = platesTotal(l.plates ?? [], l.bar ?? 0);
-    if (l.t === 'colors') kg = (l.bar ?? 0) + 2 * colorsKg(l.colors ?? [], gym);
-    return { weight: kg === null ? '' : String(Math.round(kg * 100) / 100), u: 'kg', load: l };
-  };
+  const fromLoad = (l: LoadInfo): Pick<SetEntry, 'weight' | 'u' | 'load'> => weightFromLoad(l, gym, machine);
 
   const prevTopKg = prev ? Math.max(0, ...prev.sets.map((x) => kgOf(x) ?? 0)) : 0;
   const prevTopPin = prev ? Math.max(0, ...prev.sets.map((x) => x.load?.pin ?? 0)) : 0;

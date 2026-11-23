@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
-import { EXERCISE_3D } from '../data/exercise-3d';
-import { EXERCISE_IMAGES } from '../data/exercise-images';
+import { howToImages } from '../data/how-to';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
 import { haptic } from '../feedback';
@@ -26,11 +25,7 @@ import { Badge, Button, Chip, Press } from './ui';
 
 // ---------- How-to images ----------
 
-/** Clay render if approved, else the free-exercise-db photo. */
-export function howToImages(id: string) {
-  const clay = EXERCISE_3D[id];
-  return clay ? { ...clay, clay: true } : EXERCISE_IMAGES[id] ? { ...EXERCISE_IMAGES[id], clay: false } : undefined;
-}
+export { howToImages } from '../data/how-to';
 
 /** Start/end images that cross-fade on their own; tap to pause or resume. Written steps below. */
 export function HowTo({ ex }: { ex: ExerciseInfo }) {
