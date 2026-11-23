@@ -431,7 +431,7 @@ const s = StyleSheet.create({
   card: { padding: space.xl },
   btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
   btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.3 },
-  btnPrimary: { backgroundColor: 'rgba(12,12,14,0.97)', borderWidth: 1, borderColor: color.limeEdge },
+  btnPrimary: { backgroundColor: '#0C0C0E', borderWidth: 1, borderColor: color.limeEdge },
   iconBtn: {
     width: touch.min,
     height: touch.min,

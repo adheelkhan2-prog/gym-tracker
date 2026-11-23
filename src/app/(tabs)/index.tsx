@@ -337,7 +337,7 @@ export default function TodayScreen() {
       {/* The main action, in thumb reach above the tab bar */}
       {day && progress && cta && (
         <View style={[s.ctaBar, { bottom: insets.bottom + TAB_BAR }]} pointerEvents="box-none">
-          <LinearGradient colors={['rgba(7,7,8,0)', 'rgba(7,7,8,0.92)', color.bg]} locations={[0, 0.55, 1]} style={s.ctaFade} pointerEvents="none" />
+          <LinearGradient colors={['rgba(7,7,8,0)', color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
           <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={progress.allDone ? finish : openFocus} />
         </View>
       )}
