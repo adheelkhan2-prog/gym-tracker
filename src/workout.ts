@@ -3,7 +3,7 @@ import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { pickOption, targetTop, type PlannedExercise, type WorkoutDay } from './data/program';
 import { dayTitle } from './theme';
 import { fmtKg, type Unit } from './load';
-import { doneSets, kgOf, num, type ExerciseLog, type SetEntry, type State } from './store';
+import { doneSets, kgOf, num, type DayLog, type ExerciseLog, type SetEntry, type State } from './store';
 
 /** The exercise actually done for a slot: a remembered swap, else the plan's own pick. */
 export const exerciseFor = (state: Pick<State, 'swaps' | 'variants'>, plan: PlannedExercise) => {
@@ -114,6 +114,15 @@ export function swapSlot(state: State, date: string, plan: PlannedExercise, to: 
   const swaps = { ...state.swaps };
   if (to === pickOption(plan, state.variants)) delete swaps[plan.slot];
   else swaps[plan.slot] = to;
-  const logs = total > 0 || day[to] ? { ...state.logs, [date]: { ...day, [to]: { ...(day[to] ?? { sets: [] }), carried } } } : state.logs;
+  if (total === 0 && !day[to]) return { ...state, swaps };
+  // The exercise left behind keeps its own sets (history, PRs) but no longer carries this slot's
+  // count: that moves to the new exercise, so nothing is counted twice or left stale.
+  const nextDay: DayLog = { ...day, [to]: { ...(day[to] ?? { sets: [] }), carried } };
+  if (day[from]?.carried !== undefined) {
+    const { carried: _c, ...rest } = day[from]!;
+    void _c;
+    nextDay[from] = rest;
+  }
+  const logs = { ...state.logs, [date]: nextDay };
   return { ...state, swaps, logs };
 }

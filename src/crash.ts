@@ -62,9 +62,12 @@ const getStore = () => (store ??= Platform.OS === 'web' ? webStore() : nativeSto
 export const setCrashStore = (s: CrashStore) => {
   store = s;
   trail.length = 0;
+  foreground = true;
 };
 
 const trail: string[] = [];
+/** Whether the app is in the foreground now (AppState), written with every breadcrumb. */
+let foreground = true;
 const safe = <T>(fn: () => T, fallback: T): T => {
   try {
     return fn();
@@ -79,7 +82,7 @@ const time = () => new Date().toISOString().slice(11, 19);
 export function crumb(step: string) {
   trail.push(`${time()} ${step}`);
   if (trail.length > MAX_TRAIL) trail.splice(0, trail.length - MAX_TRAIL);
-  safe(() => getStore().write(ALIVE, JSON.stringify({ foreground: true, trail })), undefined);
+  safe(() => getStore().write(ALIVE, JSON.stringify({ foreground, trail })), undefined);
 }
 
 export function readCrashLog(): CrashEntry[] {
@@ -117,7 +120,8 @@ export function crashLogText(entries = readCrashLog(), app = '') {
  */
 export function installCrashReporting() {
   const prev = safe(() => JSON.parse(getStore().read(ALIVE) ?? 'null') as { foreground: boolean; trail: string[] } | null, null);
-  if (prev?.foreground) {
+  // On web a reload or closed tab looks the same as a crash, so only native checks this.
+  if (prev?.foreground && Platform.OS !== 'web') {
     const last = readCrashLog()[0];
     const loggedAlready = last && last.kind === 'fatal' && prev.trail.length && last.trail.at(-1) === prev.trail.at(-1);
     if (!loggedAlready) {
@@ -143,6 +147,7 @@ export function installCrashReporting() {
 }
 
 /** The app went to the background (or came back): a close while backgrounded isn't a crash. */
-export function setForeground(foreground: boolean) {
+export function setForeground(fg: boolean) {
+  foreground = fg;
   safe(() => getStore().write(ALIVE, JSON.stringify({ foreground, trail })), undefined);
 }

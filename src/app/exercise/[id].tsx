@@ -89,7 +89,8 @@ export default function ExerciseScreen() {
   const id = plan ? exerciseFor(state, plan) : params.id;
   const ex: ExerciseInfo | undefined = EXERCISES[id];
   // After a mid-workout swap, the sets already done on the other exercise are carried over.
-  const carried = state.logs[todayKey()]?.[id]?.carried ?? 0;
+  // (Only inside a workout slot; opened on its own, the exercise has no slot to carry into.)
+  const carried = plan ? (state.logs[todayKey()]?.[id]?.carried ?? 0) : 0;
   const targetSets = Math.max(1, (plan?.sets ?? 3) - carried);
   const unit = state.unit;
   const step = unit === 'kg' ? 2.5 : 5;

@@ -33,6 +33,9 @@ describe('swapping mid-workout', () => {
     expect(exerciseFor(s3, plan)).toBe('flat_bench');
     expect(s3.swaps[plan.slot]).toBeUndefined();
     expect(slotStatuses(s3, day, D)[0].done).toBe(2);
+    // The exercise left behind keeps its set but no stale slot count.
+    expect(s3.logs[D].flat_db_press.carried).toBeUndefined();
+    expect(s3.logs[D].flat_db_press.sets).toHaveLength(1);
   });
 
   test('a swap before any set just changes the exercise', () => {

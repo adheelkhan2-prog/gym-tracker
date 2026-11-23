@@ -233,9 +233,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The newest state, always: every change is computed from it at once, so update() and commit()
+  // calls in the same tap compose in order and commit() saves exactly what's shown.
+  const latest = useRef(state);
+
   useEffect(() => {
     loadState().then((loaded) => {
-      if (loaded) setState(loaded);
+      if (loaded) {
+        latest.current = loaded;
+        setState(loaded);
+      }
       setReady(true);
     });
   }, []);
@@ -248,20 +255,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, 250);
   }, [state, ready]);
 
-  // Latest state, so commit() can compute and save the next state synchronously.
-  const latest = useRef(state);
-  useEffect(() => {
-    latest.current = state;
-  }, [state]);
-  const update = useCallback(
-    (fn: (s: State) => State) =>
-      setState((prev) => {
-        const next = fn(prev);
-        latest.current = next;
-        return next;
-      }),
-    [],
-  );
+  const update = useCallback((fn: (s: State) => State) => {
+    const next = fn(latest.current);
+    latest.current = next;
+    setState(next);
+  }, []);
   const commit = useCallback(async (fn: (s: State) => State) => {
     const next = fn(latest.current);
     latest.current = next;

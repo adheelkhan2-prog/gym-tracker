@@ -66,6 +66,7 @@ export default function FocusScreen() {
   const [pr, setPr] = useState<string | null>(null);
   const [flash, setFlash] = useState(0);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finishing = useRef(false);
   useEffect(() => {
     restCarry.endsAt = restEnd;
     restCarry.total = restTotal;
@@ -253,6 +254,8 @@ export default function FocusScreen() {
   // Save the finished session to disk first; only then open the celebration (heavy: 3D model,
   // particles), so a crash there can never lose the workout.
   const finishWorkout = async () => {
+    if (finishing.current) return; // a double tap must not save or navigate twice
+    finishing.current = true;
     haptic.pr();
     crumb('finish workout (focus)');
     // eslint-disable-next-line react-hooks/purity -- runs in the tap handler, not during render
@@ -486,7 +489,7 @@ export default function FocusScreen() {
           swaps={swapsFor(planned, state.injured).filter((x) => x.id === id || !statuses.some((o) => o !== st && o.exerciseId === x.id))}
           note={
             slotSet > 0
-              ? `Same primary muscles only. Your ${slotSet} logged set${slotSet === 1 ? '' : 's'} stay${slotSet === 1 ? 's' : ''} under ${EXERCISES[id].name}; the rest continue on the new exercise.`
+              ? `Same primary muscles only. Sets you've logged stay under the exercise you did them on; the remaining ${Math.max(0, plan.sets - slotSet)} continue on the new one.`
               : undefined
           }
           onPick={(to) => {

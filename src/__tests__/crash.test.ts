@@ -61,3 +61,14 @@ test('crash reporting never throws, even if storage fails', () => {
   expect(() => logCrash('error', 'boom')).not.toThrow();
   expect(readCrashLog()).toEqual([]);
 });
+
+test('a breadcrumb written in the background keeps it marked as background (no false crash)', () => {
+  const store = memoryStore();
+  setCrashStore(store);
+  crumb('screen /');
+  setForeground(false);
+  crumb('reminder action'); // e.g. a notification handled while backgrounded
+  setCrashStore(store);
+  installCrashReporting();
+  expect(readCrashLog()).toEqual([]);
+});
