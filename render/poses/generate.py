@@ -132,7 +132,7 @@ STRAIGHT_E = arms([0.12, 0.1, -1], [0.1, 0.05, -1])
 SHRUG_S = {'clav_L': [1, 0, -0.08], **ARMS_DOWN}
 SHRUG_E = {'clav_L': [1, 0, 0.35], **ARMS_DOWN}
 # Dumbbell shrug END, exaggerated so the raised shoulders read at thumbnail size.
-SHRUG_E_BIG = {'clav_L': [1, 0, 0.62], **ARMS_DOWN}
+SHRUG_E_BIG = {'clav_L': [1, 0, 0.4], **ARMS_DOWN}
 UPRIGHT_E = {'clav_L': [1, 0, 0.2], **arms([0.95, -0.15, 0.2], [-0.55, -0.35, -0.75])}
 FACE_PULL_S = arms([0.12, -1, 0.15], [0.08, -1, 0.15])
 FACE_PULL_E = arms([0.95, 0.15, 0.1], [-0.25, -0.3, 0.92])

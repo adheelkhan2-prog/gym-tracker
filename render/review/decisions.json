@@ -1,5 +1,21 @@
 {
   "_note": "Contact-sheet review decisions. render/app_images.py builds src/data/exercise-3d.ts from the passing renders minus these lists.",
-  "fix": ["triceps_pushdown", "rope_pushdown", "overhead_db_ext", "rear_raise", "bb_bent_row", "db_shrug"],
-  "rejected": ["back_extension", "seated_leg_curl", "decline_crunch", "glute_bridge", "hip_thrust", "deadlift", "trap_bar_deadlift"]
+  "rejected": [
+    "back_extension",
+    "seated_leg_curl",
+    "decline_crunch",
+    "glute_bridge",
+    "hip_thrust",
+    "deadlift",
+    "trap_bar_deadlift"
+  ],
+  "approved_after_fix": [
+    "triceps_pushdown",
+    "rope_pushdown",
+    "overhead_db_ext",
+    "rear_raise",
+    "bb_bent_row",
+    "db_shrug"
+  ],
+  "fix": []
 }
