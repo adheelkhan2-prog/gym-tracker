@@ -4,15 +4,30 @@ composited on the app's black (#0A0A0A) so they sit seamlessly on its cards."""
 import os, sys
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from check_renders import check  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'assets', 'exercises-3d')
 os.makedirs(OUT, exist_ok=True)
 names = sys.argv[1:] or sorted(f[:-4] for f in os.listdir(os.path.join(HERE, 'out')) if f.endswith('.png'))
+rejected = []
 for n in names:
-    im = Image.open(os.path.join(HERE, 'out', n + '.png')).convert('RGBA')
+    src = os.path.join(HERE, 'out', n + '.png')
+    # Never ship a broken render: anything with dark holes or streaks on the body is skipped.
+    blobs = check(src)
+    if blobs:
+        rejected.append(n)
+        print(n, 'REJECTED: dark holes/streaks on the body', blobs[:3])
+        continue
+    im = Image.open(src).convert('RGBA')
     if im.width != 1024:
         im = im.resize((1024, 1024), Image.LANCZOS)
     bg = Image.new('RGBA', im.size, (10, 10, 10, 255))
     im = Image.alpha_composite(bg, im).convert('RGB')
     im.save(os.path.join(OUT, n + '.webp'), 'WEBP', quality=82, method=6)
     print(n, os.path.getsize(os.path.join(OUT, n + '.webp')) // 1024, 'KB')
+
+if rejected:
+    print('rejected:', ', '.join(rejected))
+    sys.exit(1)

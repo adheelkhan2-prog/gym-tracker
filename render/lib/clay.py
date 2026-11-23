@@ -28,11 +28,13 @@ def set_glow_mask(body, glow):
         role = glow.get(n)
         if role:
             m[idx == i, 0 if role == 'primary' else 1] = 1.0
-    soft = _blur(me, m, 30)
-    wide = _blur(me, soft, 260)
+    # Blur amounts were tuned on a ~100k-vertex mesh; scale them to this mesh's density.
+    f = max(0.25, (len(me.vertices) / 100000) ** 0.5) * 1.7
+    soft = _blur(me, m, max(4, int(30 * f)))
+    wide = _blur(me, soft, max(20, int(260 * f)))
     # Normalise per muscle (not globally) so small muscles glow as much as big ones.
-    soft = soft / np.maximum(_local_max(me, soft, 60), 1e-4)
-    peak = wide / np.maximum(_local_max(me, wide, 90), 1e-4)
+    soft = soft / np.maximum(_local_max(me, soft, max(8, int(60 * f))), 1e-4)
+    peak = wide / np.maximum(_local_max(me, wide, max(12, int(90 * f))), 1e-4)
     out = np.clip(soft * (0.2 + 0.8 * peak ** 2.0) * 1.15, 0, 1)
     out[m.sum(axis=1) == 0] *= 0.6  # let the glow spill only a little past the muscle
     vals = np.zeros((len(me.vertices), 4), dtype=np.float32)
@@ -74,7 +76,7 @@ def _local_max(me, vals, iters):
     return v
 
 
-def material(name='clay_glow'):
+def material(name='clay_glow', normal_image=None):
     """Clay with the glow read from the 'glow' attribute: red primary, orange secondary."""
     m = bpy.data.materials.new(name)
     m.use_nodes = True
@@ -138,6 +140,22 @@ def material(name='clay_glow'):
     bump = nt.nodes.new('ShaderNodeBump')
     bump.inputs['Strength'].default_value = 0.05
     nt.links.new(noise.outputs['Fac'], bump.inputs['Height'])
+    if normal_image is not None:
+        # Muscle definition baked from the anatomy model (prepare_figure.py).
+        tex = nt.nodes.new('ShaderNodeTexImage')
+        tex.image = normal_image
+        tex.interpolation = 'Cubic'
+        uvn = nt.nodes.new('ShaderNodeUVMap')
+        uvn.uv_map = 'UVMap'
+        nt.links.new(uvn.outputs['UV'], tex.inputs['Vector'])
+        nm = nt.nodes.new('ShaderNodeNormalMap')
+        nm.space = 'TANGENT'
+        nm.uv_map = 'UVMap'
+        det = nt.nodes.new('ShaderNodeAttribute')
+        det.attribute_name = 'detail'
+        nt.links.new(math('MULTIPLY', det.outputs['Fac'], 0.9), nm.inputs['Strength'])
+        nt.links.new(tex.outputs['Color'], nm.inputs['Color'])
+        nt.links.new(nm.outputs['Normal'], bump.inputs['Normal'])
     nt.links.new(bump.outputs['Normal'], b.inputs['Normal'])
     nt.links.new(b.outputs['BSDF'], out.inputs['Surface'])
     return m

@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
 import clay  # noqa: E402
 import figure  # noqa: E402
+import makehuman  # noqa: E402
 import scene  # noqa: E402
 
 ORDER = ['pelvis', 'spine', 'chest', 'neck', 'head']
@@ -37,17 +38,11 @@ def mirrored(dirs):
 
 def pose(rig, dirs):
     """dirs[bone] = [x, y, z] or [x, y, z, twist_degrees] (twist turns the bone about its own axis)."""
-    for pb in rig.pose.bones:
-        pb.matrix_basis.identity()
-    bpy.context.view_layer.update()
-    for b in ORDER:
-        if b in dirs:
-            v = dirs[b]
-            figure.aim(rig, b, v[:3], v[3] if len(v) > 3 else 0.0)
+    makehuman.pose(rig, dirs, figure.aim)
 
 
 def grip(rig, side):
-    return figure.hand_frame(rig, side)[0]
+    return makehuman.hand_basis(rig, side)[4]
 
 
 def clear_props():
@@ -123,10 +118,11 @@ def main():
         spec = json.load(open(os.path.join(HERE, 'poses', f'{ex_id}.json')))
         ex = exercises[ex_id]
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        body, rig, _ = figure.build(args.model)
+        body, rig = makehuman.build()
         glow = {m: 'secondary' for m in ex['secondary']} | {m: 'primary' for m in ex['primary']}
-        clay.set_glow_mask(body, glow)
-        body.data.materials.append(clay.material())
+        if 'region' in body.data.attributes:
+            clay.set_glow_mask(body, glow)
+        body.data.materials.append(clay.material(normal_image=makehuman.normal_map()))
         M = scene.materials()
         rims = scene.lights()
         figure_coll = bpy.data.collections.new('figure_only')
@@ -137,7 +133,7 @@ def main():
         glare()
 
         # Put the hips where the setup wants them (rest pelvis head is at J['pelvis']).
-        rest_pelvis = Vector(figure.J['pelvis'])
+        rest_pelvis = makehuman.rest_hips(rig)
         hips = Vector(spec.get('hips', list(rest_pelvis)))
         rig.location = hips - rest_pelvis
 
@@ -179,15 +175,15 @@ def main():
                 scene.clay_material(hand_mat)
             before_fists = {o.name for o in bpy.data.objects}
             for side in ('L', 'R'):
-                wrist, d, palm, axis = figure.hand_basis(rig, side)
-                scene.fist(f'fist_{side}', wrist, d, palm, axis, figure.hand_frame(rig, side)[0], hand_mat)
+                wrist, d, palm, axis, g = makehuman.hand_basis(rig, side)
+                scene.fist(f'fist_{side}', wrist, d, palm, axis, g, hand_mat)
             for o in bpy.data.objects:
                 if o.name not in before_fists:
                     figure_coll.objects.link(o)
             props = spec.get('props')
             if props == 'dumbbells':
                 for side in ('L', 'R'):
-                    centre, axis = figure.hand_frame(rig, side)
+                    _, _, _, axis, centre = makehuman.hand_basis(rig, side)
                     scene.dumbbell(f'db_{side}', centre, axis, M)
             scene.floor(floor_z)
             tag_new(before)
