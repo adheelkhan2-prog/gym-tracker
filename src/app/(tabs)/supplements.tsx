@@ -105,7 +105,7 @@ export default function SupplementsScreen() {
             <Text style={s.kicker}>Supplement streak</Text>
             <View style={s.megaRow}>
               <CountUp to={streak} style={s.mega} />
-              <Icon name="flame" size={56} color={streak > 0 ? color.pink : color.subtle} filled={streak > 0} />
+              <Icon name="flame" size={56} color={streak > 0 ? color.lime : color.subtle} filled={streak > 0} />
             </View>
             <Text style={s.sub}>{done ? 'All done today. Reminders are off until tomorrow.' : line(SUPPS, key)}</Text>
           </View>
@@ -182,7 +182,7 @@ export default function SupplementsScreen() {
             <Button variant="secondary" icon={testSent ? 'check' : 'bell'} label={testSent ? 'Test sent: lock your phone' : 'Send a test reminder'} onPress={sendTest} />
           </View>
         ) : (
-          <Text style={[type.small, { color: color.pinkSoft, marginTop: space.md }]}>Reminders only work in the Android app, not in a web browser.</Text>
+          <Text style={[type.small, { color: color.muted, marginTop: space.md }]}>Reminders only work in the Android app, not in a web browser.</Text>
         )}
 
         <SectionTitle>Your stack</SectionTitle>
@@ -211,14 +211,14 @@ export default function SupplementsScreen() {
           </View>
         </Glass>
       </Screen>
-      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.pink, color.limeSoft, color.flash]} />
+      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.limeSoft, color.text]} />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'flex-end' },
-  kicker: { ...type.label, color: color.pink },
+  kicker: { ...type.label },
   megaRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   mega: { fontFamily: font.display, fontSize: size.giga, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
   sub: { fontFamily: font.display, fontSize: size.h3, lineHeight: 24, color: color.muted },
@@ -231,7 +231,7 @@ const s = StyleSheet.create({
   dotCol: { alignItems: 'center', gap: space.xs },
   dot: { width: 20, height: 20, borderRadius: radius.pill, backgroundColor: color.glassBorder, alignItems: 'center', justifyContent: 'center' },
   dotOn: { backgroundColor: color.lime },
-  dotToday: { borderWidth: 2, borderColor: color.pink, backgroundColor: color.bg },
+  dotToday: { borderWidth: 1, borderColor: color.limeEdge, backgroundColor: color.bg },
   dotLabel: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm, minHeight: 72 },
   divider: { borderTopWidth: 1, borderTopColor: color.line },

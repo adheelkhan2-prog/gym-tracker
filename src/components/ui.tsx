@@ -20,7 +20,9 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -97,11 +99,27 @@ export function Screen({ children, padBottom = space.x5 }: { children: React.Rea
   );
 }
 
-/** Shown while saved data and fonts load, so nothing flashes as empty. */
+/** A grey placeholder block that breathes slowly (still under reduce motion). */
+export function Skeleton({ w = '100%', h, r = radius.lg, style }: { w?: number | `${number}%`; h: number; r?: number; style?: StyleProp<ViewStyle> }) {
+  const reduce = useReducedMotion();
+  const o = useSharedValue(0.55);
+  useEffect(() => {
+    if (!reduce) o.set(withRepeat(withTiming(1, { duration: 900 }), -1, true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduce]);
+  const st = useAnimatedStyle(() => ({ opacity: o.value }));
+  return <Animated.View style={[{ width: w, height: h, borderRadius: r, backgroundColor: color.surface2 }, st, style]} />;
+}
+
+/** Shown while saved data and fonts load: the shape of the Today screen, no spinner, no jump. */
 export function Loading({ label = 'Loading your log' }: { label?: string }) {
   return (
     <View style={s.loading} accessibilityRole="progressbar" accessibilityLabel={label}>
-      <ActivityIndicator color={color.lime} size="large" />
+      <Skeleton w="45%" h={14} r={radius.sm} />
+      <Skeleton w="70%" h={30} r={radius.sm} style={{ marginTop: space.md }} />
+      <Skeleton h={220} r={radius.xxl} style={{ marginTop: space.x4 }} />
+      <Skeleton h={64} r={radius.xl} style={{ marginTop: space.lg }} />
+      <Skeleton h={120} r={radius.xl} style={{ marginTop: space.lg }} />
     </View>
   );
 }
@@ -156,7 +174,8 @@ export const CardFooter = ({ children, style }: { children: React.ReactNode; sty
 
 // ---------- Button (reusables variants: default | secondary | outline | ghost | destructive | link; sizes: sm | default | lg | icon) ----------
 
-type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
+/** default: dark glass, thin lime edge, lime label (the main action). solid: lime fill, PR moments only. */
+type ButtonVariant = 'default' | 'solid' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
 type ButtonSize = 'sm' | 'default' | 'lg' | 'icon';
 
 export function Button({
@@ -181,15 +200,16 @@ export function Button({
   accessibilityLabel?: string;
 }) {
   const fg =
-    variant === 'default' ? color.ink : variant === 'destructive' ? color.danger : variant === 'link' ? color.lime : color.text;
+    variant === 'solid' ? color.ink : variant === 'default' || variant === 'link' ? color.lime : variant === 'destructive' ? color.danger : color.text;
   const h = sz === 'sm' ? touch.min : sz === 'lg' ? touch.primary + space.sm : touch.primary;
   const shape: StyleProp<ViewStyle> = [
     s.btn,
     { minHeight: h, paddingHorizontal: sz === 'icon' ? 0 : sz === 'sm' ? space.lg : space.xxl, width: sz === 'icon' ? h : undefined },
+    variant === 'default' && s.btnPrimary,
     variant === 'secondary' && { backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
-    variant === 'outline' && { borderWidth: 1.5, borderColor: color.lime },
+    variant === 'outline' && { borderWidth: 1, borderColor: color.glassBorder },
     variant === 'destructive' && { backgroundColor: color.surface2 },
-    disabled && { opacity: 0.45 },
+    disabled && { opacity: 0.6 },
   ];
   const inner = (
     <>
@@ -201,13 +221,13 @@ export function Button({
   return (
     <Press
       onPress={() => !loading && !disabled && onPress()}
-      glow={variant === 'default' ? color.limeSoft : color.lime}
+      glow={variant === 'solid' ? color.limeSoft : color.lime}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       style={{ borderRadius: radius.pill }}
     >
-      {variant === 'default' ? (
+      {variant === 'solid' ? (
         <LinearGradient colors={gradient.lime} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
           {inner}
         </LinearGradient>
@@ -250,13 +270,13 @@ export function Badge({
   variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'pr';
   icon?: IconName;
 }) {
-  const fg = variant === 'default' || variant === 'pr' ? color.ink : variant === 'destructive' ? color.danger : color.text;
+  const fg = variant === 'pr' ? color.ink : variant === 'default' ? color.lime : variant === 'destructive' ? color.danger : color.text;
   return (
     <View
       style={[
         s.badge,
-        variant === 'default' && { backgroundColor: color.lime },
-        variant === 'pr' && { backgroundColor: color.pink },
+        variant === 'default' && { backgroundColor: color.limeDim, borderColor: color.limeEdge, borderWidth: 1 },
+        variant === 'pr' && { backgroundColor: color.lime },
         variant === 'secondary' && { backgroundColor: color.glassSolid, borderColor: color.glassBorder, borderWidth: 1 },
         variant === 'outline' && { borderColor: color.glassBorder, borderWidth: 1 },
       ]}
@@ -272,8 +292,8 @@ export function Badge({
 export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
   return (
     <Press onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: !!active }} style={[s.chip, active && s.chipOn]}>
-      {icon && <Icon name={icon} size={16} color={active ? color.ink : color.muted} filled={active} />}
-      <Text style={[s.chipText, active && { color: color.ink }]}>{label}</Text>
+      {icon && <Icon name={icon} size={16} color={active ? color.lime : color.muted} filled={active} />}
+      <Text style={[s.chipText, active && { color: color.lime }]}>{label}</Text>
     </Press>
   );
 }
@@ -335,14 +355,14 @@ export function Switch({
   );
 }
 
-// ---------- Streak flame (pink) ----------
+// ---------- Streak flame ----------
 
 export function Flame({ count, label }: { count: number; label: string }) {
   const lit = count > 0;
   return (
-    <View style={[s.flame, lit && { backgroundColor: color.pinkDim, borderColor: color.pinkGlow }]} accessibilityLabel={`${count} day ${label} streak`}>
-      <Icon name="flame" size={18} color={lit ? color.pink : color.subtle} filled={lit} />
-      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.pink : color.subtle }]}>{count}</Text>
+    <View style={s.flame} accessibilityLabel={`${count} day ${label} streak`}>
+      <Icon name="flame" size={18} color={lit ? color.lime : color.subtle} filled={lit} />
+      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.text : color.subtle }]}>{count}</Text>
     </View>
   );
 }
@@ -399,7 +419,7 @@ export function Ring({
 }
 
 const s = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' },
+  loading: { flex: 1, backgroundColor: color.bg, paddingHorizontal: space.lg, paddingTop: space.x5 + space.xxl },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -410,7 +430,8 @@ const s = StyleSheet.create({
   },
   card: { padding: space.xl },
   btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
-  btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.2 },
+  btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.3 },
+  btnPrimary: { backgroundColor: 'rgba(12,12,14,0.97)', borderWidth: 1, borderColor: color.limeEdge },
   iconBtn: {
     width: touch.min,
     height: touch.min,
@@ -437,12 +458,14 @@ const s = StyleSheet.create({
     gap: space.xs,
     paddingHorizontal: space.lg,
     minHeight: touch.min,
+    minWidth: touch.min,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: color.glassSolid,
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-  chipOn: { backgroundColor: color.lime, borderColor: color.lime },
+  chipOn: { backgroundColor: color.limeDim, borderColor: color.limeEdge },
   chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   track: { width: '100%', backgroundColor: color.glassBorder, overflow: 'hidden' },
   switchHit: { width: touch.min + space.md, height: touch.min, borderRadius: radius.pill, justifyContent: 'center', alignItems: 'center' },

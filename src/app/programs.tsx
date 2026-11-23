@@ -12,7 +12,7 @@ import { WEEKDAY_SHORT } from '../data/program';
 import { hasLegWork, trainingDays, type Program } from '../data/programs';
 import { haptic } from '../feedback';
 import { allPrograms, programById, todayKey, useStore } from '../store';
-import { color, font, leading, radius, size, space, type } from '../theme';
+import { color, font, leading, radius, size, space, type, touch } from '../theme';
 
 const GAP = space.md;
 
@@ -236,7 +236,7 @@ const s = StyleSheet.create({
   wdName: { fontFamily: font.bodyBold, fontSize: 9, color: color.subtle },
   cardBtns: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
   dots: { flexDirection: 'row', justifyContent: 'center', marginTop: space.sm },
-  dotHit: { minWidth: 28, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
+  dotHit: { minWidth: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.glassBorder },
   dotOn: { width: 20, backgroundColor: color.lime },
   note: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },

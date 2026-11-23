@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
 import { INJURY_REGIONS, type MuscleId } from './data/muscles';
 import { DEFAULT_WEEK, pickOption, type WorkoutDay } from './data/program';
-import { PROGRAMS, type Program } from './data/programs';
+import { PROGRAMS, hasLegWork, type Program } from './data/programs';
 import { DEFAULT_GYM, stackKg, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
@@ -427,9 +427,14 @@ export function weeklyMuscleSets(state: State, keys = weekKeys()) {
   return out;
 }
 
-/** Show the "welcome back, ease in" card for the first two weeks after injury mode goes off. */
+/**
+ * Show the "welcome back, ease in" card for the first two weeks after injury mode is turned OFF,
+ * and only when the active program actually brings leg/ab work back (never on the upper-body
+ * injury program, never while injury mode is on).
+ */
 export function easingIn(state: State, today = todayKey()) {
   if (state.injured || !state.easeInFrom || state.easeInDismissed) return false;
+  if (!hasLegWork(activeProgram(state))) return false;
   return today < addDays(state.easeInFrom, 14);
 }
 

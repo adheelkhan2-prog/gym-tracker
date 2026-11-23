@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
 import { howToImages } from '../data/how-to';
+import { Vignette } from './glass';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
 import { haptic } from '../feedback';
@@ -61,6 +62,8 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
           <Animated.View style={[StyleSheet.absoluteFill, endStyle]} pointerEvents="none">
             <Image source={img.end} style={s.img} resizeMode={mode} />
           </Animated.View>
+          {/* The renders sit in the same dark room: edges fall off into shadow. */}
+          {img.clay && <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />}
           <View style={s.phase}>
             <View style={[s.phaseDot, !end && s.phaseOn]} />
             <Text style={[s.phaseText, !end && { color: color.lime }]}>Start</Text>

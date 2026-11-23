@@ -258,7 +258,7 @@ const s = StyleSheet.create({
   day: { marginTop: space.lg, padding: space.lg, gap: space.sm },
   dayHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   dayName: { flex: 1, minWidth: 0, minHeight: touch.min, color: color.lime, fontFamily: font.display, fontSize: size.h2 },
-  tiny: { width: 36, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  tiny: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   exRow: { backgroundColor: color.surface2, borderRadius: radius.lg, padding: space.sm, gap: space.xs },
   exTop: { flexDirection: 'row', alignItems: 'center' },
   exName: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: touch.min, paddingHorizontal: space.xs, borderRadius: radius.sm },

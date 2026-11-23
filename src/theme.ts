@@ -1,38 +1,42 @@
 // Design tokens. Every colour, font, size, spacing, radius and motion value used by the app lives here.
-// Glassmorphism on black: lime is the action colour, hot pink only glows behind glass
-// and marks PRs and the streak flame. See DESIGN.md.
+// Dark, low-key: near-black with graphite layers, film grain and a vignette, lit like a
+// spotlight in a dark room. Lime is a rare accent (thin edges, small glows, active states, PRs);
+// hot pink is only a faint deep glow far in the background. See DESIGN.md.
 
 export const color = {
-  // Black ladder (from the Raycast DESIGN.md base)
-  bg: '#0A0A0A',
-  bgRaised: '#101011',
-  surface: '#161618', // opaque fallback for glass
-  surface2: '#1F1F22',
-  surface3: '#2A2A2E',
-  line: 'rgba(255,255,255,0.09)',
-  // Glass
-  glass: 'rgba(28,28,32,0.55)', // tint over the blur
-  glassSolid: 'rgba(24,24,28,0.86)', // fallback when blur is off
-  glassBorder: 'rgba(255,255,255,0.15)',
-  glassHighlight: 'rgba(255,255,255,0.10)',
-  glassPressed: 'rgba(255,255,255,0.06)',
-  // Text (all ≥4.5:1 on glass, including over the glow blobs)
-  text: '#F5F5F7',
-  muted: '#B4B4BC',
-  subtle: '#9A9AA4',
+  // Near-black and graphite ladder
+  bg: '#070708',
+  bgRaised: '#0C0C0E',
+  surface: '#111113', // opaque fallback for glass
+  surface2: '#18181B',
+  surface3: '#232327',
+  line: 'rgba(255,255,255,0.06)',
+  // Glass: darker and more transparent, a faint 1px edge, low blur
+  glass: 'rgba(16,16,19,0.46)', // tint over the blur
+  glassSolid: 'rgba(14,14,17,0.92)', // fallback when blur is off
+  glassBorder: 'rgba(255,255,255,0.075)',
+  glassHighlight: 'rgba(255,255,255,0.055)', // soft light from above
+  glassPressed: 'rgba(255,255,255,0.05)',
+  // Text (all ≥4.5:1 on the darkest and lightest glass)
+  text: '#ECECEF',
+  muted: '#A3A3AD',
+  subtle: '#868690',
   // Accents
   lime: '#C8FF2E',
   limeSoft: '#E4FF99',
-  limeDim: 'rgba(200,255,46,0.14)',
-  limeGlow: 'rgba(200,255,46,0.35)',
+  limeDim: 'rgba(200,255,46,0.08)',
+  limeGlow: 'rgba(200,255,46,0.30)',
+  limeEdge: 'rgba(200,255,46,0.55)', // thin lime edge on dark-glass buttons
   pink: '#FF3D9A',
   pinkSoft: '#FF9CCB',
-  pinkDim: 'rgba(255,61,154,0.14)',
-  pinkGlow: 'rgba(255,61,154,0.30)',
+  pinkDim: 'rgba(255,61,154,0.10)',
+  pinkGlow: 'rgba(255,61,154,0.22)',
+  pinkDeep: '#5A0F33', // the faint far-away glow
   danger: '#FF5C7A',
-  ink: '#0A0A0A', // text on lime / pink
-  scrim: 'rgba(10,10,10,0.72)',
-  scrimDeep: 'rgba(10,10,10,0.90)',
+  ink: '#070708', // text on lime
+  scrim: 'rgba(4,4,5,0.78)',
+  scrimDeep: 'rgba(4,4,5,0.92)',
+  smoke: '#2A2A30', // slow drifting smoke in the backdrop
   inkTrack: 'rgba(10,10,10,0.18)',
   noGlow: '#000000',
   flash: '#FFFFFF',
@@ -53,11 +57,11 @@ export const dayTitle: Record<string, string> = {
   fri: 'Back & Chest',
 };
 
-/** Lime glow gradients for heroes; pink stays in the background blobs. */
+/** Gradients: lime only for the rare PR moment; the sheen is the top light on glass. */
 export const gradient = {
   lime: ['#D9FF6B', '#C8FF2E', '#9EE000'] as const,
   limeFade: ['rgba(200,255,46,0.22)', 'rgba(200,255,46,0)'] as const,
-  sheen: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)'] as const,
+  sheen: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0)'] as const,
 };
 
 /** Weekly muscle heat (sets per week): pale → deep red on the light figure. */
@@ -75,15 +79,15 @@ export const font = {
   bodyBlack: 'Figtree_800ExtraBold',
 } as const;
 
-/** Type scale: Raycast's 64/56/24/22/20/18/16 ladder, pushed to a 96 mega number. */
+/** Type scale: bold but quieter; one big number per screen at most. */
 export const size = {
-  giga: 96,
-  mega: 80,
-  numXL: 56,
-  display: 40,
-  hero: 34,
-  title: 28,
-  h2: 22,
+  giga: 76,
+  mega: 64,
+  numXL: 48,
+  display: 32,
+  hero: 28,
+  title: 24,
+  h2: 20,
   h3: 18,
   body: 16,
   small: 14,
@@ -91,7 +95,7 @@ export const size = {
   tiny: 11,
 } as const;
 
-export const leading = { giga: 92, mega: 80, numXL: 58, display: 44, hero: 38, title: 32, h2: 26, small: 20, label: 16 } as const;
+export const leading = { giga: 76, mega: 66, numXL: 52, display: 38, hero: 33, title: 30, h2: 26, small: 20, label: 16 } as const;
 
 export const space = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, x3: 32, x4: 40, x5: 56 } as const;
 
@@ -100,7 +104,7 @@ export const radius = { sm: 12, md: 18, lg: 24, xl: 30, xxl: 36, pill: 999 } as 
 export const touch = { min: 48, primary: 56 } as const;
 
 /** Glass panel recipe. `blur` is the expo-blur intensity. */
-export const glass = { blur: 40, borderWidth: 1 } as const;
+export const glass = { blur: 18, borderWidth: 1 } as const;
 
 /** Spring physics everywhere; durations only for fades. */
 export const motion = {
@@ -119,8 +123,8 @@ export const restBarClearance = 140;
 
 /** Text style presets built from the tokens above. */
 export const type = {
-  display: { fontFamily: font.display, fontSize: size.display, lineHeight: leading.display, letterSpacing: -1.2, color: color.text },
-  title: { fontFamily: font.display, fontSize: size.title, lineHeight: leading.title, letterSpacing: -0.6, color: color.text },
+  display: { fontFamily: font.display, fontSize: size.display, lineHeight: leading.display, letterSpacing: -0.6, color: color.text },
+  title: { fontFamily: font.display, fontSize: size.title, lineHeight: leading.title, letterSpacing: -0.3, color: color.text },
   h2: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, letterSpacing: -0.3, color: color.text },
   h3: { fontFamily: font.bodyBold, fontSize: size.h3, lineHeight: 24, color: color.text },
   body: { fontFamily: font.body, fontSize: size.body, lineHeight: 23, color: color.text },
@@ -129,9 +133,9 @@ export const type = {
   label: {
     fontFamily: font.bodyBlack,
     fontSize: size.label,
-    letterSpacing: 1.2,
+    letterSpacing: 1.8,
     textTransform: 'uppercase' as const,
-    color: color.muted,
+    color: color.subtle,
   },
   num: { fontFamily: font.display, fontVariant: ['tabular-nums' as const], color: color.text },
 } as const;

@@ -69,6 +69,7 @@ function Gate() {
         }}
       >
         <Stack.Screen name="complete" options={{ animation: 'fade_from_bottom', gestureEnabled: false }} />
+        <Stack.Screen name="focus" options={{ animation: 'fade_from_bottom', animationDuration: 220, gestureEnabled: false }} />
       </Stack>
     </>
   );

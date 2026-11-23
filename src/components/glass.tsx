@@ -1,4 +1,5 @@
-// Glassmorphism: a drifting lime/pink glow backdrop, and frosted panels that blur it.
+// A dark room lit by one spotlight: slow smoke, a faint deep glow, film grain and a vignette,
+// and dark glass panels that blur it.
 //
 // Android blur needs the blurred content inside a BlurTargetView, so each screen
 // renders one <Backdrop> (the glow blobs) as the blur target and every <Glass>
@@ -7,9 +8,9 @@
 import { BlurTargetView, BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { createContext, useContext, useEffect, useRef } from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Platform, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useStore } from '../store';
 import { color, glass, gradient, radius } from '../theme';
 
@@ -59,31 +60,68 @@ function Drift({
   return <Animated.View style={[StyleSheet.absoluteFill, st]}>{children}</Animated.View>;
 }
 
+/** Film grain, tiled; static so it costs nothing per frame. */
+const GRAIN = require('../../assets/textures/grain.png');
+
+/** Soft edge darkening, drawn once with SVG. `id` must be unique per screen (web shares SVG ids). */
+export function Vignette({ width, height, strength = 0.75, id = 'vignette', cy = '42%' }: { width: number | string; height: number | string; strength?: number; id?: string; cy?: string }) {
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id={id} cx="50%" cy={cy} rx="75%" ry="62%">
+          <Stop offset="0.55" stopColor="#000000" stopOpacity={0} />
+          <Stop offset="1" stopColor="#000000" stopOpacity={strength} />
+        </RadialGradient>
+      </Defs>
+      <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+/** A low-key spotlight from above: the room's only light. */
+function Spotlight({ width, height }: { width: number; height: number }) {
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="spot" cx="50%" cy="-8%" rx="85%" ry="58%">
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.075} />
+          <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity={0.022} />
+          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Rect x={0} y={0} width={width} height={height} fill="url(#spot)" />
+    </Svg>
+  );
+}
+
 /**
- * Screen background: black with a big lime glow and a smaller pink one drifting slowly.
- * Wrap a screen's content in it; glass panels inside blur these blobs.
- * `accent` shifts the lime blob (e.g. toward the hero).
+ * Screen background: near-black, one spotlight from above, slow dark smoke drifting through it,
+ * a faint deep-pink glow far back, film grain and a vignette. Smoke rests under reduce motion.
+ * Wrap a screen's content in it; glass panels inside blur it.
  */
 export function Backdrop({ children, intensity = 1 }: { children: React.ReactNode; intensity?: number }) {
   const { width, height } = useWindowDimensions();
   const target = useRef<React.ComponentRef<typeof View>>(null);
-  const big = width * 1.25;
-  const small = width * 0.95;
+  const big = width * 1.4;
+  const mid = width * 1.05;
   return (
     <BlurTarget.Provider value={target}>
       <View style={s.root}>
-        {/* Clipped: the blobs drift past the screen edges, which must never widen the page. */}
+        {/* Clipped: the smoke drifts past the screen edges, which must never widen the page. */}
         <BlurTargetView ref={target} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
           <View style={[StyleSheet.absoluteFill, { backgroundColor: color.bg }]} />
-          <Drift x={-big * 0.35} y={-big * 0.38} dx={width * 0.18} dy={height * 0.06} period={14000}>
-            <Blob size={big} tint={color.lime} opacity={0.26 * intensity} />
+          <Drift x={width - mid * 0.45} y={height * 0.62} dx={-width * 0.1} dy={-height * 0.04} period={36000}>
+            <Blob size={mid} tint={color.pinkDeep} opacity={0.55 * intensity} />
           </Drift>
-          <Drift x={width - small * 0.55} y={height * 0.34} dx={-width * 0.2} dy={height * 0.08} period={17000}>
-            <Blob size={small} tint={color.pink} opacity={0.2 * intensity} />
+          <Drift x={-big * 0.45} y={height * 0.18} dx={width * 0.22} dy={height * 0.05} period={30000}>
+            <Blob size={big} tint={color.smoke} opacity={0.5 * intensity} />
           </Drift>
-          <Drift x={-small * 0.3} y={height * 0.78} dx={width * 0.12} dy={-height * 0.05} period={19000}>
-            <Blob size={small} tint={color.lime} opacity={0.12 * intensity} />
+          <Drift x={width * 0.25} y={height * 0.55} dx={-width * 0.25} dy={-height * 0.06} period={42000}>
+            <Blob size={mid} tint={color.smoke} opacity={0.38 * intensity} />
           </Drift>
+          <Spotlight width={width} height={height} />
+          <Image source={GRAIN} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: 0.05 }]} />
+          <Vignette width={width} height={height} />
         </BlurTargetView>
         {children}
       </View>
@@ -92,8 +130,8 @@ export function Backdrop({ children, intensity = 1 }: { children: React.ReactNod
 }
 
 /**
- * A frosted glass panel: blur of the backdrop, a light tint, a 1px ~15% white border
- * and a soft top highlight. `glow` adds a coloured halo behind the panel.
+ * A dark glass panel: low blur of the backdrop, a dark tint, a faint 1px border, light from the
+ * top (sheen + brighter top edge) and a deep shadow. `glow` swaps the shadow for a small coloured halo.
  */
 export function Glass({
   children,
@@ -114,7 +152,16 @@ export function Glass({
   const { state } = useStore();
   const blurOn = state.blur && (strong || Platform.OS === 'web');
   return (
-    <View style={[{ borderRadius: r }, glow && { shadowColor: glow, shadowOpacity: 0.55, shadowRadius: 28, shadowOffset: { width: 0, height: 10 }, elevation: 0 }, style]}>
+    <View
+      style={[
+        { borderRadius: r },
+        // Deep shadow under every panel; a small coloured glow only where asked (rare).
+        glow
+          ? { shadowColor: glow, shadowOpacity: 0.28, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 0 }
+          : { shadowColor: '#000000', shadowOpacity: 0.6, shadowRadius: 30, shadowOffset: { width: 0, height: 18 }, elevation: 0 },
+        style,
+      ]}
+    >
       <View style={[StyleSheet.absoluteFill, { borderRadius: r, overflow: 'hidden' }]} pointerEvents="none">
         {blurOn && target ? (
           <BlurView
@@ -128,6 +175,8 @@ export function Glass({
         <View style={[StyleSheet.absoluteFill, { backgroundColor: blurOn ? color.glass : color.glassSolid }]} />
         <LinearGradient colors={gradient.sheen} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }} style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, s.border, { borderRadius: r }]} />
+        {/* Lit softly from the top: a brighter top edge. */}
+        <View style={[StyleSheet.absoluteFill, s.topEdge, { borderRadius: r }]} />
       </View>
       {children}
     </View>
@@ -137,4 +186,5 @@ export function Glass({
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg },
   border: { borderWidth: glass.borderWidth, borderColor: color.glassBorder },
+  topEdge: { borderTopWidth: glass.borderWidth, borderColor: 'transparent', borderTopColor: 'rgba(255,255,255,0.11)' },
 });

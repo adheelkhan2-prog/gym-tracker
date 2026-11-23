@@ -222,6 +222,7 @@ export default function CompleteScreen() {
             tint={color.lime}
             snapshotRef={snapshotRef}
             describe={(m) => `${MUSCLE_LABEL[m]}${data.muscles.some(([x]) => x === m) ? ' · trained today' : ''}`}
+            showHint={false}
           />
         </View>
         {lit > 0 && (
@@ -247,11 +248,11 @@ export default function CompleteScreen() {
               </View>
               {data.change !== null && (
                 <View style={s.changeRow}>
-                  <Animated.View style={[s.arrow, { backgroundColor: up ? color.lime : color.pink }, arrowStyle]}>
+                  <Animated.View style={[s.arrow, { backgroundColor: up ? color.lime : color.surface3 }, arrowStyle]}>
                     <Icon name={up ? 'arrowUp' : 'arrowDown'} size={18} color={color.ink} />
                   </Animated.View>
                   <Text style={s.changeText}>
-                    <Text style={{ color: up ? color.lime : color.pink }}>
+                    <Text style={{ color: up ? color.lime : color.muted }}>
                       {up ? '+' : ''}
                       {data.change}%
                     </Text>{' '}
@@ -278,7 +279,7 @@ export default function CompleteScreen() {
                 </Animated.View>
                 <Animated.View entering={enter(motion.stagger * 3)}>
                   <Glass r={radius.lg} style={s.statSmall}>
-                    <Icon name="flame" size={18} color={color.pink} filled />
+                    <Icon name="flame" size={18} color={color.lime} filled />
                     <Text style={s.statSmallNum}>{trainingStreak(state, date)} day streak</Text>
                   </Glass>
                 </Animated.View>
@@ -292,7 +293,7 @@ export default function CompleteScreen() {
             <Text style={type.h2}>New records</Text>
             {data.prs.slice(0, prShown).map((p) => (
               <Animated.View key={p.name} entering={reduce || skipped ? undefined : SlideInRight.springify().damping(14)}>
-                <Glass r={radius.xl} style={s.prRow} glow={color.pink}>
+                <Glass r={radius.xl} style={s.prRow}>
                   <View
                     style={s.prIcon}
                     collapsable={false}
@@ -363,8 +364,8 @@ export default function CompleteScreen() {
       </ScrollView>
 
       <Flash fire={flash} />
-      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.pink, color.lime, color.flash, color.pinkSoft]} />
-      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.lime, color.limeSoft, color.pink, color.flash]} />
+      <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.limeSoft, color.text]} />
+      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.lime, color.limeSoft, color.text, color.flash]} />
       {share && (
         <ShareSheet
           onClose={() => setShare(null)}
@@ -417,9 +418,9 @@ const s = StyleSheet.create({
   statBigNum: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.lime, fontVariant: ['tabular-nums'] },
   statSmall: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.lg, minHeight: 66 },
   statSmallNum: { fontFamily: font.display, fontSize: size.h3, color: color.text, flexShrink: 1 },
-  prRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.pinkGlow },
-  prIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.pink, alignItems: 'center', justifyContent: 'center' },
-  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.pinkSoft },
+  prRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.limeEdge },
+  prIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.lime, alignItems: 'center', justifyContent: 'center' },
+  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.limeSoft },
   prValue: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   xpCard: { padding: space.xl },
   xpTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },

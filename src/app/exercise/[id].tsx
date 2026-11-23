@@ -382,7 +382,7 @@ export default function ExerciseScreen() {
                   accessibilityState={{ selected: tab === t }}
                 >
                   <Icon name={t === 'howto' ? 'info' : 'body'} size={16} color={tab === t ? color.ink : color.muted} />
-                  <Text style={[s.tabText, tab === t && { color: color.ink }]}>{t === 'howto' ? 'How to' : 'Muscles'}</Text>
+                  <Text style={[s.tabText, tab === t && { color: color.lime }]}>{t === 'howto' ? 'How to' : 'Muscles'}</Text>
                 </Press>
               ))}
             </View>
@@ -433,7 +433,7 @@ export default function ExerciseScreen() {
               )}
               {isPress && (
                 <Glass r={radius.lg} style={s.callout}>
-                  <Icon name="alert" size={22} color={color.pink} />
+                  <Icon name="alert" size={22} color={color.muted} />
                   <Text style={s.calloutText}>{day.pressNote}</Text>
                 </Glass>
               )}
@@ -651,11 +651,11 @@ export default function ExerciseScreen() {
           />
         )}
         <Flash fire={flash} />
-        <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.pink, color.limeSoft, color.flash, color.pinkSoft]} />
+        <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.lime, color.limeSoft, color.text]} />
         {pr && (
           <Animated.View entering={reduce ? undefined : SlideInUp.springify().damping(14)} style={[s.prWrap, { top: insets.top + space.md }]}>
-            <Press onPress={() => setPr(null)} accessibilityRole="button" accessibilityLabel={`New PR, ${pr.value}. ${pr.delta}. Tap to dismiss`} style={{ borderRadius: radius.xl }} glow={color.pink}>
-              <Glass strong r={radius.xl} style={s.prCard} glow={color.pink}>
+            <Press onPress={() => setPr(null)} accessibilityRole="button" accessibilityLabel={`New PR, ${pr.value}. ${pr.delta}. Tap to dismiss`} style={{ borderRadius: radius.xl }} glow={color.lime}>
+              <Glass strong r={radius.xl} style={s.prCard} glow={color.lime}>
                 <View style={s.prIcon}>
                   <Icon name="trophy" size={28} color={color.ink} filled />
                 </View>
@@ -732,13 +732,13 @@ const s = StyleSheet.create({
     marginBottom: space.sm,
     minHeight: 76,
   },
-  setRowDone: { backgroundColor: color.limeDim, borderColor: color.limeGlow },
-  setRowPR: { borderColor: color.pink, borderWidth: 2 },
-  setCol: { width: 64, gap: space.xxs },
+  setRowDone: { borderColor: color.limeEdge },
+  setRowPR: { borderColor: color.lime, borderWidth: 2 },
+  setCol: { width: 52, gap: space.xxs },
   setNo: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.muted },
   last: { fontFamily: font.bodySemi, fontSize: size.label, color: color.subtle, fontVariant: ['tabular-nums'] },
   field: { flexDirection: 'row', alignItems: 'center', backgroundColor: color.surface2, borderRadius: radius.md, minHeight: 56 },
-  stepBtn: { width: 30, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
+  stepBtn: { width: touch.min, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   input: {
     flex: 1,
     minWidth: 0,
@@ -753,7 +753,7 @@ const s = StyleSheet.create({
   check: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: color.surface3, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: color.lime },
   prBadge: { position: 'absolute', top: -12, right: space.md },
-  needInput: { position: 'absolute', bottom: space.xxs, left: 64 + space.md + space.sm, fontFamily: font.bodyBold, fontSize: size.tiny, color: color.pink },
+  needInput: { position: 'absolute', bottom: space.xxs, left: 52 + space.md + space.sm, fontFamily: font.bodyBold, fontSize: size.tiny, color: color.lime },
   setBtns: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   skipBtn: { marginTop: space.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, minHeight: touch.min, borderRadius: radius.pill },
   skipText: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
@@ -761,8 +761,8 @@ const s = StyleSheet.create({
   swappedText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.label, color: color.muted },
   reset: { fontFamily: font.bodyBlack, color: color.lime, textDecorationLine: 'underline' },
   tabs: { flexDirection: 'row', gap: space.xs, padding: space.xs, borderRadius: radius.pill, backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
-  tab: { flex: 1, flexDirection: 'row', gap: space.xs, alignItems: 'center', justifyContent: 'center', minHeight: touch.min - 4, borderRadius: radius.pill },
-  tabOn: { backgroundColor: color.lime },
+  tab: { flex: 1, flexDirection: 'row', gap: space.xs, alignItems: 'center', justifyContent: 'center', minHeight: touch.min, borderRadius: radius.pill },
+  tabOn: { backgroundColor: color.limeDim, borderWidth: 1, borderColor: color.limeEdge },
   tabText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.muted },
   loadBox: { marginTop: space.xl, gap: space.xs },
   loadHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -776,8 +776,8 @@ const s = StyleSheet.create({
   dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: color.glassBorder },
   loadLabel: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted, marginTop: -space.xs, marginBottom: space.sm, marginLeft: 64 + space.md + space.sm },
   prWrap: { position: 'absolute', left: space.lg, right: space.lg },
-  prCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.pink },
-  prIcon: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: color.pink, alignItems: 'center', justifyContent: 'center' },
+  prCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderColor: color.limeEdge },
+  prIcon: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: color.lime, alignItems: 'center', justifyContent: 'center' },
   prTitle: { fontFamily: font.display, fontSize: size.h2, color: color.text },
-  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.pinkSoft, marginTop: space.xxs },
+  prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.limeSoft, marginTop: space.xxs },
 });

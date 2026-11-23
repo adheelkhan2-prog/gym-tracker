@@ -102,11 +102,11 @@ export default function ProgressScreen() {
         </View>
         {change !== null && (
           <View style={s.changeRow}>
-            <View style={[s.arrow, { backgroundColor: up ? color.lime : color.pink }]}>
+            <View style={[s.arrow, { backgroundColor: up ? color.lime : color.surface3 }]}>
               <Icon name={up ? 'arrowUp' : 'arrowDown'} size={16} color={color.ink} />
             </View>
             <Text style={s.changeText}>
-              <Text style={{ color: up ? color.lime : color.pink }}>
+              <Text style={{ color: up ? color.lime : color.muted }}>
                 {up ? '+' : ''}
                 {change}%
               </Text>{' '}
@@ -156,7 +156,7 @@ export default function ProgressScreen() {
         </Text>
         <View style={s.tickDot} />
         <Text style={s.tick}>
-          <Text style={[s.tickNum, { color: color.pink }]}>{week.prs}</Text> PRs
+          <Text style={[s.tickNum, { color: color.lime }]}>{week.prs}</Text> PRs
         </Text>
         <View style={s.tickDot} />
         <Text style={s.tick}>

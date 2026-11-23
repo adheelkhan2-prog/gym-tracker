@@ -34,7 +34,7 @@ function StoryCard({ d, width }: { d: ShareData; width: number }) {
         <Blob size={width * 1.3} tint={color.lime} opacity={0.3} />
       </View>
       <View style={{ position: 'absolute', right: -width * 0.4, top: h * 0.4 }}>
-        <Blob size={width * 1.1} tint={color.pink} opacity={0.24} />
+        <Blob size={width * 1.1} tint={color.pinkDeep} opacity={0.5} />
       </View>
       <Text style={s.cardDate}>{d.date}</Text>
       <Text style={s.cardTitle}>{d.title}</Text>
@@ -159,7 +159,7 @@ const s = StyleSheet.create({
   cardRow: { flexDirection: 'row', gap: space.lg, marginTop: space.md },
   cardStat: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   cardStatLabel: { fontFamily: font.bodyBold, fontSize: size.small, color: color.muted },
-  cardPr: { fontFamily: font.bodyBold, fontSize: size.small, color: color.pinkSoft, marginTop: space.xs },
+  cardPr: { fontFamily: font.bodyBold, fontSize: size.small, color: color.limeSoft, marginTop: space.xs },
   cardFoot: { position: 'absolute', left: space.xl, right: space.xl, bottom: space.lg, flexDirection: 'row', justifyContent: 'space-between' },
   cardRank: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.lime },
   cardBrand: { fontFamily: font.display, fontSize: size.label, letterSpacing: 2, color: color.text },
