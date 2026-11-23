@@ -25,7 +25,8 @@ for n in names:
         im = im.resize((1024, 1024), Image.LANCZOS)
     bg = Image.new('RGBA', im.size, (10, 10, 10, 255))
     im = Image.alpha_composite(bg, im).convert('RGB')
-    im.save(os.path.join(OUT, n + '.webp'), 'WEBP', quality=82, method=6)
+    # Full quality: lossless WebP (no compression artefacts), at the full 1024 px.
+    im.save(os.path.join(OUT, n + '.webp'), 'WEBP', lossless=True, quality=100, method=6)
     print(n, os.path.getsize(os.path.join(OUT, n + '.webp')) // 1024, 'KB')
 
 if rejected:
