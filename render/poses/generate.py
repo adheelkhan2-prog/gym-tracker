@@ -101,6 +101,19 @@ def cable_from(x, y, z, handle='bar', to='@grip'):
 # ---------- Arm motions (L side) ----------
 CURL_S = arms([0.08, 0.02, -1], [0.08, -0.08, -1])
 CURL_E = arms([0.08, -0.12, -1], [0.04, -0.45, 0.9])
+# Holding a bar at arm's length: arms angled slightly forward so the bar hangs IN FRONT of the
+# thighs (straight-down arms put the bar through the hips; render/check_bar.py catches that).
+# The 4th number twists the forearm/hand: underhand (palms forward) for curls, overhand otherwise.
+BAR_UP = [0.05, -0.22, -1]
+BAR_FO = [0.0, -0.27, -1]
+tw = lambda v, deg: [*v[:3], deg]  # noqa: E731
+BAR_HANG = arms(BAR_UP, tw(BAR_FO, 55))  # overhand (shrug, deadlift lockout, upright row start)
+CURL_BB_S = arms(BAR_UP, tw(BAR_FO, -115))  # underhand on a straight bar
+CURL_BB_E = arms([0.08, -0.12, -1], tw([0.04, -0.45, 0.9], -145))
+CURL_EZ_S = arms(BAR_UP, tw(BAR_FO, -95))  # EZ bar: the angled grip turns the hands in a little
+CURL_EZ_E = arms([0.08, -0.12, -1], tw([0.04, -0.45, 0.9], -122))
+REV_CURL_S = arms(BAR_UP, tw(BAR_FO, 55))  # overhand
+REV_CURL_E = arms([0.08, -0.2, -1], tw([0.04, -0.5, 0.86], 50))
 PRESS_OH_S = {'clav_L': [1, 0.05, -0.05], **arms([0.9, 0.1, -0.3], [0.02, 0.02, 1])}
 PRESS_OH_E = {'clav_L': [1, 0, 0.15], **arms([0.25, 0, 1], [0.06, 0, 1])}
 CHEST_PRESS_S = arms([0.85, 0.45, -0.15], [0.02, -1, 0.05])
@@ -160,7 +173,7 @@ def hinge(props='barbell', down_arms=None, equipment=None, deadlift=False):
     bottom = {**HINGE, **(SQUAT_DOWN if deadlift else SOFT_KNEE), **(down_arms or HANG_ARMS)}
     if deadlift:
         bottom.update({'thigh_L': [0.12, -0.75, -0.65], 'shin_L': [0.06, 0.25, -0.97]})
-    top = {**UPRIGHT, **STAND, **ARMS_DOWN}
+    top = {**UPRIGHT, **STAND, **(BAR_HANG if props == 'barbell' else ARMS_DOWN)}
     s, e = (bottom, top) if deadlift else (top, bottom)
     s = dict(s)
     e = dict(e)
@@ -221,7 +234,7 @@ P['seated_lateral_raise'] = seated(LAT_RAISE_S, LAT_RAISE_E, props='dumbbells', 
 P['cable_lateral_raise'] = spec(base={**UPRIGHT, **STAND}, start={'upper_L': [-0.15, -0.1, -1], 'fore_L': [-0.25, -0.2, -1], 'hand_L': [-0.25, -0.2, -1]},
                                 end={'clav_L': [1, 0.02, 0.2], **arms([1, -0.15, 0], [1, -0.3, 0.06])}, fists=['L'],
                                 equipment=[cable_from(-0.45, 0.0, -0.75, 'single', '@grip_L')])
-P['cable_upright_row'] = standing(ARMS_DOWN, UPRIGHT_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.4, -0.78, 'bar')])
+P['cable_upright_row'] = standing(BAR_HANG, {'clav_L': [1, 0, 0.2], **arms([0.95, -0.32, 0.2], [-0.55, -0.45, -0.75, 40])}, cam=CAM_CABLE, equipment=[cable_from(0, -0.4, -0.78, 'bar')])
 P['front_raise'] = standing(FRONT_RAISE_S, FRONT_RAISE_E, props='dumbbells')
 P['cable_front_raise'] = standing(FRONT_RAISE_S, FRONT_RAISE_E, equipment=[cable_from(0, 0.45, -0.78, 'bar')], cam=CAM_CABLE)
 P['plate_front_raise'] = standing(arms([0.05, -0.15, -1], [-0.05, -0.2, -1]), arms([0.1, -1, 0.1], [-0.08, -1, 0.15]), props='plate', cam=CAM_SIDE)
@@ -287,12 +300,12 @@ P['single_arm_cable_row'] = spec(setup='cable_row', base={**UPRIGHT, 'thigh_L': 
 P['inverted_row'] = spec(base={**SUPINE, 'thigh_L': [0.05, -1, -0.08], 'shin_L': [0.03, -1, -0.08], 'foot_L': [0.02, -0.3, 1]},
                          start={**arms([0.3, 0.05, 1], [0.2, 0.05, 1]), 'hips': [0, 0, 0.45]}, end={**arms([0.7, 0.05, -0.7], [0.0, 0.1, 1]), 'hips': [0, 0, 0.62]},
                          equipment=[{'type': 'bar', 'at': '@grip', 'half': 0.7}], cam=CAM_SIDE, floor=-0.0)
-P['straight_arm_pulldown'] = standing(STRAIGHT_S, STRAIGHT_E, torso=LEAN, legs=SOFT_KNEE, equipment=[cable_from(0, -0.75, 1.25, 'bar')], cam=CAM_CABLE)
+P['straight_arm_pulldown'] = standing(STRAIGHT_S, arms([0.08, -0.3, -1], tw([0.02, -0.38, -1], 55)), torso=LEAN, legs=SOFT_KNEE, equipment=[cable_from(0, -0.75, 1.25, 'bar')], cam=CAM_CABLE)
 P['rope_straight_arm'] = standing(STRAIGHT_S, arms([0.25, 0.25, -1], [0.25, 0.2, -1]), torso=LEAN, legs=SOFT_KNEE, equipment=[cable_from(0, -0.75, 1.25, 'rope')], cam=CAM_CABLE)
 P['db_pullover'] = lying(arms([0.12, 1, 0.15], [0.05, 1, 0.1]), arms([0.12, 0.2, 1], [0.04, 0.15, 1]), props='dumbbell_single')
 P['db_shrug'] = standing(SHRUG_S, SHRUG_E_BIG, props='dumbbells')
-P['bb_shrug'] = standing(SHRUG_S, SHRUG_E, props='barbell')
-P['cable_shrug'] = standing(SHRUG_S, SHRUG_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.4, -0.78, 'bar')])
+P['bb_shrug'] = standing({**SHRUG_S, **BAR_HANG}, {**SHRUG_E, **BAR_HANG}, props='barbell')
+P['cable_shrug'] = standing({**SHRUG_S, **BAR_HANG}, {**SHRUG_E, **BAR_HANG}, cam=CAM_CABLE, equipment=[cable_from(0, -0.4, -0.78, 'bar')])
 P['deadlift'] = hinge('barbell', deadlift=True)
 P['trap_bar_deadlift'] = hinge('trap_bar', deadlift=True)
 BE_LEGS = {'thigh_L': [0.06, 0.7, -0.7], 'shin_L': [0.04, 0.7, -0.7], 'foot_L': [0.03, -0.45, -0.9]}
@@ -308,15 +321,15 @@ P['back_extension'] = spec(base={**BE_LEGS, **arms([0.35, -0.6, 0.72], [-0.3, 0.
 
 # ---------- Arms ----------
 P['incline_db_curl'] = incline(arms([0.12, 0.35, -1], [0.1, 0.2, -1]), arms([0.12, 0.3, -1], [0.04, -0.6, 0.8]), props='dumbbells', deg=50)
-P['ez_curl'] = standing(CURL_S, CURL_E, props='ez')
-P['bb_curl'] = standing(CURL_S, CURL_E, props='barbell')
+P['ez_curl'] = standing(CURL_EZ_S, CURL_EZ_E, props='ez_zig')
+P['bb_curl'] = standing(CURL_BB_S, CURL_BB_E, props='barbell')
 P['db_curl'] = standing(CURL_S, CURL_E, props='dumbbells')
-P['cable_curl'] = standing(CURL_S, CURL_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.45, -0.78, 'bar')])
+P['cable_curl'] = standing(CURL_BB_S, CURL_BB_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.45, -0.78, 'bar')])
 P['hammer_curl'] = standing(CURL_S, CURL_E, props='dumbbells')
 P['cross_body_hammer'] = standing(CURL_S, arms([0.05, -0.15, -1], [-0.45, -0.45, 0.78]), props='dumbbells')
 P['rope_hammer_curl'] = standing(CURL_S, CURL_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.45, -0.78, 'rope')])
-P['bb_reverse_curl'] = standing(CURL_S, CURL_E, props='barbell')
-P['reverse_cable_curl'] = standing(CURL_S, CURL_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.45, -0.78, 'bar')])
+P['bb_reverse_curl'] = standing(REV_CURL_S, REV_CURL_E, props='barbell')
+P['reverse_cable_curl'] = standing(REV_CURL_S, REV_CURL_E, cam=CAM_CABLE, equipment=[cable_from(0, -0.45, -0.78, 'bar')])
 P['concentration_curl'] = seated(arms([-0.05, -0.35, -1], [-0.05, -0.2, -1]), arms([-0.05, -0.35, -1], [0.0, -0.55, 0.85]), props='dumbbell_L', back=False,
                                  torso=HALF_HINGE)
 P['concentration_curl']['fists'] = ['L']
@@ -326,7 +339,7 @@ P['machine_curl'] = seated(arms([0.12, -0.75, -0.6], [0.08, -0.9, -0.35]), arms(
                            equipment=[{'type': 'box', 'center': {'at': '@chest', 'off': [0, -0.25, -0.1]}, 'size': [0.5, 0.08, 0.32]},
                                       {'type': 'line', 'from': '@grip_L', 'to': '@grip_R', 'r': 0.016},
                                       {'type': 'handles', 'pivot': {'at': '@chest', 'off': [0.3, -0.35, -0.15]}}])
-P['triceps_pushdown'] = standing(PUSHDOWN_S, PUSHDOWN_E, torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'bar')], cam=CAM_PUSHDOWN)
+P['triceps_pushdown'] = standing(PUSHDOWN_S, arms([0.06, 0.05, -1], [0.0, -0.4, -1]), torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'bar')], cam=CAM_PUSHDOWN)
 P['rope_pushdown'] = standing(PUSHDOWN_S, arms([0.06, 0.05, -1], [0.2, 0.05, -1]), torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'rope')], cam=CAM_PUSHDOWN)
 P['vbar_pushdown'] = standing(PUSHDOWN_S, PUSHDOWN_E, torso=LEAN, equipment=[cable_from(0, -0.35, 1.3, 'none')], cam=CAM_CABLE)
 # Side view from slightly behind with a backless seat, so the dumbbell behind the head shows.

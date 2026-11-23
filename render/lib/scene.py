@@ -186,12 +186,25 @@ def camera(target, azimuth, elevation, distance, lens=50):
     return o
 
 
-def settings(size, samples):
+def settings(size, samples, engine='cycles'):
     sc = bpy.context.scene
-    sc.render.engine = 'CYCLES'
-    sc.cycles.device = 'CPU'
-    sc.cycles.samples = samples
-    sc.cycles.use_denoising = True
+    if engine == 'eevee':
+        # EEVEE for the looping videos: same materials, lights and colour settings as the stills.
+        sc.render.engine = 'BLENDER_EEVEE'
+        ee = sc.eevee
+        ee.taa_render_samples = samples
+        for attr, val in (('use_raytracing', True), ('use_shadows', True), ('shadow_ray_count', 2), ('shadow_step_count', 8),
+                          ('use_gtao', True), ('fast_gi_method', 'GLOBAL_ILLUMINATION')):
+            if hasattr(ee, attr):
+                try:
+                    setattr(ee, attr, val)
+                except Exception:
+                    pass
+    else:
+        sc.render.engine = 'CYCLES'
+        sc.cycles.device = 'CPU'
+        sc.cycles.samples = samples
+        sc.cycles.use_denoising = True
     sc.render.film_transparent = True
     sc.render.resolution_x = size
     sc.render.resolution_y = size
@@ -200,7 +213,8 @@ def settings(size, samples):
     sc.view_settings.view_transform = 'Standard'
     sc.view_settings.look = 'None'
     sc.view_settings.exposure = -0.6
-    sc.cycles.max_bounces = 6
+    if engine != 'eevee':
+        sc.cycles.max_bounces = 6
 
 
 def _ellipsoid(name, centre, axes, radii, mat):
@@ -268,6 +282,54 @@ def barbell(name, centre, half, M, plates=(0.225, 0.2)):
         for i, r in enumerate(plates):
             a = inner + x * s * (0.005 + i * 0.045)
             cyl(f'{name}_plate{s}{i}', a, a + x * s * 0.04, r, M['frame'], verts=48)
+
+
+def ez_bar(name, grips, M, plates=(0.17, 0.14), r=0.0145):
+    """EZ curl bar: a zig-zag (W) bar whose angled grip sections run through each closed hand.
+
+    grips: [(grip_centre, handle_axis), ...] for the left and right hand (makehuman.hand_basis).
+    Each side, from the centre out: straight centre section, a small V, the angled grip through the
+    hand, a bend back onto the bar's line, then the straight sleeve with collar and plates.
+    """
+    (gl, al), (gr, ar) = [(Vector(g), Vector(a)) for g, a in grips]
+    x = (gl - gr).normalized()
+    c = (gl + gr) / 2
+    sides = []
+    for s, g, ax in ((1, gl, al), (-1, gr, ar)):
+        ax = ax.normalized()
+        if ax.dot(x * s) < 0:
+            ax = -ax
+        inner, outer = g - ax * 0.055, g + ax * 0.055
+        perp = lambda p: (p - c) - x * (p - c).dot(x)  # noqa: E731
+        sides.append((s, inner, outer, perp(inner), perp(outer)))
+    line = sum((t[3] for t in sides), Vector()) / 2  # the bar's straight line, offset like the inner grips
+
+    def on_line(s, d):
+        return c + x * s * d + line
+
+    joints = []
+    for s, inner, outer, p_in, p_out in sides:
+        d_in = (inner - c).dot(x) * s
+        d_out = (outer - c).dot(x) * s
+        half = d_out + 0.1
+        pts = [c + line, on_line(s, d_in - 0.075), on_line(s, d_in - 0.037) + (p_out - line), inner, outer,
+               on_line(s, d_out + 0.037), on_line(s, half + 0.22)]
+        for i, (a, b) in enumerate(zip(pts, pts[1:])):
+            cyl(f'{name}_seg{s}{i}', a, b, r, M['steel'], verts=24)
+        joints += pts[1:-1]
+        coll = on_line(s, half + 0.03)
+        cyl(f'{name}_collar{s}', coll - x * s * 0.03, coll, 0.025, M['steel'])
+        for i, pr in enumerate(plates):
+            a = coll + x * s * (0.005 + i * 0.045)
+            cyl(f'{name}_plate{s}{i}', a, a + x * s * 0.04, pr, M['frame'], verts=48)
+    # Round joints so the bends read as one bent bar, not separate rods.
+    for i, p in enumerate(joints):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=p, segments=24, ring_count=12)
+        o = bpy.context.active_object
+        o.name = f'{name}_bend{i}'
+        o.data.materials.append(M['steel'])
+        for f in o.data.polygons:
+            f.use_smooth = True
 
 
 def bench_uprights(y, top_z, floor_z, half, M):
