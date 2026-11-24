@@ -49,3 +49,4 @@ __pycache__/
 # updates in place). Kept out of git; eas-cli reads it from here when it starts a build.
 /credentials.json
 /credentials/
+/apk-out/
