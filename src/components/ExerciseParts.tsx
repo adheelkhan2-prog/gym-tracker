@@ -32,7 +32,7 @@ export function mediaFor(exerciseId: string, userVideos: Record<string, OwnVideo
 }
 
 /**
- * The exercise's moving picture: your own recording, else the bundled video (muted, looping), else
+ * The exercise's moving picture: your own imported video, else the bundled video (muted, looping), else
  * the start/end stills cross-fading, else a photo. Tap to pause / play. Reduce motion starts paused.
  */
 export function ExerciseMedia({ exerciseId, height = 300, label, active = true }: { exerciseId: string; height?: number; label?: string; /** Off-screen cards show a still instead of decoding video. */ active?: boolean }) {
@@ -58,7 +58,7 @@ export function ExerciseMedia({ exerciseId, height = 300, label, active = true }
     return (
       <View style={[s.photo, s.noPhoto, { height }]}>
         <Icon name="info" size={28} color={color.muted} />
-        <Text style={[type.small, { textAlign: 'center' }]}>No picture for this one yet. Follow the steps below, or record your own.</Text>
+        <Text style={[type.small, { textAlign: 'center' }]}>No picture for this one yet. Follow the steps below, or import your own video.</Text>
       </View>
     );
   }

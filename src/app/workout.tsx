@@ -4,7 +4,7 @@ import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimen
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExerciseMedia, HowToSteps, MachineSheet, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
-import { OwnVideoButtons } from '../components/RecordVideo';
+import { OwnVideoButtons } from '../components/ImportVideo';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
 import { Burst, Flash } from '../components/motion';

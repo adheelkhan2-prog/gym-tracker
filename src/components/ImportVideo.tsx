@@ -1,5 +1,5 @@
-// Your own exercise video: "Record my own video" (phone camera) or "Import video from gallery" (any
-// video already on the phone), then trim it to a short loop. The clip is copied into this app's own
+// Your own exercise video: "Import video from gallery" (any video already on the phone), then trim
+// it to a short loop. No camera: the app never records. The clip is copied into this app's own
 // storage ON THE PHONE (never bundled in the app, never in the repo, never uploaded) and replaces the
 // default video for that exercise until you reset it.
 //
@@ -53,7 +53,7 @@ function forget(uri: string | undefined) {
 
 /**
  * The two buttons every exercise gets, plus "Trim" and "Reset to default" once you have your own.
- * Picking or recording a clip opens the trim sheet straight away.
+ * Picking a clip opens the trim sheet straight away.
  */
 export function OwnVideoButtons({ exerciseId }: { exerciseId: string }) {
   const { state, update } = useStore();
@@ -63,23 +63,13 @@ export function OwnVideoButtons({ exerciseId }: { exerciseId: string }) {
   const name = EXERCISES[exerciseId]?.name ?? 'this exercise';
   if (!picker() || !fs()) return null;
 
-  const get = async (from: 'camera' | 'gallery') => {
+  const importVideo = async () => {
     const p = picker()!;
     setMsg('');
-    crumb(`own video: ${from} ${exerciseId}`);
+    crumb(`own video: gallery ${exerciseId}`);
     try {
-      if (from === 'camera') {
-        const perm = await p.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          setMsg('Camera access is off. Allow it in your phone’s settings to record.');
-          return;
-        }
-      }
-      // Record up to 30 s (you trim it to a ≤6 s loop next); any length can be imported.
-      const res =
-        from === 'camera'
-          ? await p.launchCameraAsync({ mediaTypes: ['videos'], videoMaxDuration: 30, quality: 1 })
-          : await p.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
+      // Any length can be imported; you trim it to a loop of up to 6 s next.
+      const res = await p.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
       const a = res.canceled ? null : res.assets?.[0];
       if (!a) return;
       const uri = keep(a.uri, exerciseId);
@@ -116,8 +106,7 @@ export function OwnVideoButtons({ exerciseId }: { exerciseId: string }) {
   return (
     <View style={s.wrap}>
       <View style={s.row}>
-        <Button size="sm" variant="outline" icon="video" label="Record my own video" accessibilityLabel={`Record my own video of ${name}`} onPress={() => void get('camera')} />
-        <Button size="sm" variant="outline" icon="plus" label="Import video from gallery" accessibilityLabel={`Import a video of ${name} from the gallery`} onPress={() => void get('gallery')} />
+        <Button size="sm" variant="outline" icon="video" label="Import video from gallery" accessibilityLabel={`Import a video of ${name} from the gallery`} onPress={() => void importVideo()} />
       </View>
       {mine && (
         <View style={s.row}>

@@ -27,7 +27,8 @@
       ],
       "versionCode": 8,
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -76,8 +77,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Record your own short exercise videos. They stay on this phone.",
-          "microphonePermission": "Needed by the phone camera when recording a video. The app plays your clips muted and never keeps their sound.",
+          "cameraPermission": false,
+          "microphonePermission": false,
           "photosPermission": "Pick a video of an exercise from your phone. It stays on this phone."
         }
       ],

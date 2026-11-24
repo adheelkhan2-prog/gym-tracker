@@ -55,3 +55,14 @@ test('minified release builds keep the constructors Expo uses to create native v
   const app = require('../../app.json');
   expect(app.expo.plugins).toContain('./plugins/withKeepNativeViews');
 });
+
+test('own videos come only from the gallery: no camera, no recording, no camera/microphone permission', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require.resolve('../components/ImportVideo.tsx'), 'utf8');
+  expect(src).not.toMatch(/launchCameraAsync|requestCameraPermissionsAsync/);
+  expect(src).toMatch(/launchImageLibraryAsync/);
+  const app = require('../../app.json');
+  const picker = app.expo.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-image-picker');
+  expect(picker[1]).toMatchObject({ cameraPermission: false, microphonePermission: false });
+  expect(app.expo.android.blockedPermissions).toEqual(expect.arrayContaining(['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']));
+});

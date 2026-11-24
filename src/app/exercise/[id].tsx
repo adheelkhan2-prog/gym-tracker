@@ -7,7 +7,7 @@ import { ExerciseMedia, HowToSteps, MuscleLegend, SwapSheet, Tips, mediaCredit }
 import { Backdrop, Glass } from '../../components/glass';
 import { Icon, type IconName } from '../../components/icons';
 import { LineChart } from '../../components/LineChart';
-import { OwnVideoButtons } from '../../components/RecordVideo';
+import { OwnVideoButtons } from '../../components/ImportVideo';
 import { Button, IconButton, Press } from '../../components/ui';
 import { crumb } from '../../crash';
 import { EQUIPMENT_LABEL, EXERCISES } from '../../data/exercises';

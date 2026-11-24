@@ -42,7 +42,7 @@ equipment, clear view, good form), trimmed to a 3–6 s loop, cross-faded at the
 re-encoded at the original resolution and frame rate. As adaptations they are shared under CC BY-SA 4.0
 (the same licence). Credited in Settings → Credits and under each exercise's video. No videos from
 YouTube, TikTok, Instagram or other gym apps are used. Exercises without a video show the clay still
-images (or the free-exercise-db photo). Videos you record or import stay in the app's storage on your
+images (or the free-exercise-db photo). Videos you import stay in the app's storage on your
 phone only; they are never bundled or uploaded.
 
 | Exercise | File | Source | Author | Licence | Changes |

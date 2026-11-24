@@ -1,4 +1,4 @@
-// Rules for trimming your own exercise video to a short loop (see components/RecordVideo.tsx).
+// Rules for trimming your own exercise video to a short loop (see components/ImportVideo.tsx).
 
 /** The longest loop we keep, the shortest, and the trim step, in seconds. */
 export const MAX_LOOP = 6;
