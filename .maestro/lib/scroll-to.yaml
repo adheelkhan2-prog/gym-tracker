@@ -7,7 +7,7 @@ appId: com.gymtracker.app
       id: ${ID}
     direction: DOWN
     centerElement: true
-    timeout: ${TIMEOUT || 120000}
+    timeout: 120000
 # On Android a touch on a still-moving list only stops it: let it settle before tapping.
 - waitForAnimationToEnd:
     timeout: 3000
