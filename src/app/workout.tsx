@@ -15,7 +15,7 @@ import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
 import { pickOption, restFor } from '../data/program';
 import { swapsFor } from '../data/swaps';
 import { haptic } from '../feedback';
-import { fmtKg, loadTypeOf, round1, weightFromLoad } from '../load';
+import { fmtKg, fromKg, loadTypeOf, round1, weightFromLoad } from '../load';
 import { restCarry } from '../restCarry';
 import { missingFor, suggestSet, weightIn } from '../sets';
 import { bestBefore, dayById, prMetric, todayKey, useStore, type SetEntry, type State } from '../store';
@@ -237,11 +237,16 @@ function ExerciseCard({
   const count = rowCount + extra;
   const credit = mediaCredit(id, state.userVideos);
 
-  /** What row i shows: what you logged, else what you typed, else the suggestion (last time / a step up). */
+  /**
+   * What row i shows: what you logged, else what you typed, else this week's target until a set is
+   * logged today (so the rows match the "Target this week" line), then your previous set.
+   */
   const valueOf = (i: number): SetEntry => {
     const r = rows[i];
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
+    const loggedBefore = rows.slice(0, i).some((x) => x.done);
+    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit, machine, lt);
     return suggestSet(state, id, plan, date, i).set;
   };
   const setDraft = (i: number, v: SetEntry) => {
@@ -388,6 +393,15 @@ function ExerciseCard({
   );
 }
 
+/** This week's target as a set to log. */
+function fromTarget(t: NonNullable<ReturnType<typeof weeklyTarget>>, kind: string, unit: State['unit'], machine: State['machines'][string] | undefined, lt: string): SetEntry {
+  const reps = String(t.reps);
+  if (kind === 'reps' || kind === 'time') return { weight: '', reps, done: false };
+  if (lt === 'stack' && t.pin !== undefined) return { ...weightFromLoad({ t: 'stack', pin: t.pin }, machine), reps, done: false };
+  if (t.kg === null) return { weight: '', reps, u: unit, done: false };
+  return { weight: round1(fromKg(t.kg, unit)), u: unit, reps, done: false };
+}
+
 // ---------- One set row ----------
 
 function SetRow({
@@ -497,6 +511,9 @@ const s = themed(() =>
     setNo: { width: 34, fontFamily: font.display, fontSize: size.h3, color: color.muted, textAlign: 'center' },
     input: {
       flex: 1,
+      flexBasis: 0,
+      minWidth: 0,
+      width: 0,
       minHeight: touch.min,
       borderRadius: radius.md,
       backgroundColor: color.surface2,

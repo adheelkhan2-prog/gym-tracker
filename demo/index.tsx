@@ -8,7 +8,7 @@ import { registerRootComponent } from 'expo';
 import { useFonts } from 'expo-font';
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '../src/components/icons';
@@ -23,7 +23,7 @@ import BuilderScreen from '../src/app/builder';
 import ProgramsScreen from '../src/app/programs';
 import { Loading, Press } from '../src/components/ui';
 import { STORAGE_KEY, StoreProvider, addDays, todayKey, useStore, type DayLog } from '../src/store';
-import { color, font, size, space, themed } from '../src/theme';
+import { applyScheme, color, font, size, space, themed } from '../src/theme';
 import { FocusContext, ParamsContext, setNav, type Route } from './router-shim';
 
 const sets = (w: number, reps: number[]) => reps.map((r) => ({ weight: String(w), reps: String(r), done: true }));
@@ -95,7 +95,8 @@ const TABS: { id: string; title: string; icon: IconName; C: () => React.ReactNod
 ];
 
 function Demo() {
-  const { ready } = useStore();
+  const { ready, state } = useStore();
+  const phone = useColorScheme();
   const [fonts] = useFonts({
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold,
@@ -130,6 +131,9 @@ function Demo() {
   }, []);
 
   if (!ready || !fonts) return <Loading />;
+  // Same theme rule as the app (Settings choice, or the browser's when "System").
+  const want = state.theme === 'system' ? (phone === 'light' ? 'light' : 'dark') : state.theme;
+  applyScheme(want);
   const top = stack[stack.length - 1];
 
   const clearExample = () => {
@@ -140,7 +144,7 @@ function Demo() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: color.bg }}>
+    <View key={want} style={{ flex: 1, backgroundColor: color.bg }}>
       {example && !top && (
         <View style={s.banner}>
           <Text style={s.bannerText}>Demo with example workouts. Reminders and haptics only work in the Android app.</Text>

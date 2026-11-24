@@ -71,10 +71,10 @@ function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit, o
           {onEdit ? (
             <Button variant="secondary" icon="edit" label="Edit" onPress={onEdit} />
           ) : (
-            <Button variant="secondary" icon="copy" label="Copy & edit" accessibilityLabel={`Copy ${p.name} and edit it as your own plan`} onPress={onCopy} />
+            <Button variant="secondary" icon="copy" label="Copy" accessibilityLabel={`Copy ${p.name} and edit it as your own plan`} onPress={onCopy} />
           )}
         </View>
-        <View style={{ flex: 2 }}>
+        <View style={{ flex: 1.6 }}>
           <Button
             variant={current ? 'secondary' : 'default'}
             icon={current ? 'calendar' : 'swap'}
