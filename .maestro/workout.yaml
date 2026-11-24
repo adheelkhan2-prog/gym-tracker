@@ -66,8 +66,8 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
-      # Second set reuses the first set's numbers: one tap.
-      - hideKeyboard
+      # Second set reuses the first set's numbers: one tap. (No hideKeyboard here: logging already
+      # closed the keyboard, and on Android hideKeyboard with no keyboard open presses Back.)
       - scrollUntilVisible:
           element:
             id: "log-0-1"
