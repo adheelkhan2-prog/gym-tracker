@@ -111,6 +111,10 @@ appId: com.gymtracker.app
             ID: "swap-1"
       - tapOn:
           id: "swap-1"
+      - extendedWaitUntil:
+          visible:
+            id: "swap-option-.*"
+          timeout: 10000
       - tapOn:
           id: "swap-option-.*"
           index: 1

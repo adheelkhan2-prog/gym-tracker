@@ -9,3 +9,6 @@ appId: com.gymtracker.app
     direction: DOWN
     centerElement: true
     timeout: 30000
+# Let the scroll come to rest: on Android a touch on a still-moving list only stops it.
+- waitForAnimationToEnd:
+    timeout: 3000
