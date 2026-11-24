@@ -15,6 +15,8 @@ export type Program = {
   /** Weekday (0 = Sunday) -> day id, or null for rest. Days may repeat (Arnold split). */
   week: (string | null)[];
   custom?: boolean;
+  /** Rotating plan: no fixed weekdays; each workout is the next day in order (Day 1, 2, 3, 1, ...). */
+  rotation?: boolean;
 };
 
 const ex = (day: string, n: number, id: string, sets: number, target: string, note?: string): PlannedExercise => ({

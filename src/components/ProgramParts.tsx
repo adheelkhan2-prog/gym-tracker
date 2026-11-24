@@ -96,9 +96,9 @@ export function SwitchSheet({
       testID="switch-sheet"
       footer={
         <View style={{ marginTop: space.sm, gap: space.xs }}>
-          <Button label={`Switch from ${from === today ? 'today' : WEEKDAY_SHORT[dateFromKey(from).getDay()]}`} icon="check" onPress={() => onConfirm(week, from)} disabled={days === 0} />
+          <Button label={`Switch from ${from === today ? 'today' : WEEKDAY_SHORT[dateFromKey(from).getDay()]}`} icon="check" onPress={() => onConfirm(week, from)} disabled={!program.rotation && days === 0} />
           <Text style={[type.small, { textAlign: 'center' }]}>
-            {days} training day{days === 1 ? '' : 's'} a week, starting {when}.
+            {program.rotation ? `Rotating plan, starting ${when}.` : `${days} training day${days === 1 ? '' : 's'} a week, starting ${when}.`}
           </Text>
         </View>
       }
@@ -109,8 +109,16 @@ export function SwitchSheet({
         <Chip label="Today" active={from === today} onPress={() => setFrom(today)} />
         {today === monday && <Chip label={`Monday after · ${formatDate(addDays(monday, 7))}`} active={from === addDays(monday, 7)} onPress={() => setFrom(addDays(monday, 7))} />}
       </View>
-      <Text style={[type.label, { marginTop: space.lg, marginBottom: space.sm }]}>Your week</Text>
-      <WeekMapper program={program} week={week} onChange={setWeek} />
+      {program.rotation ? (
+        <Text style={[type.small, { marginTop: space.lg }]}>
+          No fixed weekdays: each workout is the next day in order ({program.days.map((d) => d.name).join(' → ')} → again).
+        </Text>
+      ) : (
+        <>
+          <Text style={[type.label, { marginTop: space.lg, marginBottom: space.sm }]}>Your week</Text>
+          <WeekMapper program={program} week={week} onChange={setWeek} />
+        </>
+      )}
     </Sheet>
   );
 }

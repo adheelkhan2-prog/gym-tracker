@@ -4,25 +4,42 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon, type IconName } from '../components/icons';
-import { LibrarySheet } from '../components/ProgramParts';
-import { Button, IconButton, Press } from '../components/ui';
+import { DragRow } from '../components/DragRow';
+import { LibrarySheet, WeekMapper } from '../components/ProgramParts';
+import { Button, Chip, IconButton, Press, SectionTitle } from '../components/ui';
 import { EXERCISES } from '../data/exercises';
 import { PROGRAMS, type Program } from '../data/programs';
 import { type PlannedExercise, type WorkoutDay } from '../data/program';
 import { haptic } from '../feedback';
-import { useStore } from '../store';
+import { allPrograms, useStore } from '../store';
 import { color, fmtClock, font, leading, radius, size, space, themed, touch, type } from '../theme';
 
 const RESTS: (number | undefined)[] = [undefined, 60, 90, 120, 180];
 const uid = () => Math.random().toString(36).slice(2, 8);
 
-const move = <T,>(xs: T[], i: number, d: number) => {
-  const j = i + d;
-  if (j < 0 || j >= xs.length) return xs;
+const move = <T,>(xs: T[], i: number, d: number) => moveTo(xs, i, i + d);
+/** Move item i to position j (drag to reorder). */
+const moveTo = <T,>(xs: T[], i: number, j: number) => {
+  if (j < 0 || j >= xs.length || i === j) return xs;
   const out = [...xs];
-  [out[i], out[j]] = [out[j], out[i]];
+  const [x] = out.splice(i, 1);
+  out.splice(j, 0, x);
   return out;
 };
+
+/** A deep copy of a plan (or a built-in template) with fresh ids, ready to edit as your own. */
+function copyOf(p: Program): Program {
+  const ids = new Map(p.days.map((d) => [d.id, `cd-${uid()}`]));
+  return {
+    ...p,
+    id: `custom-${uid()}`,
+    name: `${p.name} (my copy)`,
+    blurb: 'Built by you.',
+    custom: true,
+    days: p.days.map((d) => ({ ...d, id: ids.get(d.id)!, exercises: d.exercises.map((e) => ({ ...e, options: [e.options[0]], slot: `${ids.get(d.id)}-${uid()}` })) })),
+    week: p.week.map((w) => (w ? (ids.get(w) ?? null) : null)),
+  };
+}
 
 function Tiny({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean }) {
   return (
@@ -35,15 +52,17 @@ function Tiny({ icon, label, onPress, disabled }: { icon: IconName; label: strin
 type Picking = { day: number; replace?: number } | null;
 
 export default function BuilderScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, template } = useLocalSearchParams<{ id?: string; template?: string }>();
   const insets = useSafeAreaInsets();
   const { state, update } = useStore();
   const existing = state.customPrograms.find((p) => p.id === id);
+  const base = template ? allPrograms(state).find((p) => p.id === template) : undefined;
   const [draft, setDraft] = useState<Program>(
     () =>
-      existing ?? {
+      existing ??
+      (base ? copyOf(base) : null) ?? {
         id: `custom-${uid()}`,
-        name: 'My split',
+        name: '',
         focus: '',
         blurb: 'Built by you.',
         custom: true,
@@ -75,7 +94,7 @@ export default function BuilderScreen() {
 
   const valid = draft.name.trim().length > 0 && draft.days.length > 0 && draft.days.every((d) => d.exercises.length > 0);
 
-  const save = () => {
+  const save = (use = false) => {
     // Keep weekday choices for days that still exist; give new days the first free weekdays from Monday.
     const ids = draft.days.map((d) => d.id);
     const fit = (base: (string | null)[]) => {
@@ -87,16 +106,24 @@ export default function BuilderScreen() {
       }
       return week;
     };
-    const p: Program = { ...draft, name: draft.name.trim(), week: fit(draft.week), focus: `${draft.days.length} day${draft.days.length === 1 ? '' : 's'}: ${draft.days.map((d) => d.name).join(', ')}` };
+    // Rotating plans have no fixed weekdays: each workout is the next day in order.
+    const week = draft.rotation ? [null, null, null, null, null, null, null] : fit(draft.week);
+    const p: Program = {
+      ...draft,
+      name: draft.name.trim(),
+      week,
+      focus: `${draft.rotation ? 'Rotating' : `${draft.days.length} day${draft.days.length === 1 ? '' : 's'}`}: ${draft.days.map((d) => d.name).join(', ')}`,
+    };
     haptic.setDone();
     update((st) => {
       const others = st.customPrograms.filter((x) => x.id !== p.id);
       // The active split keeps the weekday mapping you chose; a booked switch is cleaned up the same way.
+      if (use) return { ...st, customPrograms: [...others, p], programId: p.id, week: p.week, pending: null };
       return {
         ...st,
         customPrograms: [...others, p],
-        week: st.programId === p.id ? fit(st.week) : st.week,
-        pending: st.pending?.programId === p.id ? { ...st.pending, week: fit(st.pending.week) } : st.pending,
+        week: st.programId === p.id ? (p.rotation ? p.week : fit(st.week)) : st.week,
+        pending: st.pending?.programId === p.id ? { ...st.pending, week: p.rotation ? p.week : fit(st.pending.week) } : st.pending,
       };
     });
     router.back();
@@ -117,21 +144,40 @@ export default function BuilderScreen() {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.x5 }}>
         <View style={s.header}>
           <IconButton icon="back" label="Back without saving" onPress={() => router.back()} />
-          <Button size="sm" label="Save" icon="check" disabled={!valid} onPress={save} />
+          <Button size="sm" label="Save" icon="check" disabled={!valid} onPress={() => save()} testID="plan-save" />
         </View>
         <View style={s.pad}>
           <Text style={s.title} accessibilityRole="header">
-            {existing ? 'Edit split' : 'Build a split'}
+            {existing ? 'Edit plan' : 'Create plan'}
           </Text>
           <TextInput
             value={draft.name}
             onChangeText={(t) => setDraft((p) => ({ ...p, name: t }))}
             style={s.nameInput}
-            placeholder="Split name"
+            placeholder="Name your plan"
             placeholderTextColor={color.subtle}
-            accessibilityLabel="Split name"
+            accessibilityLabel="Plan name"
+            testID="plan-name"
           />
-          {!valid && <Text style={[type.small, { marginTop: space.xs }]}>Give every day at least one exercise to save.</Text>}
+          {!valid && <Text style={[type.small, { marginTop: space.xs }]}>Name the plan and give every day at least one exercise to save.</Text>}
+
+          <SectionTitle>Schedule</SectionTitle>
+          <View style={{ flexDirection: 'row', gap: space.sm }} accessibilityRole="radiogroup">
+            <Chip label="Set weekdays" icon="calendar" active={!draft.rotation} onPress={() => setDraft((p) => ({ ...p, rotation: false }))} />
+            <Chip label="Rotate in order" icon="rotate" active={!!draft.rotation} onPress={() => setDraft((p) => ({ ...p, rotation: true }))} />
+          </View>
+          {draft.rotation ? (
+            <Text style={[type.small, { marginTop: space.sm }]}>
+              No fixed days: each workout is the next day in the list ({draft.days.map((d) => d.name || 'Day').join(' → ')} → again). Train whenever suits you.
+            </Text>
+          ) : (
+            <View style={{ marginTop: space.md }}>
+              <Text style={[type.small, { marginBottom: space.sm }]}>Pick which day falls on each weekday (days can repeat). Days left unplaced take the first free weekdays when you save.</Text>
+              <WeekMapper program={draft} week={draft.week} onChange={(w) => setDraft((p) => ({ ...p, week: w }))} />
+            </View>
+          )}
+
+          <SectionTitle>Days</SectionTitle>
 
           {draft.days.map((d, di) => (
             <Glass key={d.id} r={radius.xxl} style={s.day}>
@@ -146,13 +192,34 @@ export default function BuilderScreen() {
                 />
                 <Tiny icon="arrowUp" label={`Move ${d.name} up`} disabled={di === 0} onPress={() => setDays((ds) => move(ds, di, -1))} />
                 <Tiny icon="arrowDown" label={`Move ${d.name} down`} disabled={di === draft.days.length - 1} onPress={() => setDays((ds) => move(ds, di, 1))} />
-                <Tiny icon="trash" label={`Remove ${d.name}`} disabled={draft.days.length === 1} onPress={() => setDays((ds) => ds.filter((_, j) => j !== di))} />
+                <Tiny
+                  icon="copy"
+                  label={`Duplicate ${d.name}`}
+                  disabled={draft.days.length >= 7}
+                  onPress={() =>
+                    setDays((ds) => {
+                      const nid = `cd-${uid()}`;
+                      const copy = { ...d, id: nid, name: `${d.name} (copy)`, exercises: d.exercises.map((e) => ({ ...e, slot: `${nid}-${uid()}` })) };
+                      return [...ds.slice(0, di + 1), copy, ...ds.slice(di + 1)];
+                    })
+                  }
+                />
+                <Tiny
+                  icon="trash"
+                  label={`Delete ${d.name}`}
+                  disabled={draft.days.length === 1}
+                  onPress={() => {
+                    setDays((ds) => ds.filter((_, j) => j !== di));
+                    setDraft((p) => ({ ...p, week: p.week.map((w) => (w === d.id ? null : w)) }));
+                  }}
+                />
               </View>
 
               {d.exercises.map((e, ei) => {
                 const ex = EXERCISES[e.options[0]];
                 return (
-                  <View key={e.slot} style={s.exRow}>
+                  <DragRow key={e.slot} index={ei} count={d.exercises.length} label={ex.name} onMove={(from, to) => setDay(di, (x) => ({ ...x, exercises: moveTo(x.exercises, from, to) }))}>
+                  <View style={s.exRow}>
                     <View style={s.exTop}>
                       <Press onPress={() => setPicking({ day: di, replace: ei })} style={s.exName} accessibilityRole="button" accessibilityLabel={`${ex.name}. Tap to swap`}>
                         <Text style={s.exNameText} numberOfLines={1}>
@@ -189,6 +256,7 @@ export default function BuilderScreen() {
                       </Press>
                     </View>
                   </View>
+                  </DragRow>
                 );
               })}
               <Button size="sm" variant="secondary" icon="plus" label="Add exercise" onPress={() => setPicking({ day: di })} />
@@ -206,8 +274,12 @@ export default function BuilderScreen() {
             </View>
           )}
           <Text style={[type.small, { marginTop: space.md }]}>
-            Rest “Auto” uses 2 min on heavy compounds and 90 s on everything else. Pick weekdays when you switch to this split.
+            Drag ⋮⋮ to reorder exercises. Rest “Auto” uses 2 min on heavy compounds and 90 s on everything else.
           </Text>
+          <View style={{ marginTop: space.lg, gap: space.sm }}>
+            <Button label="Save" icon="check" disabled={!valid} onPress={() => save()} />
+            {state.programId !== draft.id && <Button variant="solid" label="Save & use this plan" icon="flag" disabled={!valid} onPress={() => save(true)} testID="plan-save-use" />}
+          </View>
 
           {existing && (
             <View style={{ marginTop: space.xxl }}>
@@ -217,11 +289,11 @@ export default function BuilderScreen() {
                     <Button variant="secondary" label="Keep it" onPress={() => setConfirmDelete(false)} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Button variant="destructive" icon="trash" label="Delete split" onPress={remove} />
+                    <Button variant="destructive" icon="trash" label="Delete plan" onPress={remove} />
                   </View>
                 </View>
               ) : (
-                <Button variant="ghost" icon="trash" label="Delete this split (logs stay)" onPress={() => setConfirmDelete(true)} />
+                <Button variant="ghost" icon="trash" label="Delete this plan (your logs stay)" onPress={() => setConfirmDelete(true)} />
               )}
             </View>
           )}

@@ -16,7 +16,7 @@ import { color, font, leading, radius, size, space, themed, touch, type } from '
 
 const GAP = space.md;
 
-function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit }: {
+function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit, onCopy }: {
   p: Program;
   live: boolean;
   current: boolean;
@@ -24,6 +24,7 @@ function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit }:
   width: number;
   onSwitch: () => void;
   onEdit?: () => void;
+  onCopy: () => void;
 }) {
   const days = trainingDays(p.week);
   return (
@@ -43,6 +44,11 @@ function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit }:
       <View style={s.model}>
         {live ? <BodyModel paint={programPaint(p)} height={220} interactive={false} showHint={false} /> : <View style={{ height: 220 }} />}
       </View>
+      {p.rotation ? (
+        <Text style={[type.small, { marginTop: space.md, color: color.text }]} numberOfLines={2}>
+          Rotating: {p.days.map((d) => d.name).join(' → ')} → again
+        </Text>
+      ) : (
       <View style={s.week}>
         {ORDER.map((wd) => {
           const d = p.days.find((x) => x.id === p.week[wd]);
@@ -56,15 +62,18 @@ function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit }:
           );
         })}
       </View>
+      )}
       <Text style={[type.small, { marginTop: space.md }]} numberOfLines={3}>
         {p.blurb}
       </Text>
       <View style={s.cardBtns}>
-        {onEdit && (
-          <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
+          {onEdit ? (
             <Button variant="secondary" icon="edit" label="Edit" onPress={onEdit} />
-          </View>
-        )}
+          ) : (
+            <Button variant="secondary" icon="copy" label="Copy & edit" accessibilityLabel={`Copy ${p.name} and edit it as your own plan`} onPress={onCopy} />
+          )}
+        </View>
         <View style={{ flex: 2 }}>
           <Button
             variant={current ? 'secondary' : 'default'}
@@ -123,7 +132,10 @@ export default function ProgramsScreen() {
           <Text style={s.title} accessibilityRole="header">
             Programs
           </Text>
-          <Text style={type.bodyMuted}>Swipe through splits. Switching keeps every log you’ve made.</Text>
+          <Text style={type.bodyMuted}>Swipe through plans. Switching keeps every log you’ve made. Built-in plans are templates: copy one to make it yours.</Text>
+          <View style={{ marginTop: space.md }}>
+            <Button icon="plus" label="Create plan" onPress={() => router.push('/builder')} testID="create-plan" />
+          </View>
           {toast && (
             <Animated.View entering={reduce ? undefined : FadeInDown.springify()} style={s.toast}>
               <Icon name="checkCircle" size={20} color={color.accent} filled />
@@ -159,6 +171,7 @@ export default function ProgramsScreen() {
               width={cardW}
               onSwitch={() => setSwitching(p)}
               onEdit={p.custom ? () => router.push({ pathname: '/builder', params: { id: p.id } }) : undefined}
+              onCopy={() => router.push({ pathname: '/builder', params: { template: p.id } })}
             />
           ))}
         </ScrollView>
@@ -189,7 +202,7 @@ export default function ProgramsScreen() {
               <Button size="sm" variant="ghost" label="Cancel" onPress={() => update((st) => ({ ...st, pending: null }))} />
             </Glass>
           )}
-          <Button variant="outline" icon="plus" label="Build your own split" onPress={() => router.push('/builder')} />
+          <Button variant="outline" icon="plus" label="Create a plan from scratch" onPress={() => router.push('/builder')} />
           <Text style={[type.small, { textAlign: 'center' }]}>Templates and their sources are listed in the app’s exercise-sources file.</Text>
         </View>
       </ScrollView>

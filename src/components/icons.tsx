@@ -48,7 +48,9 @@ export type IconName =
   | 'chevronDown'
   | 'chevronUp'
   | 'star'
-  | 'video';
+  | 'video'
+  | 'drag'
+  | 'copy';
 
 type Glyph = (c: string, filled: boolean) => React.ReactNode;
 
@@ -213,6 +215,13 @@ const G: Record<IconName, Glyph> = {
     <>
       <Path d="M5 21V4" {...st(c)} />
       <Path d="M5 4.5h11.5l-2 4 2 4H5" {...st(c)} fill={fillOr(c, f)} />
+    </>
+  ),
+  drag: (c) => <Path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" {...st(c)} strokeWidth={3.2} />,
+  copy: (c, f) => (
+    <>
+      <Rect x={8} y={8} width={12} height={12} rx={2.5} {...st(c)} fill={fillOr(c, f)} />
+      <Path d="M16 8V5.5A1.5 1.5 0 0014.5 4h-9A1.5 1.5 0 004 5.5v9A1.5 1.5 0 005.5 16H8" {...st(c)} />
     </>
   ),
   video: (c, f) => (

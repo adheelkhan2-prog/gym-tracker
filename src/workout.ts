@@ -3,7 +3,7 @@ import { EXERCISES, type LogKind } from './data/exercises';
 import { pickOption, targetTop, type PlannedExercise, type WorkoutDay } from './data/program';
 import { dayTitle } from './theme';
 import { fmtKg, type Unit } from './load';
-import { doneSets, kgOf, num, type DayLog, type ExerciseLog, type SetEntry, type State } from './store';
+import { activeProgram, doneSets, kgOf, num, type DayLog, type ExerciseLog, type SetEntry, type State } from './store';
 
 /** The exercise actually done for a slot: a remembered swap, else the plan's own pick. */
 export const exerciseFor = (state: Pick<State, 'swaps' | 'variants'>, plan: PlannedExercise) => {
@@ -91,12 +91,28 @@ export const WARMUP = [
  *   (you chose to train that one today); a session started but never logged no longer pins a day.
  */
 export function todayDayId(state: State, date: string, weekday: number, picked?: string | null) {
-  const scheduled = state.week[weekday] ?? null;
+  const scheduled = activeProgram(state).rotation ? nextInRotation(state, date) : (state.week[weekday] ?? null);
   if (picked) return { id: picked, preview: picked !== scheduled, scheduled };
   const sessionDay = state.sessions[date]?.dayId;
   const logged = Object.values(state.logs[date] ?? {}).some((l) => l.skipped || l.sets.some((s) => s.done));
   const id = sessionDay && logged ? sessionDay : scheduled;
   return { id, preview: false, scheduled, swappedDay: !!(sessionDay && logged && sessionDay !== scheduled) };
+}
+
+/**
+ * Rotating plans: the day after the last one you trained (before `date`), wrapping round; the first
+ * day when you haven't trained this plan yet.
+ */
+export function nextInRotation(state: State, date: string): string | null {
+  const days = activeProgram(state).days;
+  if (!days.length) return null;
+  const trained = Object.keys(state.sessions)
+    .filter((d) => d < date && days.some((x) => x.id === state.sessions[d].dayId))
+    .filter((d) => Object.values(state.logs[d] ?? {}).some((l) => l.skipped || l.sets.some((st) => st.done)))
+    .sort();
+  const last = trained.length ? state.sessions[trained[trained.length - 1]].dayId : null;
+  const i = last ? days.findIndex((x) => x.id === last) : -1;
+  return days[(i + 1) % days.length].id;
 }
 
 /**
