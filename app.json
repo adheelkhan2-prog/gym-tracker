@@ -24,7 +24,8 @@
         "android.permission.USE_EXACT_ALARM",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
-      ]
+      ],
+      "versionCode": 7
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -62,9 +63,21 @@
           }
         }
       ],
-      "expo-video"
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": false
+        }
+      ]
     ],
     "scheme": "gymtracker",
-    "backgroundColor": "#070708"
+    "backgroundColor": "#070708",
+    "owner": "adheelkhan",
+    "extra": {
+      "eas": {
+        "projectId": "ca3fb6e0-f89e-4d37-99e2-a9db62d93725"
+      }
+    }
   }
 }
