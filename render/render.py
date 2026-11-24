@@ -301,6 +301,7 @@ def main():
     ap.add_argument('--model', default=os.path.join(HERE, 'source', 'muscles-src.glb'))
     ap.add_argument('--video', type=int, default=0, help='render N looping frames (start -> end -> start) instead of stills')
     ap.add_argument('--engine', choices=('cycles', 'eevee'), default='cycles')
+    ap.add_argument('--mask-only', action='store_true', help='only (re)write the body masks next to existing renders')
     args = ap.parse_args(sys.argv[sys.argv.index(__file__) + 1:] if __file__ in sys.argv else sys.argv[1:])
 
     exercises = {e['id']: e for e in json.load(open(os.path.join(HERE, 'exercises.json')))}
@@ -420,10 +421,12 @@ def main():
             scene.camera(target, cam_cfg['azimuth'], cam_cfg['elevation'], cam_cfg['distance'], cam_cfg.get('lens', 50))
             path = os.path.join(HERE, 'out', 'video', ex_id, f'{frame}.png') if args.video else os.path.join(HERE, 'out', f'{ex_id}-{frame}.png')
             bpy.context.scene.render.filepath = path
-            bpy.ops.render.render(write_still=True)
-            print('wrote', path)
-            if not args.video:
-                write_body_mask(body, path)
+            if not args.mask_only:
+                bpy.ops.render.render(write_still=True)
+                print('wrote', path)
+            # Body-only mask (1 sample, cheap) for every still AND video frame, so check_renders
+            # only looks at the body and never flags the bench, equipment or floor shadow.
+            write_body_mask(body, path)
 
 
 if __name__ == '__main__':
