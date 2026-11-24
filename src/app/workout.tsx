@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExerciseMedia, HowToSteps, MachineSheet, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
@@ -336,6 +336,10 @@ function ExerciseCard({
     }));
 
   const log1 = (i: number) => {
+    // Let go of the keyboard first: a focused box that turns read-only on logging would otherwise
+    // hand focus (and the keyboard) to the next set's box, and swallow the next tap.
+    TextInput.State.currentlyFocusedInput()?.blur();
+    Keyboard.dismiss();
     const cur = rows[i];
     if (cur?.done) {
       // Tap a logged set's check again to undo it (values stay so you can fix and re-log).
