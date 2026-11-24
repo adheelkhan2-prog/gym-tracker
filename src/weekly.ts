@@ -2,13 +2,14 @@
 //
 // Weeks run Monday to Sunday. For every exercise the week's BEST set is the one with the highest
 // estimated one-rep max (Epley) for loaded lifts, the most reps for bodyweight work, or the most
-// seconds for timed holds. Pin-only sets (a machine with no kg per plate set up) are compared by pin,
-// then reps. Everything is computed from the saved logs; nothing extra is stored.
+// seconds for timed holds. Machine-pin lifts (logged by pin) are compared by pin, then reps, and only
+// with other pin sets; kg sets only with kg sets, so the two never get mixed up. Everything is
+// computed from the saved logs; nothing extra is stored.
 
 import { targetBottom, stepFor } from './sets';
 import { targetTop, type PlannedExercise } from './data/program';
 import { EXERCISES, type LogKind } from './data/exercises';
-import { fromKg, round1, toKg, type MachineSetup, type Unit } from './load';
+import { fromKg, loadTypeOf, round1, toKg, type MachineSetup, type Unit } from './load';
 import { addDays, dateFromKey, doneSets, est1RM, kindOf, num, setKg, todayKey, weekKeys, type SetEntry, type State } from './store';
 
 export type Best = {
@@ -29,23 +30,30 @@ const loaded = (k: LogKind) => k === 'weight_reps' || k === 'weight_time';
 /** Monday of the week containing `date`. */
 export const weekStart = (date = todayKey()) => weekKeys(date)[0];
 
-function scoreOf(s: SetEntry, kind: LogKind, machine?: MachineSetup) {
+/** Pin mode: the exercise is logged by machine pin right now. */
+const pinMode = (state: State, exerciseId: string) => loadTypeOf(exerciseId, state.loadTypes) === 'stack';
+
+function scoreOf(s: SetEntry, kind: LogKind, machine: MachineSetup | undefined, pins: boolean) {
   const reps = num(s.reps) ?? 0;
   if (!loaded(kind)) return { kg: null, reps, score: reps };
   const kg = setKg(s, machine);
-  if (kg !== null) return { kg, reps, score: kind === 'weight_reps' ? est1RM(kg, reps) : kg * 1000 + reps };
-  const pin = s.load?.pin ?? 0;
-  return { kg: null, pin, reps, score: pin * 1000 + reps };
+  const pin = s.load?.pin;
+  // Pin lifts rank by pin then reps (kg per plate, if set, is shown but doesn't change the order).
+  if (pins) return { kg, pin, reps, score: (pin ?? 0) * 1000 + reps };
+  return { kg, reps, score: kg === null ? 0 : kind === 'weight_reps' ? est1RM(kg, reps) : kg * 1000 + reps };
 }
 
 /** Best set of an exercise across the given dates (null when it wasn't done). */
 export function bestIn(state: State, exerciseId: string, dates: string[]): Best | null {
   const kind = kindOf(exerciseId);
   const machine = state.machines[exerciseId];
+  const pins = loaded(kind) && pinMode(state, exerciseId);
   let best: Best | null = null;
   for (const date of dates) {
     for (const s of doneSets(state.logs[date]?.[exerciseId], kind)) {
-      const sc = scoreOf(s, kind, machine);
+      // Compare like with like: pin sets in pin mode, kg sets otherwise.
+      if (loaded(kind) && (s.load?.pin !== undefined) !== pins) continue;
+      const sc = scoreOf(s, kind, machine, pins);
       if (!best || sc.score > best.score) best = { date, set: s, ...sc };
     }
   }
@@ -58,7 +66,7 @@ const weekDates = (monday: string) => Array.from({ length: 7 }, (_, i) => addDay
 export function bestText(b: Best, kind: LogKind, unit: Unit) {
   if (kind === 'reps') return `${b.reps} reps`;
   if (kind === 'time') return `${b.reps} s`;
-  const load = b.kg !== null ? `${round1(fromKg(b.kg, unit))} ${unit}` : b.pin ? `Pin ${b.pin}` : '—';
+  const load = b.pin !== undefined ? `Pin ${b.pin}` : b.kg !== null ? `${round1(fromKg(b.kg, unit))} ${unit}` : '—';
   return `${load} × ${b.reps}${kind === 'weight_time' ? ' s' : ''}`;
 }
 
@@ -77,11 +85,11 @@ export function compareWeeks(state: State, exerciseId: string, today = todayKey(
   const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const parts: string[] = [];
   if (loaded(kind)) {
-    if (thisWeek.kg !== null && lastWeek.kg !== null) {
+    if (thisWeek.pin !== undefined && lastWeek.pin !== undefined) {
+      if (thisWeek.pin !== lastWeek.pin) parts.push(`${sign(thisWeek.pin - lastWeek.pin)} pin`);
+    } else if (thisWeek.kg !== null && lastWeek.kg !== null) {
       const d = Math.round((fromKg(thisWeek.kg, unit) - fromKg(lastWeek.kg, unit)) * 10) / 10;
       if (d !== 0) parts.push(`${sign(d)} ${unit}`);
-    } else if (thisWeek.pin !== undefined && lastWeek.pin !== undefined && thisWeek.pin !== lastWeek.pin) {
-      parts.push(`${sign(thisWeek.pin - lastWeek.pin)} pin`);
     }
   }
   const dr = thisWeek.reps - lastWeek.reps;
@@ -192,11 +200,11 @@ export function weeklyTarget(state: State, exerciseId: string, plan: PlannedExer
   }
   if (capped && base.reps < top!) {
     const reps = Math.max(base.reps + 1, bottom ?? 0);
-    return { kg: base.kg, pin: base.pin, reps, text: textFor(base.kg, base.pin, reps, unit), lastText, reason: 'reps' };
+    return { kg: base.pin !== undefined ? null : base.kg, pin: base.pin, reps, text: textFor(base.pin !== undefined ? null : base.kg, base.pin, reps, unit), lastText, reason: 'reps' };
   }
   // Top of the range reached (or no range): smallest step up, reps back to the bottom.
   const reps = bottom ?? base.reps;
-  if (base.kg === null && base.pin !== undefined) return { kg: null, pin: base.pin + 1, reps, text: textFor(null, base.pin + 1, reps, unit), lastText, reason: 'weight' };
+  if (base.pin !== undefined) return { kg: null, pin: base.pin + 1, reps, text: textFor(null, base.pin + 1, reps, unit), lastText, reason: 'weight' };
   const step = stepFor(unit);
   const inUnit = base.kg === null ? 0 : Math.round(fromKg(base.kg, unit) / step) * step + step;
   const kg = toKg(inUnit, unit);
@@ -226,6 +234,6 @@ export function weeklySeries(state: State, exerciseId: string, n = 12, today = t
 /** The number a weekly chart plots for a best set, in the user's unit: e1RM / kg, pin, reps or seconds. */
 export function chartValue(b: Best, kind: LogKind, unit: Unit) {
   if (!loaded(kind)) return b.reps;
-  if (b.kg === null) return b.pin ?? 0;
+  if (b.pin !== undefined || b.kg === null) return b.pin ?? 0;
   return Math.round(fromKg(kind === 'weight_reps' ? est1RM(b.kg, b.reps) : b.kg, unit) * 10) / 10;
 }

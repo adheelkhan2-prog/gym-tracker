@@ -12,15 +12,21 @@ appId: com.gymtracker.app
 - repeat:
     times: 10
     commands:
-      - tapOn: "Settings"
+      - tapOn:
+          id: "tab-settings"
       - runFlow: no-errors.yaml
-      - tapOn: "Today"
+      - tapOn:
+          id: "tab-index"
       - runFlow: no-errors.yaml
-      - tapOn: "Supps"
+      - tapOn:
+          id: "tab-supplements"
       - runFlow: no-errors.yaml
-      - tapOn: "Today"
+      - tapOn:
+          id: "tab-index"
       - runFlow: no-errors.yaml
-      - tapOn: "Progress"
+      - tapOn:
+          id: "tab-progress"
       - runFlow: no-errors.yaml
-      - tapOn: "Today"
+      - tapOn:
+          id: "tab-index"
       - runFlow: no-errors.yaml

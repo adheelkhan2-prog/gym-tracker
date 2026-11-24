@@ -435,9 +435,23 @@ export function dayHasWork(state: State, dayId: string | null | undefined) {
 
 const scheduled = (state: State, date: string) => dayHasWork(state, state.week[dateFromKey(date).getDay()]);
 
-/** Consecutive scheduled training days trained. Rest days don't break it; today doesn't until it's over. */
+/**
+ * Consecutive scheduled training days trained. Rest days don't break it; today doesn't until it's over.
+ * Rotating plans have no fixed weekdays: the streak breaks after 3+ days in a row without training.
+ */
 export function trainingStreak(state: State, today = todayKey()) {
   let n = 0;
+  if (activeProgram(state).rotation) {
+    let gap = 0;
+    for (let i = 0; i < 400; i++) {
+      const d = addDays(today, -i);
+      if (trainedOn(state, d)) {
+        n++;
+        gap = 0;
+      } else if (i > 0 && ++gap >= 3) break;
+    }
+    return n;
+  }
   for (let i = 0; i < 400; i++) {
     const d = addDays(today, -i);
     const isScheduled = scheduled(state, d);
@@ -484,7 +498,9 @@ export function weeklyMuscleSets(state: State, keys = weekKeys()) {
 
 export function weekSummary(state: State, today = todayKey()) {
   const keys = weekKeys(today);
-  const planned = keys.filter((d) => scheduled(state, d)).length;
+  // A rotating plan has no weekdays: plan one session per day in the rotation (at most 7).
+  const program = activeProgram(state);
+  const planned = program.rotation ? Math.min(7, program.days.filter((d) => d.exercises.length).length) : keys.filter((d) => scheduled(state, d)).length;
   const trained = keys.filter((d) => trainedOn(state, d)).length;
   const prs = keys.reduce((n, d) => n + prSetsOn(state.logs, d).length, 0);
   const supps = keys.filter((d) => allTaken(state, d)).length;

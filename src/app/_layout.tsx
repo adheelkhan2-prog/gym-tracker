@@ -9,7 +9,7 @@ import { Figtree_800ExtraBold } from '@expo-google-fonts/figtree/800ExtraBold';
 import { useFonts } from 'expo-font';
 import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -48,9 +48,14 @@ function useWantedScheme(): Scheme {
  * the screen you were on.
  */
 function ThemeGate({ children }: { children: React.ReactNode }) {
-  const want = useWantedScheme();
+  const wanted = useWantedScheme();
   const path = usePathname();
   const params = useGlobalSearchParams<Record<string, string>>();
+  // Switching themes rebuilds the screens. Never do that mid-workout (it would drop the rest timer
+  // and what you typed): a phone switching to dark mode at sunset waits until you leave the workout.
+  const busy = path.startsWith('/workout') || path.startsWith('/complete');
+  const [want, setWant] = useState(wanted);
+  if (!busy && want !== wanted) setWant(wanted);
   // Set the palette before the children render (idempotent; only does work on a change).
   applyScheme(want);
   const where = useRef({ path, params });

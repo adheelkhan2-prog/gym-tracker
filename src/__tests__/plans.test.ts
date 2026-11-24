@@ -1,6 +1,6 @@
 /** Rotating plans: each workout is the next day in order. */
 import { PROGRAMS, type Program } from '../data/programs';
-import { DEFAULT_STATE, type State } from '../store';
+import { DEFAULT_STATE, trainingStreak, weekSummary, type State } from '../store';
 import { nextInRotation, todayDayId } from '../workout';
 
 const rot: Program = {
@@ -38,3 +38,15 @@ test('weekday plans are unchanged', () => {
   const st: State = { ...DEFAULT_STATE, programId: 'upper5', week: PROGRAMS[0].week, logs: {}, sessions: {} };
   expect(todayDayId(st, '2026-11-24', 2).id).toBe(PROGRAMS[0].week[2]);
 });
+
+test('rotating plans: the streak survives rest days and breaks after 3+ days off', () => {
+  const s = done('2026-11-23', 'rC', done('2026-11-21', 'rB', done('2026-11-20', 'rA', base)));
+  expect(trainingStreak(s, '2026-11-24')).toBe(3); // one or two rest days in between are fine
+  const gap = done('2026-11-16', 'rC', s);
+  expect(trainingStreak(gap, '2026-11-24')).toBe(3); // 17-19 Nov: 3 days off broke it
+});
+
+test('rotating plans plan one session per rotation day in the week summary', () => {
+  expect(weekSummary(base, '2026-11-24').planned).toBe(3);
+});
+

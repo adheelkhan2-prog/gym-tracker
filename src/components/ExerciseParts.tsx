@@ -35,7 +35,7 @@ export function mediaFor(exerciseId: string, userVideos: Record<string, OwnVideo
  * The exercise's moving picture: your own recording, else the bundled video (muted, looping), else
  * the start/end stills cross-fading, else a photo. Tap to pause / play. Reduce motion starts paused.
  */
-export function ExerciseMedia({ exerciseId, height = 300, label }: { exerciseId: string; height?: number; label?: string }) {
+export function ExerciseMedia({ exerciseId, height = 300, label, active = true }: { exerciseId: string; height?: number; label?: string; /** Off-screen cards show a still instead of decoding video. */ active?: boolean }) {
   const { state } = useStore();
   const m = mediaFor(exerciseId, state.userVideos);
   const name = label ?? EXERCISES[exerciseId]?.name ?? 'Exercise';
@@ -63,6 +63,15 @@ export function ExerciseMedia({ exerciseId, height = 300, label }: { exerciseId:
     );
   }
   const isVideo = m.kind === 'mine' || m.kind === 'video';
+  if (isVideo && !active) {
+    // Not on screen: no video player at all (saves battery and memory on a long workout).
+    const poster = howToImages(exerciseId);
+    return (
+      <View style={[s.photo, s.stage, { height }]} accessibilityLabel={`${name} video`} testID="exercise-video-idle">
+        {poster ? <Image source={poster.start} style={s.img} resizeMode={poster.clay ? 'contain' : 'cover'} /> : <Icon name="video" size={28} color={color.muted} />}
+      </View>
+    );
+  }
   return (
     <Press
       onPress={() => setPaused((v) => !v)}

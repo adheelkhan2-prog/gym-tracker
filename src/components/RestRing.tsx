@@ -141,7 +141,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
         <Press onPress={onAdd} style={s.barBtn} accessibilityRole="button" accessibilityLabel="Add 15 seconds" glow={tint}>
           <Text style={s.barBtnText}>+15s</Text>
         </Press>
-        <Press onPress={skip} style={[s.barBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
+        <Press onPress={skip} testID="rest-skip" style={[s.barBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
           <Text style={[s.barBtnText, { color: tint }]}>{skipLabel}</Text>
         </Press>
       </Animated.View>
@@ -191,7 +191,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
             <Icon name="plus" size={20} color={color.text} />
             <Text style={s.bigBtnText}>15s</Text>
           </Press>
-          <Press onPress={skip} style={[s.bigBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
+          <Press onPress={skip} testID="rest-skip" style={[s.bigBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
             <Text style={[s.bigBtnText, { color: tint }]}>{skipLabel}</Text>
             <Icon name="arrowRight" size={20} color={tint} />
           </Press>
@@ -203,7 +203,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
 }
 
 const s = themed(() => StyleSheet.create({
-  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,4,5,0.97)' },
+  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.bg },
   fullInner: { flex: 1, alignItems: 'center', justifyContent: 'space-between' },
   count: { fontFamily: font.display, fontSize: size.mega, lineHeight: leading.mega, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -1 },
   next: { fontFamily: font.bodyBold, fontSize: size.body, color: color.muted, marginTop: space.xs, maxWidth: '80%' },

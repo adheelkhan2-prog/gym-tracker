@@ -37,3 +37,13 @@ test('screens never import the 3D stack, video or audio directly (they go throug
   const routes: string = execSync("find src/app -name '*.tsx'", { cwd: root }).toString();
   for (const f of routes.split('\n').filter(Boolean)) expect(readFileSync(join(root, f), 'utf8')).toContain('as ErrorBoundary');
 });
+
+test('release builds have no INTERNET permission; debug builds keep it for the dev server', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const plugin = require('../../plugins/withOfflineRelease');
+  expect(plugin.MANIFEST).toMatch(/android\.permission\.INTERNET" tools:node="remove"/);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const app = require('../../app.json');
+  expect(app.expo.plugins).toContain('./plugins/withOfflineRelease');
+  expect(app.expo.android.blockedPermissions ?? []).not.toContain('android.permission.INTERNET');
+});

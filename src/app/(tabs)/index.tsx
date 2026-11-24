@@ -17,6 +17,7 @@ import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
 import { haptic } from '../../feedback';
 import {
   activeProgram,
+  addDays,
   allTaken,
   applyPending,
   dateFromKey,
@@ -31,7 +32,7 @@ import {
   weekKeys,
 } from '../../store';
 import { bottomClearance, color, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
-import { WARMUP, dayProgress, subtitleOf, titleOf, todayDayId } from '../../workout';
+import { WARMUP, dayProgress, nextInRotation, subtitleOf, titleOf, todayDayId } from '../../workout';
 import { levelFor, rankFor, totalXp } from '../../xp';
 
 export default function TodayScreen() {
@@ -87,6 +88,11 @@ export default function TodayScreen() {
   };
 
   const nextTraining = (() => {
+    if (program.rotation) {
+      // After today's session (or today, if not trained yet), the next day in the rotation.
+      const id = trainedOn(state, date) ? nextInRotation(state, addDays(date, 1)) : which.scheduled;
+      return id && dayById(state, id) ? { when: trainedOn(state, date) ? 'next' : 'up today', id } : null;
+    }
     for (let i = 1; i <= 7; i++) {
       const id = state.week[(weekday + i) % 7];
       if (id && dayHasWork(state, id)) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(weekday + i) % 7]}`, id };
@@ -97,10 +103,16 @@ export default function TodayScreen() {
   const warmDone = !!state.warmups[date];
   const suppsDone = allTaken(state, date);
   // One tile per weekday that has a workout in your day order (Mon-first).
-  const pass = weekKeys(date)
-    .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
-    .filter((x) => dayHasWork(state, state.week[x.wd]))
-    .map((x) => ({ ...x, id: state.week[x.wd]! }));
+  // Rotating plans have no weekdays: every day of the week gets a tile, showing the day you trained
+  // on it (or today's next day); the count is out of the rotation's length.
+  const pass = program.rotation
+    ? weekKeys(date)
+        .map((d) => ({ d, wd: dateFromKey(d).getDay(), id: (trainedOn(state, d) ? state.sessions[d]?.dayId : d === date ? which.scheduled : null) ?? '' }))
+    : weekKeys(date)
+        .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
+        .filter((x) => dayHasWork(state, state.week[x.wd]))
+        .map((x) => ({ ...x, id: state.week[x.wd]! }));
+  const passPlanned = program.rotation ? Math.min(7, program.days.length) : pass.length;
   const shownWd = picked ? picked.wd : weekday;
   const mins = progress ? Math.round(progress.total * 2.6) : 0;
   const cta = which.preview ? 'Train' : finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
@@ -190,7 +202,7 @@ export default function TodayScreen() {
         <View style={s.sectionHead}>
           <Text style={type.label}>This week</Text>
           <Text style={s.sectionCount}>
-            {pass.filter((x) => trainedOn(state, x.d)).length} of {pass.length}
+            {pass.filter((x) => trainedOn(state, x.d)).length} of {passPlanned}
           </Text>
         </View>
         <View style={s.pass}>
@@ -201,7 +213,9 @@ export default function TodayScreen() {
             return (
               <Press
                 key={d}
+                disabled={!id}
                 onPress={() => {
+                  if (!id) return;
                   haptic.tap();
                   setPicked(isToday ? null : { id, wd, d });
                 }}

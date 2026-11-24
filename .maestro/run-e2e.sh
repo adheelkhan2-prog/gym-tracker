@@ -23,7 +23,10 @@ diagnose() {
   maestro hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|resource-id)" *: *"[^"]+"' | head -120 || true
   echo "::endgroup::"
   echo "::group::Diagnostics: app log (ReactNativeJS / crashes)"
-  adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime|FATAL|ReactNative|com.gymtracker" | tail -150 || true
+  adb logcat -d -s ReactNativeJS:V ReactNative:W AndroidRuntime:E DEBUG:F libc:F | tail -150 || true
+  echo "::endgroup::"
+  echo "::group::Diagnostics: last Maestro steps"
+  find "$OUT" -name 'maestro.log' -newer "$OUT/.start" -print0 2>/dev/null | xargs -0 -r tail -n 40 | cut -c1-300 || true
   echo "::endgroup::"
   echo "::group::Diagnostics: current activity"
   adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | head -5 || true
@@ -31,8 +34,22 @@ diagnose() {
 }
 trap 'diagnose' ERR
 
+# Run each flow on its own so the diagnostics show the screen at the moment that flow failed.
+run_flows() {
+  local tag="$1" failed=0
+  for f in ${FLOWS:-.maestro/smoke.yaml .maestro/workout.yaml}; do
+    touch "$OUT/.start"
+    if ! maestro test --format junit --output "$OUT/report-$tag-$(basename "$f" .yaml).xml" --test-output-dir "$OUT/$tag" --debug-output "$OUT/$tag-debug" "$f"; then
+      echo "FAILED: $f ($tag)"; diagnose; failed=1
+    fi
+  done
+  return $failed
+}
+
 echo "== Run 1: network ON (any request would show up in the app's traffic counters)"
-maestro test --format junit --output "$OUT/report-online.xml" --test-output-dir "$OUT/online" ${FLOWS:-.maestro/smoke.yaml .maestro/workout.yaml}
+trap - ERR
+run_flows online || { echo "Online run failed"; exit 1; }
+trap 'diagnose' ERR
 adb shell dumpsys netstats detail > "$OUT/netstats.txt" || true
 APP_UID=$(adb shell dumpsys package "$PKG" | grep -m1 -o 'userId=[0-9]*' | cut -d= -f2)
 echo "app uid: $APP_UID"
@@ -43,7 +60,8 @@ echo "== Run 2: network OFF (airplane mode): the app must work fully offline"
 adb shell cmd connectivity airplane-mode enable || adb shell settings put global airplane_mode_on 1
 adb shell svc wifi disable || true
 adb shell svc data disable || true
-maestro test --format junit --output "$OUT/report-offline.xml" --test-output-dir "$OUT/offline" ${FLOWS:-.maestro/smoke.yaml .maestro/workout.yaml}
+trap - ERR
+run_flows offline || { echo "Offline run failed"; exit 1; }
 
 adb logcat -d > "$OUT/logcat.txt"
 if grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $PKG|ReactNativeJS: .*(TypeError|ReferenceError|Unhandled)" "$OUT/logcat.txt"; then

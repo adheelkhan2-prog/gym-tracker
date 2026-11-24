@@ -18,7 +18,8 @@ export const ORDER = [1, 2, 3, 4, 5, 6, 0];
 /** Red where the program trains hardest across a week. */
 export function programPaint(p: Program): PaintMap {
   const load: Partial<Record<MuscleId, number>> = {};
-  for (const wd of p.week) {
+  // A rotating plan trains each day once per cycle; a weekday plan as often as its week uses it.
+  for (const wd of p.rotation ? p.days.map((x) => x.id) : p.week) {
     const d = p.days.find((x) => x.id === wd);
     if (!d) continue;
     for (const e of d.exercises) {

@@ -51,17 +51,26 @@ appId: com.gymtracker.app
           id: "log-0-0"
       - runFlow:
           when:
-            visible: "Skip"
+            visible:
+              id: "rest-skip"
           commands:
-            - tapOn: "Skip"
+            - tapOn:
+                id: "rest-skip"
       # Second set reuses the first set's numbers: one tap.
+      - hideKeyboard
+      - scrollUntilVisible:
+          element:
+            id: "log-0-1"
+          direction: DOWN
       - tapOn:
           id: "log-0-1"
       - runFlow:
           when:
-            visible: "Skip"
+            visible:
+              id: "rest-skip"
           commands:
-            - tapOn: "Skip"
+            - tapOn:
+                id: "rest-skip"
       - runFlow: no-errors.yaml
       # Swap the second exercise to its first alternative (or back to the original).
       - scrollUntilVisible:
@@ -92,9 +101,11 @@ appId: com.gymtracker.app
           id: "log-1-0"
       - runFlow:
           when:
-            visible: "Skip"
+            visible:
+              id: "rest-skip"
           commands:
-            - tapOn: "Skip"
+            - tapOn:
+                id: "rest-skip"
       # Finish: saved first, then the celebration.
       - scrollUntilVisible:
           element:

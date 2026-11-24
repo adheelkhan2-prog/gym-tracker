@@ -55,6 +55,7 @@ function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={t.title}
+                testID={`tab-${route.name}`}
                 style={s.tab}
                 glow={color.accent}
               >

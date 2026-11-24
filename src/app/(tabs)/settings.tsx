@@ -135,9 +135,15 @@ export default function SettingsScreen() {
           <Text style={type.h3}>{program.name}</Text>
           <Text style={type.small}>{program.focus}</Text>
         </View>
-        <Text style={type.label}>Day order</Text>
-        <WeekMapper program={program} week={state.week} onChange={(week) => update((st) => ({ ...st, week }))} />
-        <Button size="sm" variant="ghost" label="Reset to the program’s default week" onPress={() => update((st) => ({ ...st, week: program.week }))} />
+        {program.rotation ? (
+          <Text style={type.small}>Rotating plan: each session is the next day in order ({program.days.map((d) => d.name).join(' → ')}). Change it in Programs.</Text>
+        ) : (
+          <>
+            <Text style={type.label}>Day order</Text>
+            <WeekMapper program={program} week={state.week} onChange={(week) => update((st) => ({ ...st, week }))} />
+            <Button size="sm" variant="ghost" label="Reset to the program’s default week" onPress={() => update((st) => ({ ...st, week: program.week }))} />
+          </>
+        )}
       </Glass>
 
       <SectionTitle>Credits</SectionTitle>

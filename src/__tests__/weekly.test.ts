@@ -43,8 +43,17 @@ describe('this week vs last week', () => {
     expect(compareWeeks(st({ '2026-11-17': { flat_bench: { sets: [kg(60, 8)] } } }), 'flat_bench', TODAY).trend).toBeNull();
   });
   test('the board lists every exercise done this week', () => {
-    const s = st({ '2026-11-24': { flat_bench: { sets: [kg(60, 8)] }, lat_pulldown: { sets: [kg(50, 10)] } }, '2026-11-10': { cable_fly: { sets: [kg(10, 12)] } } });
+    const s = st({ '2026-11-24': { flat_bench: { sets: [kg(60, 8)] }, lat_pulldown: { sets: [kg(50, 10)] } }, '2026-11-10': { cable_fly: { sets: [kg(10, 12)] } } }, { loadTypes: { lat_pulldown: 'weight' } });
     expect(weekBoard(s, TODAY).map((r) => r.exerciseId).sort()).toEqual(['flat_bench', 'lat_pulldown']);
+  });
+  test('kg sets and pin sets of one machine are never compared with each other', () => {
+    const pinSet = (p: number, r: number): SetEntry => ({ weight: '', reps: String(r), done: true, load: { t: 'stack', pin: p } });
+    const logs = { '2026-10-27': { seated_cable_row: { sets: [kg(60, 10)] } }, '2026-11-17': { seated_cable_row: { sets: [pinSet(5, 10)] } }, '2026-11-24': { seated_cable_row: { sets: [pinSet(5, 11)] } } };
+    // Pin mode (machine default): only pin sets count; the old kg set is not a "PR" to beat or to lose to.
+    expect(compareWeeks(st(logs), 'seated_cable_row', TODAY)).toMatchObject({ trend: 'up', change: '+1 rep' });
+    expect(weeklyPRs(st(logs), TODAY).map((p) => p.exerciseId)).toEqual(['seated_cable_row']);
+    // kg mode: only the kg set exists, nothing this week.
+    expect(compareWeeks(st(logs, { loadTypes: { seated_cable_row: 'weight' } }), 'seated_cable_row', TODAY).thisWeek).toBeNull();
   });
 });
 
@@ -99,6 +108,11 @@ describe('target this week (progressive overload)', () => {
     const p = { slot: 'tue-1', options: ['lat_pulldown'], sets: 3, target: '10-12' };
     const s = st({ '2026-11-17': { lat_pulldown: { sets: [{ weight: '', reps: '12', done: true, load: { t: 'stack', pin: 6 } }] } } });
     expect(weeklyTarget(s, 'lat_pulldown', p, TODAY)).toMatchObject({ pin: 7, reps: 10, text: 'Pin 7 × 10' });
+  });
+  test('machine pin with kg per plate set up: the target stays a pin (one pin up), never a hidden kg', () => {
+    const p = { slot: 'tue-1', options: ['lat_pulldown'], sets: 3, target: '10-12' };
+    const s = st({ '2026-11-17': { lat_pulldown: { sets: [{ weight: '42', u: 'kg', reps: '12', done: true, load: { t: 'stack', pin: 6 } }] } } }, { machines: { lat_pulldown: { perPlate: 7 } } });
+    expect(weeklyTarget(s, 'lat_pulldown', p, TODAY)).toMatchObject({ pin: 7, kg: null, reps: 10, text: 'Pin 7 × 10' });
   });
   test('no set last week: uses the most recent week; never done: a first-time hint', () => {
     const s = st({ '2026-11-03': { flat_bench: { sets: [kg(60, 6)] } } });
