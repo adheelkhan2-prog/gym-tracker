@@ -39,10 +39,10 @@ test('screens never import the 3D stack, video or audio directly (they go throug
 });
 
 test('release builds have no INTERNET permission; debug builds keep it for the dev server', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const plugin = require('../../plugins/withOfflineRelease');
   expect(plugin.MANIFEST).toMatch(/android\.permission\.INTERNET" tools:node="remove"/);
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const app = require('../../app.json');
   expect(app.expo.plugins).toContain('./plugins/withOfflineRelease');
   expect(app.expo.android.blockedPermissions ?? []).not.toContain('android.permission.INTERNET');

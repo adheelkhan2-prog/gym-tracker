@@ -60,7 +60,8 @@ export default function CompleteScreen() {
     // Volume is summed in kg, shown in your unit.
     const volume = Math.round(fromKg(volumeOn(state, date), state.unit));
     const prevDate = dayId ? previousSameDay(state, date, dayId) : null;
-    const change = prevDate ? pctChange(volume, Math.round(fromKg(volumeOn(state, prevDate), state.unit))) : null;
+    // No kg logged (e.g. machine pins without kg per plate): nothing to compare, so no "-100%".
+    const change = prevDate && volume > 0 ? pctChange(volume, Math.round(fromKg(volumeOn(state, prevDate), state.unit))) : null;
     // Logs can hold exercises this version no longer knows (kept on update): skip those here.
     const prs = prSetsOn(state.logs, date).filter((p) => EXERCISES[p.exerciseId]).map((p) => {
       const kind = EXERCISES[p.exerciseId].kind;
@@ -245,10 +246,11 @@ export default function CompleteScreen() {
           <View style={s.pad}>
             {/* One huge number, not a grid of tiles */}
             <Animated.View entering={enter(0)}>
-              <Text style={s.kicker}>Total volume</Text>
+              {/* Machine pins without kg per plate have no kg: show the sets instead of "0 kg". */}
+              <Text style={s.kicker}>{data.volume > 0 ? 'Total volume' : 'Sets done'}</Text>
               <View style={s.megaRow}>
-                <CountUp to={data.volume} duration={1100} style={[s.mega, { fontSize: data.volume >= 100000 ? size.numXL : width < 380 ? size.mega : size.giga }]} skip={skipped} />
-                <Text style={s.megaUnit}>{state.unit}</Text>
+                <CountUp to={data.volume > 0 ? data.volume : data.sets} duration={1100} style={[s.mega, { fontSize: data.volume >= 100000 ? size.numXL : width < 380 ? size.mega : size.giga }]} skip={skipped} />
+                <Text style={s.megaUnit}>{data.volume > 0 ? state.unit : 'sets'}</Text>
               </View>
               {data.change !== null && (
                 <View style={s.changeRow}>
