@@ -9,6 +9,11 @@ OUT=e2e-out
 mkdir -p "$OUT"
 adb install -r "$APK"
 adb logcat -c
+# Offline by design: the app is built without Android's INTERNET permission.
+if adb shell dumpsys package "$PKG" | grep -q "android.permission.INTERNET: granted=true"; then
+  echo "The app holds the INTERNET permission; it must not"; exit 1
+fi
+echo "INTERNET permission: not held (the OS blocks all network access for the app)"
 export PATH="$PATH:$HOME/.maestro/bin"
 
 echo "== Run 1: network ON (any request would show up in the app's traffic counters)"

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { NumberField } from '../../components/ExerciseParts';
 import { clearCrashLog, readCrashLog } from '../../crash';
 import { shareCrashLog } from '../../crashShare';
@@ -205,10 +205,13 @@ export default function SettingsScreen() {
             <Text style={s.creditTitle}>{g.title}</Text>
             <Text style={type.small}>{g.note}</Text>
             {g.links.map((c) => (
-              <Press key={c.url} onPress={() => Linking.openURL(c.url).catch(() => {})} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
-                <Icon name="link" size={16} color={color.accent} />
+              // The app is fully offline: sources are listed as text (selectable to copy), never opened.
+              <View key={c.url} style={s.credit}>
                 <Text style={s.creditText}>{c.label}</Text>
-              </Press>
+                <Text style={s.creditUrl} selectable>
+                  {c.url}
+                </Text>
+              </View>
             ))}
           </View>
         ))}
@@ -323,7 +326,8 @@ const s = StyleSheet.create({
   colorName: { flex: 1, minWidth: 0, minHeight: touch.min, color: color.text, fontFamily: font.bodyBold, fontSize: size.small },
   kg: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   del: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  credit: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch.min, borderRadius: radius.sm },
+  credit: { gap: 2, paddingVertical: space.xs },
+  creditUrl: { fontFamily: font.body, fontSize: size.label, color: color.subtle },
   creditGroup: { marginTop: space.md, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line },
   creditTitle: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text, marginBottom: space.xs },
   creditText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
