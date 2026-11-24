@@ -1,3 +1,1 @@
-r10
-quick
-chain
+stop
