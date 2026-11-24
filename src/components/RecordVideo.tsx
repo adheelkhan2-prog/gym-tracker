@@ -11,6 +11,7 @@ import { crumb, logCrash } from '../crash';
 import { EXERCISES } from '../data/exercises';
 import { haptic } from '../feedback';
 import { safeRequire } from '../safe';
+import { clampTrim, defaultTrim, MAX_LOOP, MIN_LOOP, TRIM_STEP } from '../ownVideo';
 import { useStore, type OwnVideo } from '../store';
 import { color, font, radius, size, space, themed, type } from '../theme';
 import { Icon } from './icons';
@@ -18,10 +19,7 @@ import { LoopVideo } from './LoopVideo';
 import { Sheet } from './Sheet';
 import { Button, Press } from './ui';
 
-/** The longest loop we keep, and the shortest. */
-export const MAX_LOOP = 6;
-export const MIN_LOOP = 1;
-const STEP = 0.5;
+const STEP = TRIM_STEP;
 
 type Picker = typeof import('expo-image-picker');
 type FS = typeof import('expo-file-system');
@@ -51,22 +49,6 @@ function forget(uri: string | undefined) {
   } catch (e) {
     logCrash('error', e, 'deleting own video');
   }
-}
-
-/** Round to the trim step (0.5 s). */
-const snap = (x: number) => Math.round(x / STEP) * STEP;
-
-/** The default loop for a new clip: its first MAX_LOOP seconds (or all of it when shorter). */
-export function defaultTrim(duration: number | undefined) {
-  const d = duration && duration > 0 ? duration : MAX_LOOP;
-  return { start: 0, end: snap(Math.min(MAX_LOOP, d)) || Math.min(MAX_LOOP, d) };
-}
-
-/** Clamp a trim to the clip: start inside it, length between MIN_LOOP and MAX_LOOP seconds. */
-export function clampTrim(start: number, length: number, duration: number) {
-  const len = Math.max(MIN_LOOP, Math.min(MAX_LOOP, length, duration || MAX_LOOP));
-  const s = Math.max(0, Math.min(start, Math.max(0, (duration || len) - len)));
-  return { start: snap(s), end: snap(s) + snap(len) };
 }
 
 /**

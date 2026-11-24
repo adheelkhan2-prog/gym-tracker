@@ -1,8 +1,6 @@
 /** Own exercise videos: the loop you trim (start/length rules) and old saves without trims. */
-import { clampTrim, defaultTrim, MAX_LOOP } from '../components/RecordVideo';
+import { clampTrim, defaultTrim, MAX_LOOP } from '../ownVideo';
 import { DEFAULT_STATE, migrate } from '../store';
-
-jest.mock('../components/LoopVideo', () => ({ LoopVideo: () => null }));
 
 test('a new clip loops its first 6 s (or all of a shorter clip)', () => {
   expect(defaultTrim(20)).toEqual({ start: 0, end: MAX_LOOP });
