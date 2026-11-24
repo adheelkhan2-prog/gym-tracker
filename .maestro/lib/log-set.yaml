@@ -13,7 +13,8 @@ appId: com.gymtracker.app
       - tapOn:
           id: "weight-${CARD}-${SET}"
       - inputText: ${WEIGHT}
-      - hideKeyboard
+# No hideKeyboard: logging the set closes the keyboard (and on Android, hideKeyboard with no
+# keyboard open presses Back).
 - tapOn:
     id: "log-${CARD}-${SET}"
 - extendedWaitUntil:
