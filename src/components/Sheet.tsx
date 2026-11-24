@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, SlideInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -33,6 +33,14 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const y = useSharedValue(0);
+  // A double tap on the button that opened the sheet must not land on the scrim and close it at once.
+  const opened = useRef(0);
+  useEffect(() => {
+    opened.current = Date.now();
+  }, []);
+  const closeFromScrim = () => {
+    if (Date.now() - opened.current > 500) onClose();
+  };
 
   const pan = usePanGesture({
     activeOffsetY: [-8, 8],
@@ -53,7 +61,7 @@ export function Sheet({
   return (
     <Animated.View entering={FadeIn.duration(motion.fast)} style={s.scrim} testID={testID}>
       <Press
-        onPress={onClose}
+        onPress={closeFromScrim}
         tick={false}
         scaleTo={1}
         glow={color.bg}

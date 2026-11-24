@@ -8,6 +8,7 @@ appId: com.gymtracker.app
       ID: "swap-1"
 - tapOn:
     id: "swap-1"
+    retryTapIfNoChange: false
 - extendedWaitUntil:
     visible:
       id: "swap-option-.*"

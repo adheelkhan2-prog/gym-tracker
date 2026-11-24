@@ -53,8 +53,10 @@ crashes() {
 
 network_bytes() {
   local uid
-  uid=$(adb shell dumpsys package "$PKG" | grep -m1 -o 'userId=[0-9]*' | cut -d= -f2)
-  adb shell dumpsys netstats detail | awk -v u="uid=$uid" '$0 ~ u {f=1; next} /uid=/ {f=0} f && /rb=/ {for(i=1;i<=NF;i++){if($i ~ /^rb=/){split($i,a,"=");r+=a[2]} if($i ~ /^tb=/){split($i,b,"=");t+=b[2]}}} END {print r+t}'
+  # "uid:10123" (dumpsys package says appId= on newer Android, so don't parse that).
+  uid=$(adb shell cmd package list packages -U "$PKG" | grep -m1 -o 'uid:[0-9]*' | cut -d: -f2)
+  [ -n "$uid" ] || { echo "unknown-uid"; return; }
+  adb shell dumpsys netstats detail | awk -v u="uid=$uid" '$0 ~ (u "( |$)") {f=1; next} /uid=/ {f=0} f && /rb=/ {for(i=1;i<=NF;i++){if($i ~ /^rb=/){split($i,a,"=");r+=a[2]} if($i ~ /^tb=/){split($i,b,"=");t+=b[2]}}} END {print r+t}'
 }
 
 publish() {

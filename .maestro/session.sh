@@ -50,11 +50,15 @@ while [ $SECONDS -lt $END ]; do
     elif [ "$mode" = full ]; then
       adb shell dumpsys package "$PKG" | grep -q "android.permission.INTERNET: granted=true" && { log "FAIL: the app holds INTERNET"; status=FAILED; }
       adb logcat -c
-      before=$(network_bytes); before=${before:-0}
+      before=$(network_bytes)
       run_flows online full || status=FAILED
-      after=$(network_bytes); after=${after:-0}
-      log "app network bytes during the online run: $((after - before))"
-      [ "$((after - before))" -gt 0 ] && status=FAILED
+      after=$(network_bytes)
+      if [[ "$before" =~ ^[0-9]+$ && "$after" =~ ^[0-9]+$ ]]; then
+        log "app network bytes during the online run: $((after - before))"
+        [ "$((after - before))" -gt 0 ] && status=FAILED
+      else
+        log "FAIL: could not read the app's traffic counters ($before / $after)"; status=FAILED
+      fi
       adb shell cmd connectivity airplane-mode enable || true
       adb shell svc wifi disable || true; adb shell svc data disable || true
       run_flows airplane full || status=FAILED
