@@ -6,6 +6,7 @@ import { BodyModel, type PaintMap } from '../../components/body/BodyModel';
 import { Glass } from '../../components/glass';
 import { Icon } from '../../components/icons';
 import { LineChart } from '../../components/LineChart';
+import { WeeklyTracker } from '../../components/WeeklyTracker';
 import { CountUp } from '../../components/motion';
 import { Chip, Progress, Screen, SectionTitle } from '../../components/ui';
 import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
@@ -162,6 +163,9 @@ export default function ProgressScreen() {
           <Text style={s.tickNum}>{week.supps}</Text>/{week.daysSoFar} supps
         </Text>
       </Animated.View>
+
+      {/* Weekly PRs, stalled lifts, this week vs last week */}
+      <WeeklyTracker today={todayKey()} />
 
       <SectionTitle>Muscle heat map</SectionTitle>
       <Glass strong r={radius.xxl} style={{ overflow: 'hidden' }}>
