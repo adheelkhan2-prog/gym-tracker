@@ -1,4 +1,4 @@
-// The original Mon–Fri upper-body split ("Upper Body 5-Day (Injury)"). Sat and Sun are rest days.
+// The original Mon–Fri upper-body split ("Upper Body 5-Day"). Sat and Sun are rest days.
 
 import { EXERCISES } from './exercises';
 

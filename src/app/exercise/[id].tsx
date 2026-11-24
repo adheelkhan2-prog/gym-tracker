@@ -180,7 +180,7 @@ export default function ExerciseScreen() {
   const nextSetIdx = sets.findIndex((x) => !x.done);
   // Never offer an exercise another slot already uses today: logs are kept per exercise, so two slots would share one log.
   const taken = new Set(plans.filter((x) => x !== plan).map((x) => exerciseFor(state, x)));
-  const swaps = swapsFor(original, state.injured).filter((x) => !taken.has(x.id));
+  const swaps = swapsFor(original).filter((x) => !taken.has(x.id));
   const swapped = id !== original;
 
   // ----- Weights in your unit -----

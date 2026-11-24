@@ -505,7 +505,7 @@ export default function FocusScreen() {
         <SwapSheet
           original={planned}
           current={id}
-          swaps={swapsFor(planned, state.injured).filter((x) => x.id === id || !statuses.some((o) => o !== st && o.exerciseId === x.id))}
+          swaps={swapsFor(planned).filter((x) => x.id === id || !statuses.some((o) => o !== st && o.exerciseId === x.id))}
           note={
             slotSet > 0
               ? `Same primary muscles only. Sets you've logged stay under the exercise you did them on; the remaining ${Math.max(0, plan.sets - slotSet)} continue on the new one.`

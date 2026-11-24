@@ -1,5 +1,5 @@
 import { MORE } from './exercises-more';
-import { INJURY_REGIONS, type MuscleId } from './muscles';
+import type { MuscleId } from './muscles';
 
 /**
  * How a set is logged:
@@ -584,5 +584,3 @@ export const EXERCISES: Record<string, ExerciseInfo> = Object.fromEntries(
 
 export const EXERCISE_LIST = Object.values(EXERCISES);
 
-/** Trains legs or abs as a main muscle: hidden while injury mode is on. */
-export const loadsInjury = (id: string) => (EXERCISES[id]?.primary ?? []).some((m) => INJURY_REGIONS.has(m));

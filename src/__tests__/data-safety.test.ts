@@ -26,7 +26,6 @@ function richState(): State {
     unit: 'kg',
     programId: 'ppl6',
     week: ['ppl-legs-b', 'ppl-push-a', 'ppl-pull-a', null, 'ppl-push-b', 'ppl-pull-b', 'ppl-legs-a'],
-    injured: false,
     restSound: false,
     blur: false,
     supplements: ['Creatine', 'Protein'],
@@ -43,8 +42,6 @@ function richState(): State {
     machines: { lat_pulldown: { perPlate: 7, start: 7 } },
     customPrograms: [],
     pending: null,
-    easeInFrom: '2026-11-01',
-    easeInDismissed: true,
     warmups: { '2026-11-20': true },
     sessions: {
       '2026-11-18': { dayId: 'mon', startedAt: 1, finishedAt: 2 },
@@ -103,7 +100,7 @@ describe('update keeps saved data', () => {
     expect(s.variants).toEqual(saved.variants);
     expect(s.loadTypes).toEqual(saved.loadTypes);
     expect(s.machines).toEqual(saved.machines);
-    expect([s.unit, s.injured, s.restSound, s.blur, s.remindersOn]).toEqual(['kg', false, false, false, true]);
+    expect([s.unit, s.restSound, s.blur, s.remindersOn]).toEqual(['kg', false, false, true]);
     expect(s.reminderTimes).toEqual(['07:30', '13:00', '19:00']);
   });
 

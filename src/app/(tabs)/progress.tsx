@@ -9,7 +9,7 @@ import { LineChart } from '../../components/LineChart';
 import { CountUp } from '../../components/motion';
 import { Chip, Progress, Screen, SectionTitle } from '../../components/ui';
 import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
-import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
+import { MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, round1 } from '../../load';
 import { addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { bottomClearance, color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
@@ -50,9 +50,8 @@ export default function ProgressScreen() {
       const c = heatColor(n);
       if (c) p[m] = { color: c, glow: n >= heat.thresholds[3] ? 0.25 : 0.05 };
     }
-    if (state.injured) for (const m of INJURY_REGIONS) p[m] = { color: color.muscleInjured };
     return p;
-  }, [muscleSets, state.injured]);
+  }, [muscleSets]);
   const topMuscles = (Object.entries(muscleSets) as [MuscleId, number][]).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   // ----- Exercise charts -----
@@ -172,7 +171,6 @@ export default function ProgressScreen() {
             height={420}
             framing="full"
             describe={(m) => {
-              if (state.injured && INJURY_REGIONS.has(m)) return `${MUSCLE_LABEL[m]} · resting (injury)`;
               const n = muscleSets[m] ?? 0;
               return `${MUSCLE_LABEL[m]} · ${n % 1 ? n.toFixed(1) : n} set${n === 1 ? '' : 's'} this week`;
             }}
@@ -191,12 +189,6 @@ export default function ProgressScreen() {
             </Text>
           </View>
         ))}
-        {state.injured && (
-          <View style={s.legendItem}>
-            <View style={[s.swatch, { backgroundColor: color.muscleInjured }]} />
-            <Text style={s.legendText}>Legs & abs: resting (injury)</Text>
-          </View>
-        )}
       </View>
       <Text style={[type.small, { marginTop: space.sm }]}>
         Deeper red = more sets this week. Secondary muscles count as half a set.

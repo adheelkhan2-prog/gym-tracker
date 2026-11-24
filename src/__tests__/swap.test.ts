@@ -9,7 +9,7 @@ const D = '2026-11-23';
 const day = PROGRAMS[0].days.find((d) => d.id === 'mon')!;
 const plan = day.exercises[0]; // flat_bench, 3 sets
 const set = (w: string): SetEntry => ({ weight: w, reps: '10', done: true, u: 'kg' });
-const base: State = { ...DEFAULT_STATE, programId: 'upper5', injured: true, logs: {}, swaps: {}, variants: {} };
+const base: State = { ...DEFAULT_STATE, programId: 'upper5', logs: {}, swaps: {}, variants: {} };
 
 describe('swapping mid-workout', () => {
   test('logged sets stay under the original; the remaining sets continue on the new exercise', () => {
@@ -48,7 +48,7 @@ describe('swapping mid-workout', () => {
 describe('swap options', () => {
   test('every offered swap has exactly the same primary muscles, and there are no "close" options', () => {
     for (const id of Object.keys(EXERCISES)) {
-      for (const sw of swapsFor(id, false)) {
+      for (const sw of swapsFor(id)) {
         expect(samePrimary(id, sw.id)).toBe(true);
         expect(sw.match).toBe('same');
       }
@@ -57,7 +57,7 @@ describe('swap options', () => {
   });
 
   test('exercises with no exact match get no swaps rather than a near miss', () => {
-    expect(swapsFor('db_shoulder_press', false)).toEqual([]);
+    expect(swapsFor('db_shoulder_press')).toEqual([]);
   });
 });
 
@@ -73,5 +73,5 @@ test('every offered swap is listed in exercise-sources.md with at least 2 source
       .map((c) => [`${c[1]}→${c[2]}`, (c[4].match(/\[[A-Z0-9]+\]/g) ?? []).length] as const),
   );
   for (const id of Object.keys(EXERCISES))
-    for (const sw of swapsFor(id, false)) expect(rows.get(`${EXERCISES[id].name}→${EXERCISES[sw.id].name}`)).toBeGreaterThanOrEqual(2);
+    for (const sw of swapsFor(id)) expect(rows.get(`${EXERCISES[id].name}→${EXERCISES[sw.id].name}`)).toBeGreaterThanOrEqual(2);
 });

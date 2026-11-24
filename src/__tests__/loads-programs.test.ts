@@ -3,10 +3,10 @@
  * PRs/charts/volume numbers,
  * programs + injury mode, and How to images for every exercise the app can show.
  */
-import { EXERCISES, loadsInjury } from '../data/exercises';
+import { EXERCISES } from '../data/exercises';
 import { EXERCISE_3D } from '../data/exercise-3d';
 import { howToImages } from '../data/how-to';
-import { PROGRAMS, hasLegWork } from '../data/programs';
+import { PROGRAMS } from '../data/programs';
 import { SWAPS, swapsFor } from '../data/swaps';
 import {
   LB,
@@ -163,33 +163,10 @@ describe('programs and injury mode', () => {
     expect(trainingStreak(after, '2026-11-16')).toBe(trainingStreak(before, '2026-11-16'));
   });
 
-  test('injury mode hides every leg/ab exercise on every program day, and turning it off shows them again', () => {
-    for (const p of PROGRAMS) {
-      for (const d of p.days) {
-        const on = visiblePlans({ ...DEFAULT_STATE, injured: true }, d);
-        expect(on.every((pl) => !loadsInjury(exerciseFor(DEFAULT_STATE, pl)))).toBe(true);
-        const off = visiblePlans({ ...DEFAULT_STATE, injured: false }, d);
-        expect(off).toHaveLength(d.exercises.length);
-      }
-    }
-  });
-
-  test('injury mode never offers a leg/ab swap', () => {
-    for (const id of Object.keys(EXERCISES)) {
-      expect(swapsFor(id, true).some((s) => loadsInjury(s.id))).toBe(false);
-    }
-  });
-
-  test('a swap to a leg/ab exercise is hidden too while injury mode is on', () => {
-    const day = PROGRAMS[0].days[0];
-    const slot = day.exercises[0].slot;
-    const st: State = { ...DEFAULT_STATE, injured: true, swaps: { [slot]: 'back_squat' } };
-    expect(visiblePlans(st, day).some((p) => p.slot === slot)).toBe(false);
-    expect(visiblePlans({ ...st, injured: false }, day).some((p) => p.slot === slot)).toBe(true);
-  });
-
-  test('the Programs list hides programs with leg work in injury mode (only the upper-body split stays)', () => {
-    expect(PROGRAMS.filter((p) => !hasLegWork(p)).map((p) => p.id)).toEqual(['upper5']);
+  test('injury mode is gone: every exercise of every program day shows, and old saves drop the setting', () => {
+    for (const p of PROGRAMS) for (const d of p.days) expect(visiblePlans(DEFAULT_STATE, d)).toHaveLength(d.exercises.length);
+    const old = migrate({ ...DEFAULT_STATE, injured: true, easeInFrom: '2026-11-01', easeInDismissed: false }, false);
+    expect('injured' in old || 'easeInFrom' in old || 'easeInDismissed' in old).toBe(false);
   });
 });
 
@@ -198,7 +175,7 @@ describe('How to images', () => {
   const shown = new Set<string>();
   for (const p of PROGRAMS) for (const d of p.days) for (const e of d.exercises) e.options.forEach((o) => shown.add(o));
   for (const id of [...shown]) {
-    swapsFor(id, false).forEach((s) => shown.add(s.id));
+    swapsFor(id).forEach((s) => shown.add(s.id));
     (SWAPS[id] ?? []).forEach((s) => shown.add(s.id));
   }
 

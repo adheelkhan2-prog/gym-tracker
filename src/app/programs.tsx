@@ -9,19 +9,18 @@ import { Icon } from '../components/icons';
 import { ORDER, SwitchSheet, programPaint } from '../components/ProgramParts';
 import { Badge, Button, IconButton, Press } from '../components/ui';
 import { WEEKDAY_SHORT } from '../data/program';
-import { hasLegWork, trainingDays, type Program } from '../data/programs';
+import { trainingDays, type Program } from '../data/programs';
 import { haptic } from '../feedback';
 import { allPrograms, programById, todayKey, useStore } from '../store';
 import { color, font, leading, radius, size, space, type, touch } from '../theme';
 
 const GAP = space.md;
 
-function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, onEdit }: {
+function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit }: {
   p: Program;
   live: boolean;
   current: boolean;
   pendingFrom?: string;
-  injured: boolean;
   width: number;
   onSwitch: () => void;
   onEdit?: () => void;
@@ -42,7 +41,7 @@ function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, 
         {p.focus}
       </Text>
       <View style={s.model}>
-        {live ? <BodyModel paint={programPaint(p, injured)} height={220} interactive={false} showHint={false} /> : <View style={{ height: 220 }} />}
+        {live ? <BodyModel paint={programPaint(p)} height={220} interactive={false} showHint={false} /> : <View style={{ height: 220 }} />}
       </View>
       <View style={s.week}>
         {ORDER.map((wd) => {
@@ -87,8 +86,7 @@ export default function ProgramsScreen() {
   const { width } = useWindowDimensions();
   const cardW = width - space.lg * 2;
   const all = allPrograms(state);
-  const visible = all.filter((p) => !(state.injured && hasLegWork(p)));
-  const hidden = all.length - visible.length;
+  const visible = all;
   const startIdx = Math.max(0, visible.findIndex((p) => p.id === state.programId));
   const [idx, setIdx] = useState(startIdx);
   const pager = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -158,7 +156,6 @@ export default function ProgramsScreen() {
               live={i === idx}
               current={p.id === state.programId}
               pendingFrom={state.pending?.programId === p.id ? pendingFrom : undefined}
-              injured={state.injured}
               width={cardW}
               onSwitch={() => setSwitching(p)}
               onEdit={p.custom ? () => router.push({ pathname: '/builder', params: { id: p.id } }) : undefined}
@@ -183,17 +180,6 @@ export default function ProgramsScreen() {
         </View>
 
         <View style={[s.pad, { gap: space.md, marginTop: space.xl }]}>
-          {hidden > 0 && (
-            <Glass r={radius.xl} style={s.note}>
-              <Icon name="bandage" size={22} color={color.muted} />
-              <View style={{ flex: 1 }}>
-                <Text style={type.h3}>
-                  {hidden} more program{hidden === 1 ? '' : 's'} train legs or abs
-                </Text>
-                <Text style={type.small}>Hidden while injury mode is on. Turn it off in Settings when you’re cleared.</Text>
-              </View>
-            </Glass>
-          )}
           {state.pending && (
             <Glass r={radius.xl} style={s.note}>
               <Icon name="calendar" size={22} color={color.accent} />

@@ -1,5 +1,5 @@
 // Helpers that combine the program with what was logged.
-import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
+import { EXERCISES, type LogKind } from './data/exercises';
 import { pickOption, targetTop, type PlannedExercise, type WorkoutDay } from './data/program';
 import { dayTitle } from './theme';
 import { fmtKg, type Unit } from './load';
@@ -11,9 +11,9 @@ export const exerciseFor = (state: Pick<State, 'swaps' | 'variants'>, plan: Plan
   return sw && EXERCISES[sw] ? sw : pickOption(plan, state.variants);
 };
 
-/** Slots shown for a day. With injury mode on, anything loading legs or abs is hidden. */
+/** Slots shown for a day (any whose exercise this version doesn't know are skipped). */
 export const visiblePlans = (state: State, day: WorkoutDay) =>
-  day.exercises.filter((p) => !(state.injured && loadsInjury(exerciseFor(state, p))));
+  day.exercises.filter((p) => !!EXERCISES[exerciseFor(state, p)]);
 
 /** Big title for a day: the original split keeps its punchy names. */
 export const titleOf = (day: WorkoutDay) => dayTitle[day.id] ?? day.name;

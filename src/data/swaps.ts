@@ -3,7 +3,7 @@
 // "close match" options. Every pair is backed by at least two sources in src/data/exercise-sources.md
 // (scripts/gen-exercise-sources.py fails if one isn't).
 
-import { EXERCISE_LIST, EXERCISES, loadsInjury } from './exercises';
+import { EXERCISE_LIST, EXERCISES } from './exercises';
 
 export type SwapMatch = 'same';
 export type Swap = { id: string; match: SwapMatch; why: string };
@@ -288,10 +288,9 @@ export const samePrimary = (a: string, b: string) => !!EXERCISES[a] && !!EXERCIS
 
 /**
  * Swaps for an exercise: the researched list, plus any other exercise with the same movement
- * pattern, keeping ONLY those whose primary muscles match exactly. With injury mode on, anything
- * that loads the legs or abs is left out.
+ * pattern, keeping ONLY those whose primary muscles match exactly.
  */
-export function swapsFor(id: string, injured: boolean): Swap[] {
+export function swapsFor(id: string): Swap[] {
   const ex = EXERCISES[id];
   if (!ex) return [];
   const researched = (SWAPS[id] ?? []).filter((s) => samePrimary(id, s.id));
@@ -299,5 +298,5 @@ export function swapsFor(id: string, injured: boolean): Swap[] {
   const pattern = EXERCISE_LIST.filter((o) => o.id !== id && !seen.has(o.id) && o.pattern === ex.pattern && samePrimary(id, o.id)).map((o) =>
     same(o.id, 'Same movement pattern and the same primary muscles.'),
   );
-  return [...researched, ...pattern].filter((s) => !(injured && loadsInjury(s.id)));
+  return [...researched, ...pattern];
 }

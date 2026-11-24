@@ -230,7 +230,6 @@ export default function BuilderScreen() {
       {picking && (
         <LibrarySheet
           title={picking.replace !== undefined ? 'Swap exercise' : 'Add exercise'}
-          injured={state.injured}
           onPick={pick}
           onClose={() => setPicking(null)}
         />

@@ -27,7 +27,7 @@ export type MuscleId =
   | 'serratus_anterior'
   | 'neck_flexors'
   | 'neck_extensors'
-  // Legs and abs: resting while injury mode is on.
+  // Legs and abs
   | 'rectus_abdominis'
   | 'obliques'
   | 'transverse_abdominis'
@@ -93,27 +93,6 @@ export const MUSCLE_LABEL: Record<MuscleId, string> = {
   foot_muscles: 'Feet',
   breathing: 'Breathing muscles',
 };
-
-/** Legs and abs. Never trained while injury mode is on. */
-export const INJURY_REGIONS: ReadonlySet<MuscleId> = new Set<MuscleId>([
-  'rectus_abdominis',
-  'obliques',
-  'transverse_abdominis',
-  'hip_flexors',
-  'adductors',
-  'glute_max',
-  'glute_med',
-  'hip_rotators',
-  'rectus_femoris',
-  'vastus_group',
-  'medial_hamstrings',
-  'lateral_hamstrings',
-  'gastrocnemius',
-  'soleus',
-  'tibialis_anterior',
-  'fibularis',
-  'foot_muscles',
-]);
 
 /** Model nodes that are anatomy context only (head, bones, tendons, skin), never coloured. */
 export const CONTEXT_NODES = new Set(['body_context', 'context_bone', 'context_tendon', 'context_skin']);

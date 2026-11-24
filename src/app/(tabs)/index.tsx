@@ -22,7 +22,6 @@ import {
   dateFromKey,
   dayById,
   dayHasWork,
-  easingIn,
   formatDate,
   programById,
   todayKey,
@@ -51,7 +50,7 @@ export default function TodayScreen() {
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   const which = todayDayId(state, date, weekday, picked?.id);
   const chosen = dayById(state, which.id);
-  // With injury mode on, a day of only leg/ab work becomes a rest day instead of an empty workout.
+  // A day with no exercises (e.g. emptied in the plan builder) shows as a rest day.
   const hiddenDay = chosen && !dayHasWork(state, chosen.id) ? chosen : undefined;
   const day = hiddenDay ? undefined : chosen;
   const program = activeProgram(state);
@@ -179,31 +178,13 @@ export default function TodayScreen() {
             <Icon name="moon" size={28} color={color.muted} />
             <Text style={[s.dayTitle, { marginTop: space.md }]}>Rest day</Text>
             <Text style={s.focus}>
-              {hiddenDay
-                ? `${hiddenDay.name} rests while injury mode is on.`
-                : nextTraining
+              {nextTraining
                   ? `${titleOf(dayById(state, nextTraining.id)!)} is ${nextTraining.when}.`
                   : 'Recover and refuel.'}
             </Text>
           </Glass>
         )}
 
-        {easingIn(state, date) && (
-          <Glass style={s.card} r={radius.xl}>
-            <View style={s.row}>
-              <Icon name="bandage" size={22} color={color.accent} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={type.h3}>Welcome back. Ease in.</Text>
-                <Text style={type.small}>
-                  For your first 2 weeks, start leg and ab work at about half your old weights and stop 3–4 reps short of failure.
-                </Text>
-              </View>
-            </View>
-            <View style={{ alignSelf: 'flex-end' }}>
-              <Button size="sm" variant="ghost" label="Got it" onPress={() => update((st) => ({ ...st, easeInDismissed: true }))} />
-            </View>
-          </Glass>
-        )}
 
         {/* The week: done days get a thin crimson check, today a thin crimson edge */}
         <View style={s.sectionHead}>

@@ -1,16 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { NumberField } from '../../components/ExerciseParts';
 import { clearCrashLog, readCrashLog } from '../../crash';
 import { shareCrashLog } from '../../crashShare';
 import { Glass } from '../../components/glass';
 import { Icon, type IconName } from '../../components/icons';
 import { WeekMapper } from '../../components/ProgramParts';
 import { Button, Chip, Press, Screen, SectionTitle, Switch } from '../../components/ui';
-import { EXERCISES } from '../../data/exercises';
-import { exerciseFor } from '../../workout';
-import { activeProgram, easingIn, todayKey, useStore } from '../../store';
+import { activeProgram, useStore } from '../../store';
 import { bottomClearance, color, font, leading, radius, size, space, touch, type } from '../../theme';
 
 /** Every third-party asset in the app, grouped by where it shows up (see src/data/asset-licences.md). */
@@ -69,9 +66,6 @@ export default function SettingsScreen() {
   const { state, update } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const program = activeProgram(state);
-  const slots = program.days.flatMap((d) => d.exercises.filter((e) => e.options.length > 1).map((e) => ({ day: d, plan: e })));
-  // Every machine you've set up stays listed, even while a field is cleared to type a new value.
-  const machines = Object.entries(state.machines).filter(([id]) => EXERCISES[id]);
 
   return (
     <Screen padBottom={bottomClearance.tabs}>
@@ -103,27 +97,7 @@ export default function SettingsScreen() {
           checked={state.blur}
           onChange={(v) => update((st) => ({ ...st, blur: v }))}
         />
-        <View style={s.divider} />
-        <Toggle
-          icon="bandage"
-          title="Injury mode"
-          sub={
-            state.injured
-              ? 'Leg and ab exercises, and splits built around them, are hidden. Legs and abs rest grey on the model.'
-              : 'Every split and exercise is unlocked.'
-          }
-          checked={state.injured}
-          onChange={(v) => update((st) => ({ ...st, injured: v, easeInFrom: v ? null : todayKey(), easeInDismissed: false }))}
-        />
       </Glass>
-      {easingIn(state) && (
-        <Glass r={radius.xl} style={s.welcome} glow={color.accent}>
-          <Text style={type.h3}>Welcome back. Ease in.</Text>
-          <Text style={type.small}>
-            Legs and abs are back. For the first 2 weeks, use about half your old leg weights, stop 3–4 reps short of failure, and add load only when it feels easy.
-          </Text>
-        </Glass>
-      )}
 
       <SectionTitle
         right={
@@ -142,60 +116,6 @@ export default function SettingsScreen() {
         <Text style={type.label}>Day order</Text>
         <WeekMapper program={program} week={state.week} onChange={(week) => update((st) => ({ ...st, week }))} />
         <Button size="sm" variant="ghost" label="Reset to the program’s default week" onPress={() => update((st) => ({ ...st, week: program.week }))} />
-      </Glass>
-
-      {slots.length > 0 && <SectionTitle>Exercise choices</SectionTitle>}
-      <View style={{ gap: space.md }}>
-        {slots.map(({ day, plan }) => {
-          // What the workout actually uses: a swap made during a workout wins over the version picked here.
-          const current = exerciseFor(state, plan);
-          const swapped = !plan.options.includes(current);
-          return (
-            <Glass key={plan.slot} r={radius.xl} style={{ gap: space.sm, padding: space.lg }}>
-              <Text style={type.label}>{day.name}</Text>
-              {swapped && <Text style={type.small}>Swapped to {EXERCISES[current].name}. Pick a version to switch back.</Text>}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-                {plan.options.map((o) => (
-                  <Chip
-                    key={o}
-                    label={EXERCISES[o].name}
-                    active={o === current}
-                    onPress={() =>
-                      update((st) => {
-                        const { [plan.slot]: _drop, ...swaps } = st.swaps;
-                        return { ...st, variants: { ...st.variants, [plan.slot]: o }, swaps };
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            </Glass>
-          );
-        })}
-      </View>
-
-      <SectionTitle>Machine stacks</SectionTitle>
-      <Glass r={radius.xxl} style={{ padding: space.lg, gap: space.xl }}>
-        <View style={{ gap: space.sm }}>
-          {machines.length === 0 ? (
-            <Text style={type.small}>Pick “Machine pin” on a machine or cable exercise, then set its kg per plate there.</Text>
-          ) : (
-            machines.map(([id, m]) => (
-              <View key={id} style={s.colorRow}>
-                <Text style={[s.colorName, { textAlignVertical: 'center' }]} numberOfLines={1}>
-                  {EXERCISES[id].name}
-                </Text>
-                <NumberField
-                  value={m.perPlate}
-                  onChange={(n) => update((st) => ({ ...st, machines: { ...st.machines, [id]: { ...st.machines[id], perPlate: n } } }))}
-                  label={`${EXERCISES[id].name} kilograms per plate`}
-                  placeholder="kg"
-                />
-                <Text style={s.kg}>/ plate</Text>
-              </View>
-            ))
-          )}
-        </View>
       </Glass>
 
       <SectionTitle>Credits</SectionTitle>

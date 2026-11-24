@@ -4,7 +4,7 @@
  */
 import { missingFor, suggestSet, targetBottom, weightIn } from '../focus';
 import { restBody } from '../restNotify';
-import { DEFAULT_STATE, easingIn, type State } from '../store';
+import { DEFAULT_STATE, type State } from '../store';
 import { todayDayId } from '../workout';
 
 const MON = 1;
@@ -33,22 +33,6 @@ describe('which day Today shows', () => {
   test('a day tapped in the week strip is a preview, not a change of today', () => {
     expect(todayDayId(base, D, MON, 'wed')).toMatchObject({ id: 'wed', preview: true, scheduled: 'mon' });
     expect(todayDayId(base, D, MON, 'mon')).toMatchObject({ id: 'mon', preview: false });
-  });
-});
-
-describe('"Welcome back. Ease in." card', () => {
-  const off = { ...base, injured: false, easeInFrom: D, easeInDismissed: false };
-  test('never while injury mode is on', () => {
-    expect(easingIn({ ...off, injured: true, programId: 'ppl6' }, D)).toBe(false);
-  });
-  test('never on the upper-body injury program (no leg/ab work to ease back into)', () => {
-    expect(easingIn({ ...off, programId: 'upper5' }, D)).toBe(false);
-  });
-  test('right after injury mode is turned off, on a program with leg work, for two weeks', () => {
-    expect(easingIn({ ...off, programId: 'ppl6' }, D)).toBe(true);
-    expect(easingIn({ ...off, programId: 'ppl6' }, '2026-12-06')).toBe(true);
-    expect(easingIn({ ...off, programId: 'ppl6' }, '2026-12-07')).toBe(false);
-    expect(easingIn({ ...off, programId: 'ppl6', easeInDismissed: true }, D)).toBe(false);
   });
 });
 

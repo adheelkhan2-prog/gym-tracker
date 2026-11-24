@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
-import { INJURY_REGIONS, type MuscleId } from './data/muscles';
-import { DEFAULT_WEEK, pickOption, type WorkoutDay } from './data/program';
-import { PROGRAMS, hasLegWork, type Program } from './data/programs';
+import { EXERCISES, type LogKind } from './data/exercises';
+import type { MuscleId } from './data/muscles';
+import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
+import { PROGRAMS, type Program } from './data/programs';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
@@ -26,7 +26,6 @@ export type State = {
   sessions: Record<string, Session>;
   variants: Record<string, string>; // program slot -> chosen exercise
   warmups: Record<string, boolean>; // date -> warm-up done
-  injured: boolean;
   restSound: boolean;
   /** Frosted blur on glass panels (off = tinted see-through panels, lighter on the GPU). */
   blur: boolean;
@@ -43,9 +42,6 @@ export type State = {
   swaps: Record<string, string>;
   loadTypes: Record<string, LoadType>;
   machines: Record<string, MachineSetup>;
-  /** Date injury mode was turned off: shows the "ease in" card for two weeks. */
-  easeInFrom: string | null;
-  easeInDismissed: boolean;
 };
 
 export const DEFAULT_STATE: State = {
@@ -55,7 +51,6 @@ export const DEFAULT_STATE: State = {
   sessions: {},
   variants: {},
   warmups: {},
-  injured: true,
   restSound: true,
   blur: true,
   supplements: ['Creatine', 'Protein'],
@@ -68,8 +63,6 @@ export const DEFAULT_STATE: State = {
   swaps: {},
   loadTypes: {},
   machines: {},
-  easeInFrom: null,
-  easeInDismissed: false,
 };
 
 export const STORAGE_KEY = 'gym-tracker/state/v3';
@@ -132,8 +125,9 @@ export function migrate(raw: unknown, fromOld: boolean): State {
     }
     if (Object.keys(out).length) logs[date] = out;
   }
-  const { gym: _gym, ...known } = r; // My gym settings were removed
-  void _gym;
+  // Removed settings (My gym, injury mode) are dropped; programs and history are kept as they are.
+  const { gym: _gym, injured: _i, easeInFrom: _e, easeInDismissed: _d, ...known } = r as typeof r & { injured?: unknown; easeInFrom?: unknown; easeInDismissed?: unknown };
+  void [_gym, _i, _e, _d];
   const merged = { ...DEFAULT_STATE, ...(known as Partial<State>) };
   const program = programById(merged, merged.programId) ?? PROGRAMS[0];
   const validWeek =
@@ -418,15 +412,10 @@ export function exerciseHistory(logs: State['logs'], exerciseId: string, machine
 export const trainedOn = (state: State, date: string) =>
   Object.entries(state.logs[date] ?? {}).some(([id, l]) => l.skipped || doneSets(l, kindOf(id)).length > 0);
 
-/** False for a day whose every exercise is hidden by injury mode (e.g. leg day): it counts as rest. */
+/** True when the weekday's slot holds a workout day (with at least one exercise). */
 export function dayHasWork(state: State, dayId: string | null | undefined) {
   const day = dayById(state, dayId);
-  if (!day) return false;
-  if (!state.injured) return true;
-  return day.exercises.some((p) => {
-    const sw = state.swaps[p.slot];
-    return !loadsInjury(sw && EXERCISES[sw] ? sw : pickOption(p, state.variants));
-  });
+  return !!day && day.exercises.length > 0;
 }
 
 const scheduled = (state: State, date: string) => dayHasWork(state, state.week[dateFromKey(date).getDay()]);
@@ -475,19 +464,7 @@ export function weeklyMuscleSets(state: State, keys = weekKeys()) {
       for (const m of ex.secondary) out[m] = (out[m] ?? 0) + n * 0.5;
     }
   }
-  if (state.injured) for (const m of INJURY_REGIONS) delete out[m];
   return out;
-}
-
-/**
- * Show the "welcome back, ease in" card for the first two weeks after injury mode is turned OFF,
- * and only when the active program actually brings leg/ab work back (never on the upper-body
- * injury program, never while injury mode is on).
- */
-export function easingIn(state: State, today = todayKey()) {
-  if (state.injured || !state.easeInFrom || state.easeInDismissed) return false;
-  if (!hasLegWork(activeProgram(state))) return false;
-  return today < addDays(state.easeInFrom, 14);
 }
 
 export function weekSummary(state: State, today = todayKey()) {

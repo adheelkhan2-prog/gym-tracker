@@ -20,7 +20,7 @@ import { ShareSheet } from '../components/ShareSheet';
 import { Badge, Button, Progress } from '../components/ui';
 import { FINISH, FINISH_PR, line } from '../copy';
 import { EXERCISES } from '../data/exercises';
-import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../data/muscles';
+import { MUSCLE_LABEL, type MuscleId } from '../data/muscles';
 import { haptic } from '../feedback';
 import { fmtKg, fromKg, round1 } from '../load';
 import { bestBefore, dayById, doneSets, formatDate, prSetsOn, todayKey, trainingStreak, useStore } from '../store';
@@ -56,7 +56,6 @@ export default function CompleteScreen() {
       for (const m of ex.secondary) load[m] = (load[m] ?? 0) + n * 0.5;
     }
     const muscles = (Object.entries(load) as [MuscleId, number][])
-      .filter(([m]) => !(state.injured && INJURY_REGIONS.has(m)))
       .sort((a, b) => b[1] - a[1]);
     // Volume is summed in kg, shown in your unit.
     const volume = Math.round(fromKg(volumeOn(state, date), state.unit));
@@ -170,9 +169,8 @@ export default function CompleteScreen() {
     data.muscles.slice(0, lit).forEach(([m], i) => {
       p[m] = { color: i < Math.ceil(data.muscles.length * 0.4) ? color.musclePrimary : color.muscleSecondary, glow: 0.2 };
     });
-    if (state.injured) for (const m of INJURY_REGIONS) p[m] = { color: color.muscleInjured };
     return p;
-  }, [lit, data.muscles, state.injured]);
+  }, [lit, data.muscles]);
 
   const prShown = skipped ? data.prs.length : prAt(t);
   const showXp = t >= tXp;

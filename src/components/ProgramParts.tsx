@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { EQUIPMENT_LABEL, EXERCISE_LIST, EXERCISES, loadsInjury, type Equipment } from '../data/exercises';
+import { EQUIPMENT_LABEL, EXERCISE_LIST, EXERCISES, type Equipment } from '../data/exercises';
 import { howToImages } from './ExerciseParts';
-import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../data/muscles';
+import { MUSCLE_LABEL, type MuscleId } from '../data/muscles';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../data/program';
 import type { Program } from '../data/programs';
 import { addDays, dateFromKey, formatDate, todayKey } from '../store';
@@ -15,8 +15,8 @@ import { Button, Chip, Press } from './ui';
 /** Monday-first ordering for display. */
 export const ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-/** Red where the program trains hardest across a week; legs/abs grey while injured. */
-export function programPaint(p: Program, injured: boolean): PaintMap {
+/** Red where the program trains hardest across a week. */
+export function programPaint(p: Program): PaintMap {
   const load: Partial<Record<MuscleId, number>> = {};
   for (const wd of p.week) {
     const d = p.days.find((x) => x.id === wd);
@@ -33,7 +33,6 @@ export function programPaint(p: Program, injured: boolean): PaintMap {
     if (n >= 8) paint[m] = { color: color.musclePrimary, glow: 0.12 };
     else if (n >= 3) paint[m] = { color: color.muscleSecondary };
   }
-  if (injured) for (const m of INJURY_REGIONS) paint[m] = { color: color.muscleInjured };
   return paint;
 }
 
@@ -133,17 +132,16 @@ const MUSCLE_FILTERS: { label: string; muscles: MuscleId[] }[] = [
 ];
 
 /** Searchable exercise library, filtered by muscle and equipment. */
-export function LibrarySheet({ title, injured, onPick, onClose }: { title: string; injured: boolean; onPick: (id: string) => void; onClose: () => void }) {
+export function LibrarySheet({ title, onPick, onClose }: { title: string; onPick: (id: string) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
   const [muscle, setMuscle] = useState<string | null>(null);
   const [eq, setEq] = useState<Equipment | null>(null);
-  const filters = MUSCLE_FILTERS.filter((f) => !(injured && f.muscles.every((m) => INJURY_REGIONS.has(m))));
+  const filters = MUSCLE_FILTERS;
   // The React Compiler memoizes this.
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const mf = MUSCLE_FILTERS.find((f) => f.label === muscle);
   const list = EXERCISE_LIST.filter(
     (e) =>
-      !(injured && loadsInjury(e.id)) &&
       (!eq || e.equipment === eq) &&
       (!mf || e.primary.some((m) => mf.muscles.includes(m))) &&
       words.every((w) => e.name.toLowerCase().includes(w) || e.primary.some((m) => MUSCLE_LABEL[m].toLowerCase().includes(w))),
@@ -178,7 +176,7 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
 
   // Virtualized: only the rows on screen (and their full-size thumbnails) are rendered and decoded.
   return (
-    <Sheet title={title} subtitle={`${list.length} exercises${injured ? ' · leg and ab work hidden (injury mode)' : ''}`} onClose={onClose} testID="library-sheet" scroll={false}>
+    <Sheet title={title} subtitle={`${list.length} exercises`} onClose={onClose} testID="library-sheet" scroll={false}>
       <FlatList
         data={list}
         keyExtractor={(e) => e.id}

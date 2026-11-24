@@ -47,7 +47,6 @@ export const color = {
   // 3D anatomy: light-grey figure, worked muscles red (nudged toward the crimson accent)
   muscleIdle: '#C9C9CF',
   muscleContext: '#9C9CA4',
-  muscleInjured: '#55555C',
   musclePrimary: '#E1283A',
   muscleSecondary: '#C8685C', // muted terracotta: soft, never pink
 } as const;
