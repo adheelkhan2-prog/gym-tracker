@@ -1,0 +1,27 @@
+# Log one set, Finish workout, the celebration screen (3D model), Done, back on Today.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/log-set.yaml
+    env: { CARD: "0", SET: "0", WEIGHT: "40", COUNT: "1" }
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "finish-workout"
+- tapOn:
+    id: "finish-workout"
+- extendedWaitUntil:
+    visible: ".* · done"
+    timeout: 20000
+- runFlow: ../lib/no-errors.yaml
+- extendedWaitUntil:
+    visible:
+      id: "complete-done"
+    timeout: 30000
+- tapOn:
+    id: "complete-done"
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 20000
+- runFlow: ../lib/no-errors.yaml

@@ -1,0 +1,26 @@
+# Swipes that START on a set row's box must scroll the workout; then scroll to Finish workout.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "log-0-1"
+# Set 2 is centred, so 58% down / 60% across is set 3's reps box.
+- assertVisible:
+    id: "reps-0-2"
+- swipe:
+    start: 60%, 58%
+    end: 60%, 18%
+    duration: 500
+- swipe:
+    start: 60%, 58%
+    end: 60%, 18%
+    duration: 500
+- assertNotVisible:
+    id: "log-0-1"
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "finish-workout"
+- runFlow: ../lib/no-errors.yaml

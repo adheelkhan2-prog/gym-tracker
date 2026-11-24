@@ -1,0 +1,12 @@
+# The crash test: every flow, 10 times over, each from a fresh install.
+appId: com.gymtracker.app
+---
+- repeat:
+    times: 10
+    commands:
+      - runFlow: nav.yaml
+      - runFlow: start.yaml
+      - runFlow: log.yaml
+      - runFlow: scroll.yaml
+      - runFlow: swap.yaml
+      - runFlow: finish.yaml

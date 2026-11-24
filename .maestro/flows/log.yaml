@@ -1,0 +1,17 @@
+# Log-set validation (no weight yet -> asks for it), then log sets 1 and 2 (set 2 is one tap).
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "log-0-0"
+- tapOn:
+    id: "log-0-0"
+- assertVisible: "Add your .* first"
+- runFlow:
+    file: ../lib/log-set.yaml
+    env: { CARD: "0", SET: "0", WEIGHT: "40", COUNT: "1" }
+- runFlow:
+    file: ../lib/log-set.yaml
+    env: { CARD: "0", SET: "1", WEIGHT: "", COUNT: "2" }

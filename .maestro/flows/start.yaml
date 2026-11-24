@@ -1,0 +1,9 @@
+# Start today's workout; close it; Today still fine.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- tapOn: "Close workout"
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 10000
+- runFlow: ../lib/no-errors.yaml
