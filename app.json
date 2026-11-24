@@ -81,7 +81,8 @@
           "photosPermission": "Pick a video of an exercise from your phone. It stays on this phone."
         }
       ],
-      "./plugins/withOfflineRelease"
+      "./plugins/withOfflineRelease",
+      "./plugins/withKeepNativeViews"
     ],
     "scheme": "gymtracker",
     "backgroundColor": "#070708",

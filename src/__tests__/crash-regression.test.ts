@@ -47,3 +47,11 @@ test('release builds have no INTERNET permission; debug builds keep it for the d
   expect(app.expo.plugins).toContain('./plugins/withOfflineRelease');
   expect(app.expo.android.blockedPermissions ?? []).not.toContain('android.permission.INTERNET');
 });
+
+test('minified release builds keep the constructors Expo uses to create native views (expo-gl GLView)', () => {
+  const plugin = require('../../plugins/withKeepNativeViews');
+  expect(plugin.RULES).toMatch(/expo\.modules\.\*\* extends android\.view\.View/);
+  expect(plugin.RULES).toMatch(/<init>\(android\.content\.Context, expo\.modules\.kotlin\.AppContext\)/);
+  const app = require('../../app.json');
+  expect(app.expo.plugins).toContain('./plugins/withKeepNativeViews');
+});
