@@ -20,7 +20,7 @@ import {
   weightFromLoad,
 } from '../load';
 import { DEFAULT_STATE, applyPending, exerciseHistory, kgOf, migrate, plateToKg, prCountsByDate, setKg, trainingStreak, type SetEntry, type State } from '../store';
-import { exerciseFor, loadText, visiblePlans } from '../workout';
+import { loadText, visiblePlans } from '../workout';
 import { volumeOn } from '../xp';
 
 const set = (weight: string, reps: string, u: 'kg' | 'lb', load?: SetEntry['load']): SetEntry => ({ weight, reps, done: true, u, load });
