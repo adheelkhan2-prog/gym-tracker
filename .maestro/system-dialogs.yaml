@@ -1,0 +1,9 @@
+# Dismisses an emulator system dialog ("Pixel Launcher isn't responding") if one is covering the
+# app. It never dismisses anything of ours: app crashes still fail the run through logcat.
+appId: com.gymtracker.app
+---
+- runFlow:
+    when:
+      visible: ".*isn't responding"
+    commands:
+      - tapOn: "Wait"

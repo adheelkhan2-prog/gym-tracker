@@ -1,6 +1,7 @@
 # Fails the run if any error screen is visible (app-wide or per-screen boundary).
 appId: com.gymtracker.app
 ---
+- runFlow: system-dialogs.yaml
 - assertNotVisible: "Something went wrong"
 - assertNotVisible: "This screen hit a problem"
 - assertNotVisible: "3D model unavailable on this device"

@@ -9,6 +9,10 @@ OUT=e2e-out
 mkdir -p "$OUT"
 adb install -r "$APK"
 adb logcat -c
+# Emulator hygiene: the system's own "X isn't responding" dialogs (e.g. the launcher on a slow CI
+# emulator) must not sit on top of the app. Our app's crashes are still caught via logcat.
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
 # Offline by design: the app is built without Android's INTERNET permission.
 if adb shell dumpsys package "$PKG" | grep -q "android.permission.INTERNET: granted=true"; then
   echo "The app holds the INTERNET permission; it must not"; exit 1

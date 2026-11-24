@@ -5,6 +5,7 @@ appId: com.gymtracker.app
 - launchApp:
     clearState: true
 # First cold start after a fresh install is slow on the emulator.
+- runFlow: system-dialogs.yaml
 - extendedWaitUntil:
     visible: "Today"
     timeout: 120000

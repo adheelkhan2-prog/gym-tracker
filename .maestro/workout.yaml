@@ -8,6 +8,7 @@ appId: com.gymtracker.app
     commands:
       - launchApp:
           clearState: true
+      - runFlow: system-dialogs.yaml
       - extendedWaitUntil:
           visible: "Today"
           timeout: 120000
