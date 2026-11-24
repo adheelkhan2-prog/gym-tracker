@@ -143,11 +143,10 @@ appId: com.gymtracker.app
           visible: ".* · done"
           timeout: 20000
       - runFlow: no-errors.yaml
-      - scrollUntilVisible:
-          element:
+      # Done sits in a fixed footer: wait for it, no scrolling.
+      - extendedWaitUntil:
+          visible:
             id: "complete-done"
-          direction: DOWN
-          centerElement: true
           timeout: 30000
       - tapOn:
           id: "complete-done"
