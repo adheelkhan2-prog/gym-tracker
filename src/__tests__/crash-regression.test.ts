@@ -58,7 +58,7 @@ test('minified release builds keep the constructors Expo uses to create native v
 
 test('own videos come only from the gallery: no camera, no recording, no camera/microphone permission', () => {
   const fs = require('fs');
-  const src = fs.readFileSync(require.resolve('../components/ImportVideo.tsx'), 'utf8');
+  const src = fs.readFileSync('src/components/ImportVideo.tsx', 'utf8');
   expect(src).not.toMatch(/launchCameraAsync|requestCameraPermissionsAsync/);
   expect(src).toMatch(/launchImageLibraryAsync/);
   const app = require('../../app.json');

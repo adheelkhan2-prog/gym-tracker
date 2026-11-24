@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExerciseMedia, HowToSteps, MachineSheet, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
@@ -579,7 +579,7 @@ function SetRow({
       <View style={[s.row, logged && s.rowDone]}>
         <Text style={s.setNo}>{label}</Text>
         {weighted && (
-          <TextInput
+          <NumBox
             value={shownWeight}
             editable={!logged}
             onChangeText={(t) => {
@@ -599,20 +599,18 @@ function SetRow({
             placeholder={stack ? 'Pin ?' : '—'}
             placeholderTextColor={color.subtle}
             keyboardType={stack ? 'number-pad' : 'decimal-pad'}
-            selectTextOnFocus
             style={[s.input, warn?.load && s.inputWarn]}
             accessibilityLabel={`Set ${label} ${stack ? 'pin' : `weight in ${unit}`} for ${exName}`}
             testID={`weight-${slotN}-${i}`}
           />
         )}
-        <TextInput
+        <NumBox
           value={value.reps}
           editable={!logged}
           onChangeText={(t) => onChange({ ...value, reps: t.replace(/[^0-9]/g, '') })}
           placeholder="—"
           placeholderTextColor={color.subtle}
           keyboardType="number-pad"
-          selectTextOnFocus
           style={[s.input, warn?.reps && s.inputWarn]}
           accessibilityLabel={`Set ${label} reps for ${exName}`}
           testID={`reps-${slotN}-${i}`}
@@ -635,6 +633,69 @@ function SetRow({
         </View>
       )}
     </View>
+  );
+}
+
+/**
+ * A number box in a set row. At rest it is a plain tappable box, not a text field: Android text
+ * fields claim any touch that starts on them, so a swipe starting on the set rows wouldn't scroll
+ * the workout. Tapping it swaps in the real text field, focused, with its text selected.
+ */
+function NumBox({
+  value,
+  editable,
+  onChangeText,
+  placeholder,
+  placeholderTextColor,
+  keyboardType,
+  style,
+  accessibilityLabel,
+  testID,
+}: {
+  value: string;
+  editable: boolean;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  placeholderTextColor: string;
+  keyboardType: 'number-pad' | 'decimal-pad';
+  style: React.ComponentProps<typeof TextInput>['style'];
+  accessibilityLabel: string;
+  testID: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (editing && editable) {
+    return (
+      <TextInput
+        autoFocus
+        value={value}
+        onChangeText={onChangeText}
+        onBlur={() => setEditing(false)}
+        onSubmitEditing={() => setEditing(false)}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        keyboardType={keyboardType}
+        selectTextOnFocus
+        style={style}
+        accessibilityLabel={accessibilityLabel}
+        testID={testID}
+      />
+    );
+  }
+  const flat = StyleSheet.flatten(style) as TextStyle;
+  return (
+    <Pressable
+      onPress={editable ? () => setEditing(true) : undefined}
+      disabled={!editable}
+      style={[style as StyleProp<ViewStyle>, s.box]}
+      accessibilityRole={editable ? 'button' : 'text'}
+      accessibilityLabel={`${accessibilityLabel}: ${value || 'empty'}`}
+      accessibilityHint={editable ? 'Double tap to type a number' : undefined}
+      testID={testID}
+    >
+      <Text style={[s.boxText, { fontFamily: flat.fontFamily, fontSize: flat.fontSize }, !value && { color: placeholderTextColor }]} numberOfLines={1}>
+        {value || placeholder}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -732,6 +793,8 @@ const s = themed(() =>
       borderWidth: 1,
       borderColor: 'transparent',
     },
+    box: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xs },
+    boxText: { color: color.text, textAlign: 'center' },
     inputWarn: { borderColor: color.warnEdge, backgroundColor: color.warnDim },
     check: {
       width: touch.primary,

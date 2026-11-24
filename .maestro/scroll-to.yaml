@@ -1,20 +1,11 @@
-# Scrolls the workout down until the element with id ${ID} is on screen, then centres it. Swipes run
-# along the left edge (no inputs or buttons there), so a swipe is always a scroll.
+# Scrolls the workout down until the element with id ${ID} is centred on screen. Maestro swipes from
+# the middle of the screen, which on the workout is usually over the set rows' weight/reps boxes:
+# this proves a swipe that starts on the boxes scrolls the workout.
 appId: com.gymtracker.app
 ---
-- repeat:
-    while:
-      notVisible:
-        id: ${ID}
-    times: 40
-    commands:
-      - swipe:
-          start: 4%, 70%
-          end: 4%, 40%
-          duration: 500
 - scrollUntilVisible:
     element:
       id: ${ID}
     direction: DOWN
     centerElement: true
-    timeout: 10000
+    timeout: 30000
