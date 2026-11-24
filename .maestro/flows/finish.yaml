@@ -18,10 +18,14 @@ appId: com.gymtracker.app
     visible: ".* · done"
     timeout: 20000
 - runFlow: ../lib/no-errors.yaml
-- extendedWaitUntil:
-    visible:
+# Done is the last thing on the page: scroll down to it (it can't be centred).
+- scrollUntilVisible:
+    element:
       id: "complete-done"
-    timeout: 30000
+    direction: DOWN
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 3000
 - tapOn:
     id: "complete-done"
 - extendedWaitUntil:
