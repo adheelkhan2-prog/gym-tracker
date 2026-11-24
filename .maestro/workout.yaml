@@ -136,12 +136,7 @@ appId: com.gymtracker.app
             - tapOn:
                 id: "rest-skip"
       # Finish: saved first, then the celebration.
-      - scrollUntilVisible:
-          element:
-            id: "finish-workout"
-          direction: DOWN
-          centerElement: true
-          timeout: 60000
+      - runFlow: scroll-to-finish.yaml
       - tapOn:
           id: "finish-workout"
       - extendedWaitUntil:

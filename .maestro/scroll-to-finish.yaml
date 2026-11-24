@@ -1,0 +1,20 @@
+# Scrolls the workout down to "Finish workout", swiping along the left edge (no inputs or buttons
+# there, so the swipe is always a scroll, never a tap or text selection).
+appId: com.gymtracker.app
+---
+- repeat:
+    while:
+      notVisible:
+        id: "finish-workout"
+    times: 40
+    commands:
+      - swipe:
+          start: 4%, 70%
+          end: 4%, 30%
+          duration: 400
+- scrollUntilVisible:
+    element:
+      id: "finish-workout"
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
