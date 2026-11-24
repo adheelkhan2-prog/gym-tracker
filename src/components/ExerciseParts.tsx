@@ -205,6 +205,7 @@ export function SwapSheet({
               style={[s.swapRow, on && s.swapOn]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
+              testID={o.original ? 'swap-option-original' : `swap-option-${o.id}`}
               accessibilityLabel={`${ex.name}, ${EQUIPMENT_LABEL[ex.equipment]}, ${o.original ? 'original' : 'same primary muscles'}: ${ex.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}`}
             >
               {img ? <Image source={img.start} style={s.thumb} /> : <View style={[s.thumb, s.noThumb]}><Icon name="barbell" size={22} color={color.muted} /></View>}

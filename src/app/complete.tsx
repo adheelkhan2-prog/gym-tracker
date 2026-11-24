@@ -361,7 +361,7 @@ export default function CompleteScreen() {
               <View style={{ flex: 1 }}>
                 <Button size="lg" icon="share" label="Share" onPress={openShare} />
               </View>
-              <Button size="lg" variant="secondary" label="Done" onPress={() => router.dismissTo('/')} />
+              <Button size="lg" variant="secondary" label="Done" onPress={() => router.dismissTo('/')} testID="complete-done" />
             </View>
           </Animated.View>
         )}

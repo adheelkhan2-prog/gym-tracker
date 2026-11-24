@@ -16,6 +16,21 @@ fi
 echo "INTERNET permission: not held (the OS blocks all network access for the app)"
 export PATH="$PATH:$HOME/.maestro/bin"
 
+# On any failure: print what was on screen and the app's logs into the job log (readable without
+# downloading artifacts).
+diagnose() {
+  echo "::group::Diagnostics: screen text (maestro hierarchy)"
+  maestro hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|resource-id)" *: *"[^"]+"' | head -120 || true
+  echo "::endgroup::"
+  echo "::group::Diagnostics: app log (ReactNativeJS / crashes)"
+  adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime|FATAL|ReactNative|com.gymtracker" | tail -150 || true
+  echo "::endgroup::"
+  echo "::group::Diagnostics: current activity"
+  adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | head -5 || true
+  echo "::endgroup::"
+}
+trap 'diagnose' ERR
+
 echo "== Run 1: network ON (any request would show up in the app's traffic counters)"
 maestro test --format junit --output "$OUT/report-online.xml" --test-output-dir "$OUT/online" ${FLOWS:-.maestro/smoke.yaml .maestro/workout.yaml}
 adb shell dumpsys netstats detail > "$OUT/netstats.txt" || true

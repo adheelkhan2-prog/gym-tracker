@@ -1,8 +1,116 @@
-# Placeholder until the new workout screen lands: open today's workout and come back.
+# Full workout on a real Android release build, 10 times from a fresh install each time:
+# start today's workout (or train another day on a rest day), Log-set validation, log sets, skip
+# rest, swap an exercise, finish, celebration screen, back to Today. Any error screen fails the run.
 appId: com.gymtracker.app
 ---
-- launchApp
-- extendedWaitUntil:
-    visible: "Today"
-    timeout: 30000
-- runFlow: no-errors.yaml
+- repeat:
+    times: 10
+    commands:
+      - launchApp:
+          clearState: true
+      - extendedWaitUntil:
+          visible: "Today"
+          timeout: 30000
+      - runFlow: no-errors.yaml
+      # Rest day (weekend): preview Monday and train it today.
+      - runFlow:
+          when:
+            notVisible: "Start workout"
+          commands:
+            - tapOn:
+                text: "Monday.*"
+            - tapOn: "Train .* today"
+      - runFlow:
+          when:
+            visible: "Start workout"
+          commands:
+            - tapOn: "Start workout"
+      - extendedWaitUntil:
+          visible:
+            id: "log-0-0"
+          timeout: 20000
+      - runFlow: no-errors.yaml
+      # Log-set validation: first time there is no weight yet, so logging must ask for it.
+      - runFlow:
+          when:
+            visible:
+              id: "weight-0-0"
+          commands:
+            - tapOn:
+                id: "log-0-0"
+            - assertVisible: "Add your .* first"
+            - tapOn:
+                id: "weight-0-0"
+            - inputText: "40"
+            - hideKeyboard
+      - tapOn:
+          id: "log-0-0"
+      - runFlow:
+          when:
+            visible: "Skip"
+          commands:
+            - tapOn: "Skip"
+      # Second set reuses the first set's numbers: one tap.
+      - tapOn:
+          id: "log-0-1"
+      - runFlow:
+          when:
+            visible: "Skip"
+          commands:
+            - tapOn: "Skip"
+      - runFlow: no-errors.yaml
+      # Swap the second exercise to its first alternative (or back to the original).
+      - scrollUntilVisible:
+          element:
+            id: "swap-1"
+          direction: DOWN
+      - tapOn:
+          id: "swap-1"
+      - tapOn:
+          id: "swap-option-.*"
+          index: 1
+      - runFlow: no-errors.yaml
+      # Log one set on the swapped exercise.
+      - runFlow:
+          when:
+            visible:
+              id: "weight-1-0"
+          commands:
+            - tapOn:
+                id: "weight-1-0"
+            - inputText: "30"
+            - hideKeyboard
+      - scrollUntilVisible:
+          element:
+            id: "log-1-0"
+          direction: DOWN
+      - tapOn:
+          id: "log-1-0"
+      - runFlow:
+          when:
+            visible: "Skip"
+          commands:
+            - tapOn: "Skip"
+      # Finish: saved first, then the celebration.
+      - scrollUntilVisible:
+          element:
+            id: "finish-workout"
+          direction: DOWN
+          timeout: 60000
+      - tapOn:
+          id: "finish-workout"
+      - extendedWaitUntil:
+          visible: ".* · done"
+          timeout: 20000
+      - runFlow: no-errors.yaml
+      - scrollUntilVisible:
+          element:
+            id: "complete-done"
+          direction: DOWN
+          timeout: 30000
+      - tapOn:
+          id: "complete-done"
+      - extendedWaitUntil:
+          visible: "Today"
+          timeout: 20000
+      - runFlow: no-errors.yaml
