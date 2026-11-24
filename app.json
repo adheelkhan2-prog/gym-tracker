@@ -61,7 +61,8 @@
             "image": "./assets/splash-icon.png"
           }
         }
-      ]
+      ],
+      "expo-video"
     ],
     "scheme": "gymtracker",
     "backgroundColor": "#070708"

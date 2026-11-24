@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
+import { EXERCISE_VIDEO } from '../data/exercise-video';
 import { howToImages } from '../data/how-to';
+import { ClayVideo } from './ClayVideo';
 import { Vignette } from './glass';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
@@ -21,13 +23,16 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
   const img = howToImages(ex.id);
   const reduce = useReducedMotion();
   const [end, setEnd] = useState(false);
-  const [paused, setPaused] = useState(false);
+  // A looping clay video when there is one; else the start/end stills crossfade.
+  const video = EXERCISE_VIDEO[ex.id];
+  // Reduce motion: the video waits on its start frame until tapped.
+  const [paused, setPaused] = useState(() => !!video && reduce);
   const fade = useSharedValue(0);
   useEffect(() => {
-    if (!img || paused) return;
+    if (!img || paused || video) return;
     const t = setInterval(() => setEnd((v) => !v), 2200);
     return () => clearInterval(t);
-  }, [img, paused]);
+  }, [img, paused, video]);
   useEffect(() => {
     fade.value = reduce ? (end ? 1 : 0) : withTiming(end ? 1 : 0, { duration: 600, easing: Easing.inOut(Easing.quad) });
   }, [end, reduce, fade]);
@@ -36,7 +41,26 @@ export function HowTo({ ex }: { ex: ExerciseInfo }) {
 
   return (
     <View>
-      {img ? (
+      {video ? (
+        <Press
+          onPress={() => setPaused((v) => !v)}
+          tick
+          scaleTo={0.98}
+          style={[s.photo, s.clay]}
+          accessibilityRole="button"
+          accessibilityLabel={`${ex.name} video. ${paused ? 'Paused, tap to play' : 'Playing, tap to pause'}`}
+          testID="howto-video"
+        >
+          <ClayVideo source={video} paused={paused} />
+          {/* The renders sit in the same dark room: edges fall off into shadow. */}
+          <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />
+          {paused && (
+            <View style={s.paused} testID="howto-paused">
+              <Text style={s.phaseText}>Paused · tap to play</Text>
+            </View>
+          )}
+        </Press>
+      ) : img ? (
         <Press
           onPress={() => setPaused((v) => !v)}
           tick

@@ -14,7 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Backdrop } from '../components/glass';
+import { Backdrop, Vignette } from '../components/glass';
 import { Icon } from '../components/icons';
 import { Burst, Flash } from '../components/motion';
 import { RestTimer } from '../components/RestRing';
@@ -22,7 +22,9 @@ import { HowTo, MuscleLegend, SwapSheet } from '../components/ExerciseParts';
 import { Sheet } from '../components/Sheet';
 import { Button, IconButton, Press } from '../components/ui';
 import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
+import { EXERCISE_VIDEO } from '../data/exercise-video';
 import { howToImages } from '../data/how-to';
+import { ClayVideo } from '../components/ClayVideo';
 import { MUSCLE_LABEL } from '../data/muscles';
 import { pickOption, restFor } from '../data/program';
 import { swapsFor } from '../data/swaps';
@@ -67,6 +69,8 @@ export default function FocusScreen() {
   const [flash, setFlash] = useState(0);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishing = useRef(false);
+  // The exercise video: Reduce motion starts it paused on the start position.
+  const [figPaused, setFigPaused] = useState(reduce);
   useEffect(() => {
     restCarry.endsAt = restEnd;
     restCarry.total = restTotal;
@@ -286,6 +290,8 @@ export default function FocusScreen() {
   const loadLine = weighted && lt !== 'weight' ? loadText({ ...value, done: false }, unit) : '';
   const clay = howToImages(id);
   const fig = clay?.clay ? (exDone ? clay.end : clay.start) : null;
+  // The looping clay video when there is one (tap it to pause), else the still.
+  const video = !exDone ? EXERCISE_VIDEO[id] : undefined;
   const lastLine = suggestion.last ? `Last time ${setText(suggestion.last, kind, unit)}` : 'First time: pick a weight you can do with good form';
   const why = editing !== null ? `Editing set ${editing + 1}` : suggestion.reason === 'up' ? `Up ${lt === 'stack' ? 'a pin' : `${step} ${unit}`}: you hit the top of the range last time` : suggestion.reason === 'today' ? 'Same as your last set' : '';
 
@@ -330,9 +336,22 @@ export default function FocusScreen() {
               ) : (
                 <View style={s.center}>
                   {/* The exercise itself, lit in the same dark room (clay render), dimmed behind the numbers. */}
-                  {fig ? (
+                  {video ? (
+                    <Press
+                      onPress={() => setFigPaused((v) => !v)}
+                      style={s.figure}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${ex.name} video. ${figPaused ? 'Paused, tap to play' : 'Playing, tap to pause'}`}
+                      testID="focus-video"
+                    >
+                      <ClayVideo source={video} paused={figPaused} />
+                      <Vignette width="100%" height="100%" tint={color.stage} strength={1} rx="50%" ry="50%" inner={0.7} cy="50%" id="focus-fig-v" />
+                    </Press>
+                  ) : fig ? (
                     <View style={s.figure} pointerEvents="none">
                       <Image source={fig} style={s.figureImg} resizeMode="contain" accessibilityIgnoresInvertColors />
+                      {/* Edges melt into the screen's own black: no image border can show. */}
+                      <Vignette width="100%" height="100%" tint={color.stage} strength={1} rx="50%" ry="50%" inner={0.7} cy="50%" id="focus-fig" />
                     </View>
                   ) : null}
                   <Text style={type.label}>{exDone && editing === null ? 'Exercise done' : editing !== null ? `Set ${editing + 1}` : `Set ${slotSet + 1} of ${plan.sets}`}</Text>

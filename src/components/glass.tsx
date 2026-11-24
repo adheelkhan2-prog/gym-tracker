@@ -63,14 +63,38 @@ function Drift({
 /** Film grain, tiled; static so it costs nothing per frame. */
 const GRAIN = require('../../assets/textures/grain.png');
 
-/** Soft edge darkening, drawn once with SVG. `id` must be unique per screen (web shares SVG ids). */
-export function Vignette({ width, height, strength = 0.75, id = 'vignette', cy = '42%' }: { width: number | string; height: number | string; strength?: number; id?: string; cy?: string }) {
+/**
+ * Soft edge darkening, drawn once with SVG. `id` must be unique per screen (web shares SVG ids).
+ * With `tint` = the screen's background, `rx`/`ry` = 50% and strength 1, an image's edges melt
+ * fully into the screen, so no image border can ever show.
+ */
+export function Vignette({
+  width,
+  height,
+  strength = 0.75,
+  id = 'vignette',
+  cy = '42%',
+  tint = '#000000',
+  rx = '75%',
+  ry = '62%',
+  inner = 0.55,
+}: {
+  width: number | string;
+  height: number | string;
+  strength?: number;
+  id?: string;
+  cy?: string;
+  tint?: string;
+  rx?: string;
+  ry?: string;
+  inner?: number;
+}) {
   return (
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
-        <RadialGradient id={id} cx="50%" cy={cy} rx="75%" ry="62%">
-          <Stop offset="0.55" stopColor="#000000" stopOpacity={0} />
-          <Stop offset="1" stopColor="#000000" stopOpacity={strength} />
+        <RadialGradient id={id} cx="50%" cy={cy} rx={rx} ry={ry}>
+          <Stop offset={String(inner)} stopColor={tint} stopOpacity={0} />
+          <Stop offset="1" stopColor={tint} stopOpacity={strength} />
         </RadialGradient>
       </Defs>
       <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
