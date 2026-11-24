@@ -11,7 +11,7 @@ import { PROGRAMS, type Program } from '../data/programs';
 import { type PlannedExercise, type WorkoutDay } from '../data/program';
 import { haptic } from '../feedback';
 import { useStore } from '../store';
-import { color, fmtClock, font, leading, radius, size, space, touch, type } from '../theme';
+import { color, fmtClock, font, leading, radius, size, space, themed, touch, type } from '../theme';
 
 const RESTS: (number | undefined)[] = [undefined, 60, 90, 120, 180];
 const uid = () => Math.random().toString(36).slice(2, 8);
@@ -238,7 +238,7 @@ export default function BuilderScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md },
   pad: { paddingHorizontal: space.lg },
   title: { fontFamily: font.display, fontSize: size.display, lineHeight: leading.display, letterSpacing: -1.2, color: color.text, marginTop: space.md },
@@ -269,7 +269,7 @@ const s = StyleSheet.create({
   target: { width: 72, minHeight: 40, borderRadius: radius.sm, backgroundColor: color.surface3, color: color.text, textAlign: 'center', fontFamily: font.display, fontSize: size.body },
   rest: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, paddingHorizontal: space.sm, borderRadius: radius.pill, backgroundColor: color.accentDim, marginLeft: 'auto' },
   restText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.accentText },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../components/RouteError';

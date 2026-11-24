@@ -8,7 +8,7 @@ import { Icon, type IconName } from '../../components/icons';
 import { WeekMapper } from '../../components/ProgramParts';
 import { Button, Chip, Press, Screen, SectionTitle, Switch } from '../../components/ui';
 import { activeProgram, useStore } from '../../store';
-import { bottomClearance, color, font, leading, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, font, leading, radius, size, space, themed, touch, type } from '../../theme';
 
 /** Every third-party asset in the app, grouped by where it shows up (see src/data/asset-licences.md). */
 const CREDITS: { title: string; note: string; links: { label: string; url: string }[] }[] = [
@@ -72,6 +72,20 @@ export default function SettingsScreen() {
       <Text style={s.title} accessibilityRole="header">
         Settings
       </Text>
+
+      <SectionTitle>Appearance</SectionTitle>
+      <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }} accessibilityRole="radiogroup">
+        {(
+          [
+            ['system', 'System'],
+            ['light', 'Light'],
+            ['dark', 'Dark'],
+          ] as const
+        ).map(([v, label]) => (
+          <Chip key={v} label={label} active={state.theme === v} onPress={() => update((st) => ({ ...st, theme: v }))} />
+        ))}
+      </View>
+      <Text style={[type.small, { marginTop: space.sm }]}>System follows your phone’s light or dark mode.</Text>
 
       <SectionTitle>Weight unit</SectionTitle>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -228,7 +242,7 @@ function CrashLogSection() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   crashRow: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   crashWhen: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
   crashTrail: { fontFamily: font.body, fontSize: size.label, color: color.subtle, marginTop: space.xxs },
@@ -251,7 +265,7 @@ const s = StyleSheet.create({
   creditGroup: { marginTop: space.md, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line },
   creditTitle: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text, marginBottom: space.xs },
   creditText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../../components/RouteError';

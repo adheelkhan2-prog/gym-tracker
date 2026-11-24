@@ -25,7 +25,7 @@ import { haptic } from '../feedback';
 import { fmtKg, fromKg, round1 } from '../load';
 import { bestBefore, dayById, doneSets, formatDate, prSetsOn, todayKey, trainingStreak, useStore } from '../store';
 import { titleOf } from '../workout';
-import { color, font, leading, motion, radius, size, space, type } from '../theme';
+import { color, font, leading, motion, radius, size, space, themed, type } from '../theme';
 import { levelFor, pctChange, previousSameDay, rankFor, totalXp, volumeOn, xpOn } from '../xp';
 
 // Choreography (ms after open). One tap anywhere jumps to the end.
@@ -402,7 +402,7 @@ function XpFill({ from, to, skip }: { from: number; to: number; skip: boolean })
   return <Progress value={skip || filled ? to : from} height={14} />;
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   pad: { paddingHorizontal: space.lg },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   skipHint: { fontFamily: font.bodySemi, fontSize: size.label, color: color.subtle },
@@ -445,7 +445,7 @@ const s = StyleSheet.create({
   levelUpText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.onAccent, letterSpacing: 0.6 },
   copy: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.text, marginBottom: space.lg },
   actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../components/RouteError';

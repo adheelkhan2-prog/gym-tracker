@@ -4,7 +4,7 @@ import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, SlideInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { color, motion, radius, space, type } from '../theme';
+import { color, motion, radius, space, themed, type } from '../theme';
 import { Glass } from './glass';
 import { Press } from './ui';
 
@@ -85,10 +85,10 @@ export function Sheet({
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.scrim, justifyContent: 'flex-end', zIndex: 50 },
   wrap: { paddingHorizontal: space.sm },
   sheet: { paddingHorizontal: space.lg },
   head: { paddingTop: space.md, paddingBottom: space.md },
   grabber: { alignSelf: 'center', width: 44, height: 5, borderRadius: radius.pill, backgroundColor: color.glassBorder, marginBottom: space.md },
-});
+}));

@@ -1,4 +1,5 @@
-// Focus mode logic: what each set is pre-filled with, so logging a set is one tap.
+// Set logic for the workout screen: what each set is pre-filled with (one tap to log), and what a set
+// still needs before it can be logged.
 import { EXERCISES } from './data/exercises';
 import { targetTop, type PlannedExercise } from './data/program';
 import { fromKg, loadTypeOf, round1, weightFromLoad, type LoadInfo, type Unit } from './load';

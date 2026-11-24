@@ -12,7 +12,7 @@ import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
 import { MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, round1 } from '../../load';
 import { addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
-import { bottomClearance, color, font, heat, leading, motion, radius, size, space, type } from '../../theme';
+import { bottomClearance, color, font, heat, leading, motion, radius, size, space, themed, type } from '../../theme';
 import { RANKS, levelFor, pctChange, rankFor, totalXp, volumeOn } from '../../xp';
 
 type Metric = 'top' | 'e1rm';
@@ -263,7 +263,7 @@ export default function ProgressScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   kicker: { ...type.label, color: color.accentText },
   megaRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
@@ -305,7 +305,7 @@ const s = StyleSheet.create({
     padding: space.lg,
     gap: space.sm,
   },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../../components/RouteError';

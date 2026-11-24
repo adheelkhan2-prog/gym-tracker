@@ -1,0 +1,20 @@
+{
+ "incline_db_press": {
+  "file": "incline_db_press.mp4",
+  "credit": "3D clay render made for this app (CC BY-SA 4.0)",
+  "source": "render/ (this repo)",
+  "licence": "CC BY-SA 4.0"
+ },
+ "lat_pulldown": {
+  "file": "lat_pulldown.mp4",
+  "credit": "3D clay render made for this app (CC BY-SA 4.0)",
+  "source": "render/ (this repo)",
+  "licence": "CC BY-SA 4.0"
+ },
+ "lateral_raise": {
+  "file": "lateral_raise.mp4",
+  "credit": "3D clay render made for this app (CC BY-SA 4.0)",
+  "source": "render/ (this repo)",
+  "licence": "CC BY-SA 4.0"
+ }
+}

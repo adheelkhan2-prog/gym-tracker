@@ -2,7 +2,7 @@
  * Today screen day choice (the "Monday shows Wednesday" bug), the ease-in card rule, and focus
  * mode's one-tap prefill / progression suggestions.
  */
-import { missingFor, suggestSet, targetBottom, weightIn } from '../focus';
+import { missingFor, suggestSet, targetBottom, weightIn } from '../sets';
 import { restBody } from '../restNotify';
 import { DEFAULT_STATE, type State } from '../store';
 import { todayDayId } from '../workout';

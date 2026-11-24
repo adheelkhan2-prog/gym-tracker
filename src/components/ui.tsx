@@ -28,7 +28,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { haptic } from '../feedback';
-import { color, font, gradient, motion, radius, size, space, touch, type } from '../theme';
+import { color, font, gradient, motion, radius, size, space, themed, touch, type } from '../theme';
 import { Backdrop, Glass } from './glass';
 import { Icon, type IconName } from './icons';
 
@@ -191,9 +191,11 @@ export function Button({
   loading,
   disabled,
   accessibilityLabel,
+  testID,
 }: {
   label?: string;
   onPress: () => void;
+  testID?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: IconName;
@@ -238,6 +240,7 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       style={{ borderRadius: radius.pill }}
+      testID={testID}
     >
       {variant === 'solid' ? (
         <LinearGradient colors={gradient.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
@@ -430,7 +433,7 @@ export function Ring({
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   loading: { flex: 1, backgroundColor: color.bg, paddingHorizontal: space.lg, paddingTop: space.x5 + space.xxl },
   sectionRow: {
     flexDirection: 'row',
@@ -443,7 +446,7 @@ const s = StyleSheet.create({
   card: { padding: space.xl },
   btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
   btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.3 },
-  btnPrimary: { backgroundColor: '#0C0C0E', borderWidth: 1, borderColor: color.accentEdge },
+  btnPrimary: { backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.accentEdge },
   iconBtn: {
     width: touch.min,
     height: touch.min,
@@ -494,4 +497,4 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-});
+}));

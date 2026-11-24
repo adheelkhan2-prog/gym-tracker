@@ -12,7 +12,7 @@ import { WEEKDAY_SHORT } from '../data/program';
 import { trainingDays, type Program } from '../data/programs';
 import { haptic } from '../feedback';
 import { allPrograms, programById, todayKey, useStore } from '../store';
-import { color, font, leading, radius, size, space, type, touch } from '../theme';
+import { color, font, leading, radius, size, space, themed, touch, type } from '../theme';
 
 const GAP = space.md;
 
@@ -203,7 +203,7 @@ export default function ProgramsScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md },
   counter: { fontFamily: font.display, fontSize: size.h2, color: color.accent, fontVariant: ['tabular-nums'], paddingRight: space.md },
   of: { fontFamily: font.bodyBold, fontSize: size.small, color: color.subtle },
@@ -226,7 +226,7 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.glassBorder },
   dotOn: { width: 20, backgroundColor: color.accent },
   note: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../components/RouteError';

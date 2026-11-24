@@ -4,7 +4,7 @@
 import type { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { lazySafe } from '../../safe';
-import { color, font, radius, size } from '../../theme';
+import { color, font, radius, size, themed } from '../../theme';
 import type { BodyModel as Impl } from './BodyModelImpl';
 
 export type { Paint, PaintMap, PulseMap, Snapshot } from './BodyModelImpl';
@@ -26,7 +26,7 @@ export const BodyModel = lazySafe<Props>(
   Unavailable,
 );
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   box: { width: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: radius.xl, backgroundColor: color.surface },
   text: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle },
-});
+}));

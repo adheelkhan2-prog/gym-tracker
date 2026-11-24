@@ -30,7 +30,7 @@ import {
   useStore,
   weekKeys,
 } from '../../store';
-import { bottomClearance, color, floating, font, leading, motion, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
 import { WARMUP, dayProgress, subtitleOf, titleOf, todayDayId } from '../../workout';
 import { levelFor, rankFor, totalXp } from '../../xp';
 
@@ -65,9 +65,9 @@ export default function TodayScreen() {
 
   const openExercise = (exerciseId: string, slot: string) =>
     router.push({ pathname: '/exercise/[id]', params: { id: exerciseId, day: day!.id, slot } });
-  const openFocus = () => {
+  const openWorkout = () => {
     haptic.tap();
-    router.push({ pathname: '/focus', params: { day: day!.id } });
+    router.push({ pathname: '/workout', params: { day: day!.id } });
   };
 
   // Save the finished session to disk first; only then open the celebration, so a crash there
@@ -342,8 +342,8 @@ export default function TodayScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setCtaH(e.nativeEvent.layout.height)}
         >
-          <LinearGradient colors={['rgba(7,7,8,0)', color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
-          <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!which.preview && progress.allDone ? finish : openFocus} />
+          <LinearGradient colors={[color.fadeFrom, color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
+          <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!which.preview && progress.allDone ? finish : openWorkout} />
         </View>
       )}
     </View>
@@ -358,7 +358,7 @@ const longDate = (key: string) => {
   return `${WEEKDAY_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 };
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   date: { ...type.label },
   greet: { fontFamily: font.displayBold, fontSize: size.h3, lineHeight: 24, color: color.muted, marginTop: space.sm },
@@ -436,7 +436,7 @@ const s = StyleSheet.create({
   programChange: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   ctaBar: { position: 'absolute', left: space.lg, right: space.lg },
   ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -(floating.tabBar + floating.gap) },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../../components/RouteError';

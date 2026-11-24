@@ -7,10 +7,10 @@ import { Figtree_600SemiBold } from '@expo-google-fonts/figtree/600SemiBold';
 import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
 import { Figtree_800ExtraBold } from '@expo-google-fonts/figtree/800ExtraBold';
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -19,7 +19,7 @@ import { crumb, installCrashReporting, setForeground } from '../crash';
 import { shareCrashLog } from '../crashShare';
 import { applyReminderAction, onReminderResponse, setupNotifications, syncReminders } from '../reminders';
 import { StoreProvider, useStore } from '../store';
-import { color } from '../theme';
+import { applyScheme, color, type Scheme } from '../theme';
 
 // Before anything renders: log an unexpected close from last time, catch fatal JS errors.
 installCrashReporting();
@@ -33,6 +33,41 @@ function CrashTrail() {
     return () => sub.remove();
   }, []);
   return null;
+}
+
+/** The scheme to show: the Settings choice, or the phone's when it's "System". */
+function useWantedScheme(): Scheme {
+  const { state } = useStore();
+  const phone = useColorScheme();
+  return state.theme === 'system' ? (phone === 'light' ? 'light' : 'dark') : state.theme;
+}
+
+/**
+ * Applies the theme before anything below it renders, and on a change re-renders every screen
+ * with the new colours (they're read at render time; styles are themed()), then returns you to
+ * the screen you were on.
+ */
+function ThemeGate({ children }: { children: React.ReactNode }) {
+  const want = useWantedScheme();
+  const path = usePathname();
+  const params = useGlobalSearchParams<Record<string, string>>();
+  // Set the palette before the children render (idempotent; only does work on a change).
+  applyScheme(want);
+  const where = useRef({ path, params });
+  const shown = useRef(want);
+  useEffect(() => {
+    if (shown.current !== want) {
+      shown.current = want;
+      const { path: p, params: q } = where.current;
+      if (p && p !== '/') setTimeout(() => router.replace({ pathname: p as never, params: q }), 0);
+    } else where.current = { path, params };
+  });
+  return (
+    <View key={want} style={{ flex: 1, backgroundColor: color.bg }}>
+      <StatusBar style={want === 'light' ? 'dark' : 'light'} />
+      {children}
+    </View>
+  );
 }
 
 function ReminderBridge() {
@@ -78,7 +113,7 @@ function Gate() {
   });
   if (!ready || (!fontsLoaded && !fontError)) return <Loading />;
   return (
-    <>
+    <ThemeGate>
       <CrashTrail />
       <ReminderBridge />
       <Stack
@@ -90,9 +125,9 @@ function Gate() {
         }}
       >
         <Stack.Screen name="complete" options={{ animation: 'fade_from_bottom', gestureEnabled: false }} />
-        <Stack.Screen name="focus" options={{ animation: 'fade_from_bottom', animationDuration: 220, gestureEnabled: false }} />
+        <Stack.Screen name="workout" options={{ animation: 'fade_from_bottom', animationDuration: 220 }} />
       </Stack>
-    </>
+    </ThemeGate>
   );
 }
 
@@ -101,7 +136,6 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
       <SafeAreaProvider style={{ backgroundColor: color.bg }}>
         <StoreProvider>
-          <StatusBar style="light" />
           <ErrorBoundary onShareLog={() => void shareCrashLog().catch(() => {})}>
             <Gate />
           </ErrorBoundary>

@@ -4,7 +4,7 @@ import type { ErrorBoundaryProps } from 'expo-router';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { logCrash } from '../crash';
-import { color, space, type } from '../theme';
+import { color, space, themed, type } from '../theme';
 import { Icon } from './icons';
 import { Button } from './ui';
 
@@ -24,4 +24,4 @@ export function RouteError({ error, retry }: ErrorBoundaryProps) {
   );
 }
 
-const s = StyleSheet.create({ wrap: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
+const s = themed(() => StyleSheet.create({ wrap: { flex: 1, alignItems: 'center', justifyContent: 'center' } }));

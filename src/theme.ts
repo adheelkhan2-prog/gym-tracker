@@ -1,10 +1,17 @@
 // Design tokens. Every colour, font, size, spacing, radius and motion value used by the app lives here.
-// Dark, low-key: near-black with graphite layers, film grain and a vignette, lit like a
-// spotlight in a dark room. Deep crimson is the rare accent (thin lines, small glows, active states,
-// the key number, PR moments); a very faint blood-red glow sits far back. Red never means "error":
-// warnings and deletes use amber/white with an icon. See DESIGN.md.
-
-export const color = {
+// Two themes share one identity:
+// - Dark: near-black with graphite layers, film grain and a vignette, lit like a spotlight in a dark
+//   room.
+// - Light: warm off-white paper with warm-grey layers and soft shadows.
+// Deep crimson is the rare accent in both (thin lines, small glows, active states, the key number,
+// PR moments). Red never means "error": warnings and deletes use amber with an icon. Media (videos,
+// renders, photos) always sit on their own dark stage panel. See DESIGN.md.
+//
+// How theming works: `color` is ONE shared object whose values are swapped in place by applyScheme().
+// Style sheets are built lazily with themed(), so they rebuild after a switch; the app re-renders the
+// screens on a switch (see ThemeGate in app/_layout.tsx). Never copy a colour into a module-level
+// constant: read `color.x` at render time, or inside themed().
+const DARK = {
   // Near-black and graphite ladder
   bg: '#070708',
   bgRaised: '#0C0C0E',
@@ -49,7 +56,110 @@ export const color = {
   muscleContext: '#9C9CA4',
   musclePrimary: '#E1283A',
   muscleSecondary: '#C8685C', // muted terracotta: soft, never pink
-} as const;
+  // Chrome that differs per theme
+  fadeFrom: 'rgba(7,7,8,0)', // transparent end of fades into bg
+  sheenTop: 'rgba(255,255,255,0.06)',
+  shadow: '#000000',
+  chart: '#ECECEF',
+  chartGrid: 'rgba(255,255,255,0.08)',
+  body3d: '#0C0C0E', // background behind the 3D model
+};
+
+export type Palette = { [K in keyof typeof DARK]: string };
+
+/**
+ * Light theme: warm off-white paper, warm greys, the same crimson (a shade deeper so small text keeps
+ * AA contrast). Contrast on bg #F5F2EE: text 15.8:1, muted 7.4:1, subtle 4.9:1, accentText 6.1:1,
+ * warn 5.3:1. White text on accent 6.3:1.
+ */
+const LIGHT: Palette = {
+  bg: '#F5F2EE',
+  bgRaised: '#FAF8F5',
+  stage: '#0A0A0A', // media keeps its dark stage panel in both themes
+  surface: '#FFFFFF',
+  surface2: '#EEEAE4',
+  surface3: '#E2DDD5',
+  line: 'rgba(28,22,16,0.08)',
+  glass: 'rgba(255,255,255,0.74)',
+  glassSolid: 'rgba(255,255,255,0.97)',
+  glassBorder: 'rgba(28,22,16,0.09)',
+  glassHighlight: 'rgba(255,255,255,0.7)',
+  glassPressed: 'rgba(28,22,16,0.05)',
+  text: '#1C1916',
+  muted: '#524C46',
+  subtle: '#6A635C',
+  accent: '#C8102E',
+  accentPressed: '#A50D26',
+  accentText: '#AE0E28',
+  accentDim: 'rgba(200,16,46,0.08)',
+  accentGlow: 'rgba(200,16,46,0.20)',
+  accentEdge: 'rgba(200,16,46,0.50)',
+  onAccent: '#FFFFFF',
+  glowDeep: '#F2D4D8',
+  warn: '#8F5B00',
+  warnDim: 'rgba(176,112,0,0.10)',
+  warnEdge: 'rgba(143,91,0,0.55)',
+  ink: '#1C1916',
+  scrim: 'rgba(28,22,16,0.42)',
+  scrimDeep: 'rgba(28,22,16,0.66)',
+  smoke: '#E9E3DB',
+  inkTrack: 'rgba(28,22,16,0.10)',
+  noGlow: '#000000',
+  flash: '#FFFFFF',
+  muscleIdle: '#C9C5BF',
+  muscleContext: '#A39E97',
+  musclePrimary: '#D0213A',
+  muscleSecondary: '#C8685C',
+  fadeFrom: 'rgba(245,242,238,0)',
+  sheenTop: 'rgba(255,255,255,0.55)',
+  shadow: '#5A4A3A',
+  chart: '#1C1916',
+  chartGrid: 'rgba(28,22,16,0.10)',
+  body3d: '#ECE8E2',
+};
+
+export type Scheme = 'dark' | 'light';
+export const PALETTES: Record<Scheme, Palette> = { dark: { ...DARK }, light: LIGHT };
+
+/** The live colours. Swapped in place by applyScheme(); read at render time. */
+export const color: Palette = { ...DARK };
+
+let current: Scheme = 'dark';
+let version = 0;
+export const currentScheme = () => current;
+export const themeVersion = () => version;
+
+/** Switch every colour (and every themed() style) to `scheme`. Returns true when it changed. */
+export function applyScheme(scheme: Scheme) {
+  if (scheme === current) return false;
+  current = scheme;
+  Object.assign(color, PALETTES[scheme]);
+  gradient.sheen = [color.sheenTop, 'rgba(255,255,255,0)'] as const;
+  version++;
+  return true;
+}
+
+/**
+ * A style object (usually StyleSheet.create) built from the live colours, rebuilt lazily after a
+ * theme switch. Use exactly like a StyleSheet: `const s = themed(() => StyleSheet.create({...}))`.
+ */
+export function themed<T extends object>(build: () => T): T {
+  let built: T | null = null;
+  let at = -1;
+  const get = () => {
+    if (!built || at !== version) {
+      built = build();
+      at = version;
+    }
+    return built;
+  };
+  return new Proxy({} as T, {
+    get: (_t, k) => (get() as Record<string | symbol, unknown>)[k],
+    has: (_t, k) => k in get(),
+    ownKeys: () => Reflect.ownKeys(get()),
+    getOwnPropertyDescriptor: (_t, k) => ({ ...Object.getOwnPropertyDescriptor(get(), k), configurable: true }),
+  });
+}
 
 /** Day names. Every day shares the same identity; days differ by name and number. */
 export const dayTitle: Record<string, string> = {
@@ -62,7 +172,7 @@ export const dayTitle: Record<string, string> = {
 
 /** Gradients: the sheen is the top light on glass. Crimson is never a big gradient; `accent` is the
  * solid fill reserved for the rare PR action. */
-export const gradient = {
+export const gradient: { accent: readonly [string, string]; sheen: readonly [string, string] } = {
   accent: ['#E0243A', '#E0243A'] as const,
   sheen: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0)'] as const,
 };
@@ -135,8 +245,8 @@ export const bottomClearance = {
   tabs: floating.fade + 24,
 } as const;
 
-/** Text style presets built from the tokens above. */
-export const type = {
+/** Text style presets built from the tokens above (rebuilt on a theme switch). */
+export const type = themed(() => ({
   display: { fontFamily: font.display, fontSize: size.display, lineHeight: leading.display, letterSpacing: -0.6, color: color.text },
   title: { fontFamily: font.display, fontSize: size.title, lineHeight: leading.title, letterSpacing: -0.3, color: color.text },
   h2: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, letterSpacing: -0.3, color: color.text },
@@ -152,7 +262,7 @@ export const type = {
     color: color.subtle,
   },
   num: { fontFamily: font.display, fontVariant: ['tabular-nums' as const], color: color.text },
-} as const;
+}));
 
 export const fmtTime = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);

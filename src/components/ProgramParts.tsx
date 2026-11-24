@@ -6,7 +6,7 @@ import { MUSCLE_LABEL, type MuscleId } from '../data/muscles';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../data/program';
 import type { Program } from '../data/programs';
 import { addDays, dateFromKey, formatDate, todayKey } from '../store';
-import { color, font, radius, size, space, touch, type } from '../theme';
+import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import type { PaintMap } from './body/BodyModel';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
@@ -211,7 +211,7 @@ export function LibrarySheet({ title, onPick, onClose }: { title: string; onPick
 
 const LibrarySpacer = () => <View style={{ height: space.xs }} />;
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   weekRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   wd: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.accentText, width: 40 },
@@ -230,4 +230,4 @@ const s = StyleSheet.create({
   thumb: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: color.flash },
   noThumb: { backgroundColor: color.surface3, alignItems: 'center', justifyContent: 'center' },
   libName: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text },
-});
+}));

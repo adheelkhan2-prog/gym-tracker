@@ -11,7 +11,7 @@ import Animated, {
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CONTEXT_NODES, MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
-import { color, font, radius, size, space } from '../../theme';
+import { color, font, radius, size, space, themed } from '../../theme';
 import { Icon } from '../icons';
 import { Canvas, MODEL_SRC, snapshotGL, useFrame, useLoader, useThree } from './fiber';
 
@@ -337,7 +337,7 @@ export const BodyModel = React.memo(function BodyModel({
   );
 });
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   wrap: { width: '100%', overflow: 'hidden', borderRadius: radius.xl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md, padding: space.xxl },
   msg: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted, textAlign: 'center' },
@@ -357,4 +357,4 @@ const s = StyleSheet.create({
   tagText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   hint: { position: 'absolute', bottom: space.md, right: space.md, flexDirection: 'row', alignItems: 'center', gap: space.xs },
   hintText: { fontFamily: font.body, fontSize: size.tiny, color: color.subtle },
-});
+}));

@@ -10,7 +10,7 @@ import { SUPPS, line } from '../../copy';
 import { haptic } from '../../feedback';
 import { SUPPORTED } from '../../reminders';
 import { addDays, allTaken, dateFromKey, supplementStreak, todayKey, useStore } from '../../store';
-import { bottomClearance, color, fmtTime, font, leading, motion, radius, size, space, touch, type } from '../../theme';
+import { bottomClearance, color, fmtTime, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
 
 const SLOT_NAMES = ['Morning reminder', 'If not taken', 'Last call'];
 
@@ -216,7 +216,7 @@ export default function SupplementsScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'flex-end' },
   kicker: { ...type.label },
   megaRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
@@ -237,7 +237,7 @@ const s = StyleSheet.create({
   divider: { borderTopWidth: 1, borderTopColor: color.line },
   strong: { fontFamily: font.bodyBold, color: color.text },
   addInput: { flex: 1, fontFamily: font.body, color: color.text, fontSize: size.body, minHeight: touch.min },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../../components/RouteError';

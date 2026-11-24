@@ -17,13 +17,13 @@ import SettingsScreen from '../src/app/(tabs)/settings';
 import SupplementsScreen from '../src/app/(tabs)/supplements';
 import TodayScreen from '../src/app/(tabs)/index';
 import CompleteScreen from '../src/app/complete';
-import FocusScreen from '../src/app/focus';
+import WorkoutScreen from '../src/app/workout';
 import ExerciseScreen from '../src/app/exercise/[id]';
 import BuilderScreen from '../src/app/builder';
 import ProgramsScreen from '../src/app/programs';
 import { Loading, Press } from '../src/components/ui';
 import { STORAGE_KEY, StoreProvider, addDays, todayKey, useStore, type DayLog } from '../src/store';
-import { color, font, size, space } from '../src/theme';
+import { color, font, size, space, themed } from '../src/theme';
 import { FocusContext, ParamsContext, setNav, type Route } from './router-shim';
 
 const sets = (w: number, reps: number[]) => reps.map((r) => ({ weight: String(w), reps: String(r), done: true }));
@@ -157,8 +157,8 @@ function Demo() {
             <ProgramsScreen />
           ) : top.name === 'builder' ? (
             <BuilderScreen key={JSON.stringify(top.params)} />
-          ) : top.name === 'focus' ? (
-            <FocusScreen key={JSON.stringify(top.params)} />
+          ) : top.name === 'workout' ? (
+            <WorkoutScreen key={JSON.stringify(top.params)} />
           ) : (
             <CompleteScreen />
           )}
@@ -216,7 +216,7 @@ function Root() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: color.surface2, paddingHorizontal: space.lg, paddingVertical: space.sm },
   bannerText: { flex: 1, fontFamily: font.body, fontSize: size.label, lineHeight: 16, color: color.muted },
   bannerBtn: { borderWidth: 1, borderColor: color.line, borderRadius: 999, paddingHorizontal: space.lg, minHeight: 48, justifyContent: 'center' },
@@ -226,6 +226,6 @@ const s = StyleSheet.create({
   tab: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 60, borderRadius: 24 },
   tabLine: { position: 'absolute', top: 0, width: 28, height: 2, borderRadius: 1, backgroundColor: color.accent },
   tabText: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
-});
+}));
 
 registerRootComponent(Root);

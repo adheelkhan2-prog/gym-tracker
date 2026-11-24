@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { haptic } from '../feedback';
 import { startRestNotification, stopRestNotification } from '../restNotify';
-import { color, fmtClock, font, leading, radius, size, space, touch, type } from '../theme';
+import { color, fmtClock, font, leading, radius, size, space, themed, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Press } from './ui';
 
@@ -202,7 +202,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,4,5,0.97)' },
   fullInner: { flex: 1, alignItems: 'center', justifyContent: 'space-between' },
   count: { fontFamily: font.display, fontSize: size.mega, lineHeight: leading.mega, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -1 },
@@ -246,4 +246,4 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   barBtnText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text },
-});
+}));

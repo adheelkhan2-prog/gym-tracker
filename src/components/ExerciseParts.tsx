@@ -4,12 +4,13 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
 import { EXERCISE_VIDEO } from '../data/exercise-video';
 import { howToImages } from '../data/how-to';
-import { ClayVideo } from './ClayVideo';
-import { Vignette } from './glass';
+import { LoopVideo } from './LoopVideo';
+import { tipsFor } from '../data/tips';
+import { useStore, type OwnVideo } from '../store';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
 import { round1, type MachineSetup } from '../load';
-import { color, font, radius, size, space, touch, type } from '../theme';
+import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
 import { Badge, Button, Press } from './ui';
@@ -18,89 +19,138 @@ import { Badge, Button, Press } from './ui';
 
 export { howToImages } from '../data/how-to';
 
-/** Start/end images that cross-fade on their own; tap to pause or resume. Written steps below. */
-export function HowTo({ ex }: { ex: ExerciseInfo }) {
-  const img = howToImages(ex.id);
+/** Where an exercise's picture comes from, in order of preference. */
+export type MediaKind = 'mine' | 'video' | 'clay' | 'photo' | 'none';
+export function mediaFor(exerciseId: string, userVideos: Record<string, OwnVideo> = {}) {
+  const mine = userVideos[exerciseId];
+  if (mine) return { kind: 'mine' as const, video: { uri: mine.uri }, start: mine.start, end: mine.end };
+  const v = EXERCISE_VIDEO[exerciseId];
+  if (v) return { kind: 'video' as const, video: v.source, credit: v.credit };
+  const img = howToImages(exerciseId);
+  if (img) return { kind: img.clay ? ('clay' as const) : ('photo' as const), img };
+  return { kind: 'none' as const };
+}
+
+/**
+ * The exercise's moving picture: your own recording, else the bundled video (muted, looping), else
+ * the start/end stills cross-fading, else a photo. Tap to pause / play. Reduce motion starts paused.
+ */
+export function ExerciseMedia({ exerciseId, height = 300, label }: { exerciseId: string; height?: number; label?: string }) {
+  const { state } = useStore();
+  const m = mediaFor(exerciseId, state.userVideos);
+  const name = label ?? EXERCISES[exerciseId]?.name ?? 'Exercise';
   const reduce = useReducedMotion();
+  const [paused, setPaused] = useState(reduce);
   const [end, setEnd] = useState(false);
-  // A looping clay video when there is one; else the start/end stills crossfade.
-  const video = EXERCISE_VIDEO[ex.id];
-  // Reduce motion: the video waits on its start frame until tapped.
-  const [paused, setPaused] = useState(() => !!video && reduce);
   const fade = useSharedValue(0);
+  const stills = m.kind === 'clay' || m.kind === 'photo';
   useEffect(() => {
-    if (!img || paused || video) return;
+    if (!stills || paused) return;
     const t = setInterval(() => setEnd((v) => !v), 2200);
     return () => clearInterval(t);
-  }, [img, paused, video]);
+  }, [stills, paused]);
   useEffect(() => {
     fade.value = reduce ? (end ? 1 : 0) : withTiming(end ? 1 : 0, { duration: 600, easing: Easing.inOut(Easing.quad) });
   }, [end, reduce, fade]);
   const endStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
-  const mode = img?.clay ? 'contain' : 'cover';
 
+  if (m.kind === 'none') {
+    return (
+      <View style={[s.photo, s.noPhoto, { height }]}>
+        <Icon name="info" size={28} color={color.muted} />
+        <Text style={[type.small, { textAlign: 'center' }]}>No picture for this one yet. Follow the steps below, or record your own.</Text>
+      </View>
+    );
+  }
+  const isVideo = m.kind === 'mine' || m.kind === 'video';
   return (
-    <View>
-      {video ? (
-        <Press
-          onPress={() => setPaused((v) => !v)}
-          tick
-          scaleTo={0.98}
-          style={[s.photo, s.clay]}
-          accessibilityRole="button"
-          accessibilityLabel={`${ex.name} video. ${paused ? 'Paused, tap to play' : 'Playing, tap to pause'}`}
-          testID="howto-video"
-        >
-          <ClayVideo source={video} paused={paused} />
-          {/* The renders sit in the same dark room: edges fall off into shadow. */}
-          <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />
-          {paused && (
-            <View style={s.paused} testID="howto-paused">
-              <Text style={s.phaseText}>Paused · tap to play</Text>
-            </View>
-          )}
-        </Press>
-      ) : img ? (
-        <Press
-          onPress={() => setPaused((v) => !v)}
-          tick
-          scaleTo={0.98}
-          style={[s.photo, img.clay && s.clay]}
-          accessibilityRole="button"
-          accessibilityLabel={`${ex.name}, ${end ? 'end' : 'start'} position. ${paused ? 'Paused, tap to play' : 'Tap to pause'}`}
-          testID="howto-photo"
-        >
-          <Image source={img.start} style={s.img} resizeMode={mode} />
+    <Press
+      onPress={() => setPaused((v) => !v)}
+      tick
+      scaleTo={0.98}
+      style={[s.photo, s.stage, { height }]}
+      accessibilityRole="button"
+      accessibilityLabel={`${name} ${isVideo ? 'video' : `${end ? 'end' : 'start'} position`}. ${paused ? 'Paused, tap to play' : 'Tap to pause'}`}
+      testID={isVideo ? 'exercise-video' : 'exercise-photo'}
+    >
+      {isVideo ? (
+        <LoopVideo source={m.video} paused={paused} start={m.kind === 'mine' ? m.start : undefined} end={m.kind === 'mine' ? m.end : undefined} />
+      ) : (
+        <>
+          <Image source={m.img!.start} style={s.img} resizeMode={m.kind === 'clay' ? 'contain' : 'cover'} />
           <Animated.View style={[StyleSheet.absoluteFill, endStyle]} pointerEvents="none">
-            <Image source={img.end} style={s.img} resizeMode={mode} />
+            <Image source={m.img!.end} style={s.img} resizeMode={m.kind === 'clay' ? 'contain' : 'cover'} />
           </Animated.View>
-          {/* The renders sit in the same dark room: edges fall off into shadow. */}
-          {img.clay && <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />}
           <View style={s.phase}>
             <View style={[s.phaseDot, !end && s.phaseOn]} />
             <Text style={[s.phaseText, !end && { color: color.accentText }]}>Start</Text>
             <View style={[s.phaseDot, end && s.phaseOn]} />
             <Text style={[s.phaseText, end && { color: color.accentText }]}>End</Text>
           </View>
-          {paused && (
-            <View style={s.paused} testID="howto-paused">
-              <Text style={s.phaseText}>Paused · tap to play</Text>
-            </View>
-          )}
-        </Press>
-      ) : (
-        <View style={[s.photo, s.noPhoto]}>
-          <Icon name="info" size={28} color={color.muted} />
-          <Text style={[type.small, { textAlign: 'center' }]}>No licence-free image for this one yet. Follow the steps below.</Text>
+        </>
+      )}
+      {m.kind === 'mine' && (
+        <View style={s.mine}>
+          <Text style={s.phaseText}>Your video</Text>
         </View>
       )}
+      {paused && (
+        <View style={s.paused} testID="media-paused">
+          <Text style={s.phaseText}>Paused · tap to play</Text>
+        </View>
+      )}
+    </Press>
+  );
+}
+
+/** Where the picture came from (shown under it). */
+export function mediaCredit(exerciseId: string, userVideos: Record<string, OwnVideo> = {}) {
+  const m = mediaFor(exerciseId, userVideos);
+  if (m.kind === 'mine') return 'Your own video (stored on this phone)';
+  if (m.kind === 'video') return `Video: ${m.credit} (credits in Settings)`;
+  if (m.kind === 'clay') return '3D render: made for this app, CC BY-SA 4.0 (credits in Settings)';
+  if (m.kind === 'photo') return 'Photos: free-exercise-db (public domain)';
+  return '';
+}
+
+/** The written how-to steps. */
+export function HowToSteps({ ex }: { ex: ExerciseInfo }) {
+  return (
+    <View>
       {ex.steps.map((t, i) => (
         <View key={i} style={s.step}>
           <Text style={s.stepNo}>{i + 1}</Text>
           <Text style={[type.body, { flex: 1, color: color.muted }]}>{t}</Text>
         </View>
       ))}
-      {img && <Text style={s.credit}>{img.clay ? '3D render: made for this app, CC BY-SA 4.0 (credits in Settings)' : 'Photos: free-exercise-db (public domain)'}</Text>}
+    </View>
+  );
+}
+
+/** Form cues for the movement. */
+export function Tips({ ex }: { ex: ExerciseInfo }) {
+  const tips = tipsFor(ex);
+  return (
+    <View style={{ gap: space.sm, marginTop: space.sm }}>
+      {tips.map((t, i) => (
+        <View key={i} style={s.tip}>
+          <Icon name="check" size={14} color={color.accent} />
+          <Text style={[type.small, { flex: 1, color: color.muted }]}>{t}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Media, then the steps, then where the picture came from. */
+export function HowTo({ ex }: { ex: ExerciseInfo }) {
+  const { state } = useStore();
+  const credit = mediaCredit(ex.id, state.userVideos);
+  return (
+    <View>
+      <ExerciseMedia exerciseId={ex.id} />
+      <HowToSteps ex={ex} />
+      {credit ? <Text style={s.credit}>{credit}</Text> : null}
     </View>
   );
 }
@@ -290,11 +340,13 @@ export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   swapMuscles: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
   photo: { height: 260, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.flash },
   img: { width: '100%', height: '100%' },
-  clay: { backgroundColor: color.bg, height: 300 },
+  stage: { backgroundColor: color.stage },
+  mine: { position: 'absolute', top: space.sm, left: space.sm, paddingHorizontal: space.sm, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: color.scrim },
+  tip: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   paused: {
     position: 'absolute',
     right: space.md,
@@ -355,4 +407,4 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   swatch: { width: 14, height: 14, borderRadius: radius.pill },
   legendText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
-});
+}));

@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { color } from '../theme';
+import { color, themed } from '../theme';
 
 /** Ease-out with a little overshoot: the "spring" feel for numbers. */
 const easeOutBack = (t: number) => {
@@ -197,6 +197,6 @@ export function Pulse({ children, active = true, scale = 1.08 }: { children: Rea
   return <Animated.View style={st}>{children}</Animated.View>;
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   particle: { position: 'absolute', left: 0, top: 0 },
-});
+}));

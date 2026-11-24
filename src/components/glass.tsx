@@ -12,7 +12,7 @@ import { Image, Platform, StyleSheet, View, useWindowDimensions, type StyleProp,
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useStore } from '../store';
-import { color, glass, gradient, radius } from '../theme';
+import { color, currentScheme, glass, gradient, radius, themed } from '../theme';
 
 type Target = React.RefObject<React.ComponentRef<typeof View> | null>;
 const BlurTarget = createContext<Target | null>(null);
@@ -158,8 +158,9 @@ export function Backdrop({ children, intensity = 1, stage = false }: { children:
             <Blob size={mid} tint={color.smoke} opacity={0.38 * intensity} />
           </Drift>
           <Spotlight width={width} height={height} />
-          <Image source={GRAIN} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: 0.05 }]} />
-          <Vignette width={width} height={height} />
+          {/* Paper (light) gets a whisper of grain and no vignette; the dark room keeps both. */}
+          <Image source={GRAIN} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: currentScheme() === 'light' ? 0.025 : 0.05 }]} />
+          {currentScheme() === 'dark' && <Vignette width={width} height={height} />}
         </BlurTargetView>
         {children}
       </View>
@@ -177,8 +178,10 @@ export function Glass({
   r = radius.xl,
   glow,
   strong,
+  testID,
 }: {
   children?: React.ReactNode;
+  testID?: string;
   style?: StyleProp<ViewStyle>;
   r?: number;
   /** Halo colour behind the panel (used rarely; a deep shadow otherwise). */
@@ -191,12 +194,13 @@ export function Glass({
   const blurOn = state.blur && (strong || Platform.OS === 'web');
   return (
     <View
+      testID={testID}
       style={[
         { borderRadius: r },
         // Deep shadow under every panel; a small coloured glow only where asked (rare).
         glow
           ? { shadowColor: glow, shadowOpacity: 0.28, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 0 }
-          : { shadowColor: '#000000', shadowOpacity: 0.6, shadowRadius: 30, shadowOffset: { width: 0, height: 18 }, elevation: 0 },
+          : { shadowColor: color.shadow, shadowOpacity: currentScheme() === 'light' ? 0.12 : 0.6, shadowRadius: 30, shadowOffset: { width: 0, height: 18 }, elevation: 0 },
         style,
       ]}
     >
@@ -204,7 +208,7 @@ export function Glass({
         {blurOn && target ? (
           <BlurView
             intensity={glass.blur}
-            tint="dark"
+            tint={currentScheme() === 'light' ? 'light' : 'dark'}
             blurTarget={target}
             blurMethod="dimezisBlurViewSdk31Plus"
             style={StyleSheet.absoluteFill}
@@ -221,8 +225,8 @@ export function Glass({
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg },
   border: { borderWidth: glass.borderWidth, borderColor: color.glassBorder },
-  topEdge: { borderTopWidth: glass.borderWidth, borderColor: 'transparent', borderTopColor: 'rgba(255,255,255,0.11)' },
-});
+  topEdge: { borderTopWidth: glass.borderWidth, borderColor: 'transparent', borderTopColor: color.glassHighlight },
+}));

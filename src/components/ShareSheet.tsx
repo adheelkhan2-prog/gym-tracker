@@ -6,7 +6,7 @@ import Animated, { FadeIn, SlideInDown, useAnimatedStyle, useSharedValue, withSp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import { scheduleOnRN } from 'react-native-worklets';
-import { color, font, leading, motion, radius, size, space, type } from '../theme';
+import { color, font, leading, motion, radius, size, space, themed, type } from '../theme';
 import { Blob, Glass } from './glass';
 import { Button, Press } from './ui';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -145,7 +145,7 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.scrim, justifyContent: 'flex-end' },
   sheetWrap: { paddingHorizontal: space.sm },
   sheet: { padding: space.lg, paddingTop: space.md },
@@ -163,6 +163,6 @@ const s = StyleSheet.create({
   cardFoot: { position: 'absolute', left: space.xl, right: space.xl, bottom: space.lg, flexDirection: 'row', justifyContent: 'space-between' },
   cardRank: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.accentText },
   cardBrand: { fontFamily: font.display, fontSize: size.label, letterSpacing: 2, color: color.text },
-});
+}));
 
 

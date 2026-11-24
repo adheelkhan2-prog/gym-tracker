@@ -39,7 +39,7 @@ import {
 } from '../../load';
 import { restCarry } from '../../restCarry';
 import { bestBefore, dayById, kgOf, num, previousSession, prMetric, todayKey, useStore, type SetEntry } from '../../store';
-import { color, fmtClock, font, leading, motion, radius, restBarClearance, size, space, touch, type } from '../../theme';
+import { color, fmtClock, font, leading, motion, radius, restBarClearance, size, space, themed, touch, type } from '../../theme';
 import { emptySets, exerciseFor, hitTopOfRange, loadText, setText, swapSlot, titleOf, visiblePlans } from '../../workout';
 
 type Rect = { x: number; y: number };
@@ -667,7 +667,7 @@ export default function ExerciseScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   missing: { flex: 1, padding: space.lg, gap: space.lg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md },
   pad: { paddingHorizontal: space.lg },
@@ -739,7 +739,7 @@ const s = StyleSheet.create({
   prIcon: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
   prTitle: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText, marginTop: space.xxs },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../../components/RouteError';

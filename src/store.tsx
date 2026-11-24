@@ -7,6 +7,9 @@ import { PROGRAMS, type Program } from './data/programs';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
+export type ThemeSetting = 'system' | 'light' | 'dark';
+/** Your own clip of an exercise: the file, and the trimmed part (seconds) that loops. */
+export type OwnVideo = { uri: string; start: number; end: number };
 /**
  * One set. `reps` holds seconds for timed exercises; `weight` is empty for reps-only ones.
  * `weight` is in the set's own unit `u` (kg or lb), so switching units never rewrites history.
@@ -42,6 +45,11 @@ export type State = {
   swaps: Record<string, string>;
   loadTypes: Record<string, LoadType>;
   machines: Record<string, MachineSetup>;
+  /** Appearance: follow the phone, or always light / dark. */
+  theme: ThemeSetting;
+  /** Exercise -> a video you recorded or imported (a file in this app's storage on the phone, never
+   * bundled or uploaded), with the part that loops; replaces the bundled video. */
+  userVideos: Record<string, OwnVideo>;
 };
 
 export const DEFAULT_STATE: State = {
@@ -63,6 +71,8 @@ export const DEFAULT_STATE: State = {
   swaps: {},
   loadTypes: {},
   machines: {},
+  userVideos: {},
+  theme: 'system',
 };
 
 export const STORAGE_KEY = 'gym-tracker/state/v3';
@@ -139,6 +149,11 @@ export function migrate(raw: unknown, fromOld: boolean): State {
     logs,
     sessions: fromOld ? {} : (r.sessions ?? {}),
     variants: r.variants ?? {},
+    userVideos: Object.fromEntries(
+      Object.entries((r.userVideos ?? {}) as Record<string, OwnVideo | string>).map(([id, v]) => [id, typeof v === 'string' ? { uri: v, start: 0, end: 6 } : v]),
+    ),
+    // Saves from before the light theme keep the dark look until the theme is changed in Settings.
+    theme: r.theme === 'light' || r.theme === 'dark' || r.theme === 'system' ? r.theme : 'dark',
     // Barbell-plate and colour-plate logging were removed: those exercises go back to kg/lb.
     loadTypes: Object.fromEntries(Object.entries(r.loadTypes ?? {}).filter(([id, t]) => loadTypesFor(id).includes(t))),
   };

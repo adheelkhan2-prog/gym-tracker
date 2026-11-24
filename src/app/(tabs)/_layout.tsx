@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon, type IconName } from '../../components/icons';
 import { Press } from '../../components/ui';
-import { color, font, motion, radius, size, space, touch } from '../../theme';
+import { color, font, motion, radius, size, space, themed, touch } from '../../theme';
 
 const TABS: Record<string, { title: string; icon: IconName }> = {
   index: { title: 'Today', icon: 'barbell' },
@@ -35,7 +35,7 @@ function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
   return (
     // Report the bar's real height (incl. the gesture-bar inset) so screens can pad above it.
     <View style={[s.wrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none" onLayout={(e) => onHeight?.(e.nativeEvent.layout.height)}>
-      <LinearGradient colors={['rgba(7,7,8,0)', color.bg]} style={s.fade} pointerEvents="none" />
+      <LinearGradient colors={[color.fadeFrom, color.bg]} style={s.fade} pointerEvents="none" />
       <View style={s.bar}>
         <View style={s.row} onLayout={(e) => setW(e.nativeEvent.layout.width)} accessibilityRole="tablist">
           {tabW > 0 && (
@@ -85,7 +85,7 @@ export default function TabsLayout() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg },
   fade: { position: 'absolute', left: 0, right: 0, top: -space.x4, height: space.x4 },
   bar: {
@@ -94,7 +94,7 @@ const s = StyleSheet.create({
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.glassBorder,
-    shadowColor: '#000000',
+    shadowColor: color.shadow,
     shadowOpacity: 0.7,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
@@ -104,7 +104,7 @@ const s = StyleSheet.create({
   pillLine: { width: 28, height: 2, borderRadius: 1, backgroundColor: color.accent, shadowColor: color.accent, shadowOpacity: 0.8, shadowRadius: 6 },
   tab: { flex: 1, minWidth: 0, minHeight: touch.primary + space.xs, alignItems: 'center', justifyContent: 'center', gap: space.xxs, paddingHorizontal: space.xxs, borderRadius: radius.lg },
   label: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
-});
+}));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
 export { RouteError as ErrorBoundary } from '../../components/RouteError';

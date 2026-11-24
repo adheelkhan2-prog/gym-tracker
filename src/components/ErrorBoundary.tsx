@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { logCrash } from '../crash';
-import { color, font, size, space, type } from '../theme';
+import { color, font, size, space, themed, type } from '../theme';
 import { Icon } from './icons';
 import { Button } from './ui';
 
@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
   }
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', gap: space.lg, padding: space.x3 },
   msg: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle, textAlign: 'center' },
-});
+}));

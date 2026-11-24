@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
-import { color, font, size, space, type } from '../theme';
+import { color, font, size, space, themed, type } from '../theme';
 
 export type Point = { label: string; value: number; detail: string };
 
@@ -98,7 +98,7 @@ export function LineChart({ points, unit, height = 200 }: { points: Point[]; uni
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   readout: { marginBottom: space.sm },
   unit: { fontFamily: font.bodySemi, fontSize: size.body, color: color.muted },
-});
+}));
