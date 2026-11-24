@@ -1,0 +1,8 @@
+# Placeholder until the new workout screen lands: open today's workout and come back.
+appId: com.gymtracker.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 30000
+- runFlow: no-errors.yaml

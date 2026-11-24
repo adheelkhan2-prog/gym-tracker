@@ -1,0 +1,25 @@
+# Crash smoke test on a real Android release build (see .github/workflows/android-e2e.yml).
+# Every screen visit asserts the app is still up and no error panel is showing.
+appId: com.gymtracker.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 30000
+- runFlow: no-errors.yaml
+- repeat:
+    times: 10
+    commands:
+      - tapOn: "Settings"
+      - runFlow: no-errors.yaml
+      - tapOn: "Today"
+      - runFlow: no-errors.yaml
+      - tapOn: "Supps"
+      - runFlow: no-errors.yaml
+      - tapOn: "Today"
+      - runFlow: no-errors.yaml
+      - tapOn: "Progress"
+      - runFlow: no-errors.yaml
+      - tapOn: "Today"
+      - runFlow: no-errors.yaml
