@@ -34,6 +34,7 @@ appId: com.gymtracker.app
           element:
             id: "log-0-1"
           direction: DOWN
+          centerElement: true
       - runFlow: no-errors.yaml
       # Log-set validation: first time there is no weight yet, so logging must ask for it.
       - runFlow:
@@ -50,6 +51,14 @@ appId: com.gymtracker.app
             - hideKeyboard
       - tapOn:
           id: "log-0-0"
+      - extendedWaitUntil:
+          visible: "1 of .* sets"
+          timeout: 10000
+      - extendedWaitUntil:
+          visible:
+            id: "rest-skip"
+          timeout: 5000
+          optional: true
       - runFlow:
           when:
             visible:
@@ -57,17 +66,23 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
-      - extendedWaitUntil:
-          visible: "1 of .* sets"
-          timeout: 10000
       # Second set reuses the first set's numbers: one tap.
       - hideKeyboard
       - scrollUntilVisible:
           element:
             id: "log-0-1"
           direction: DOWN
+          centerElement: true
       - tapOn:
           id: "log-0-1"
+      - extendedWaitUntil:
+          visible: "2 of .* sets"
+          timeout: 10000
+      - extendedWaitUntil:
+          visible:
+            id: "rest-skip"
+          timeout: 5000
+          optional: true
       - runFlow:
           when:
             visible:
@@ -75,15 +90,13 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
-      - extendedWaitUntil:
-          visible: "2 of .* sets"
-          timeout: 10000
       - runFlow: no-errors.yaml
       # Swap the second exercise to its first alternative (or back to the original).
       - scrollUntilVisible:
           element:
             id: "swap-1"
           direction: DOWN
+          centerElement: true
       - tapOn:
           id: "swap-1"
       - tapOn:
@@ -104,8 +117,17 @@ appId: com.gymtracker.app
           element:
             id: "log-1-0"
           direction: DOWN
+          centerElement: true
       - tapOn:
           id: "log-1-0"
+      - extendedWaitUntil:
+          visible: "3 of .* sets"
+          timeout: 10000
+      - extendedWaitUntil:
+          visible:
+            id: "rest-skip"
+          timeout: 5000
+          optional: true
       - runFlow:
           when:
             visible:
@@ -113,14 +135,12 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
-      - extendedWaitUntil:
-          visible: "3 of .* sets"
-          timeout: 10000
       # Finish: saved first, then the celebration.
       - scrollUntilVisible:
           element:
             id: "finish-workout"
           direction: DOWN
+          centerElement: true
           timeout: 60000
       - tapOn:
           id: "finish-workout"
@@ -132,6 +152,7 @@ appId: com.gymtracker.app
           element:
             id: "complete-done"
           direction: DOWN
+          centerElement: true
           timeout: 30000
       - tapOn:
           id: "complete-done"
