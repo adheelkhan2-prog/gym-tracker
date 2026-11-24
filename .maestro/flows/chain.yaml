@@ -1,9 +1,13 @@
-# One pass of the crash-test chain up to swap, in a single Maestro run (to debug flows that only
-# fail when they follow others).
+# Two passes of the crash-test chain in a single Maestro run (to debug flows that only fail when
+# they follow others).
 appId: com.gymtracker.app
 ---
-- runFlow: nav.yaml
-- runFlow: start.yaml
-- runFlow: log.yaml
-- runFlow: scroll.yaml
-- runFlow: swap.yaml
+- repeat:
+    times: 2
+    commands:
+      - runFlow: nav.yaml
+      - runFlow: start.yaml
+      - runFlow: log.yaml
+      - runFlow: scroll.yaml
+      - runFlow: swap.yaml
+      - runFlow: finish.yaml

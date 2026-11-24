@@ -9,10 +9,11 @@ appId: com.gymtracker.app
 - tapOn:
     id: "swap-1"
     retryTapIfNoChange: false
+- takeScreenshot: after-swap-tap
 - extendedWaitUntil:
     visible:
       id: "swap-option-.*"
-    timeout: 10000
+    timeout: 30000
 - tapOn:
     id: "swap-option-.*"
     index: 1

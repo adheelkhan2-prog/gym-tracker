@@ -28,6 +28,7 @@ diagnose() {
   find "$RES/dbg" -name 'commands-*.json' -print0 2>/dev/null | xargs -0 -r cat | jq -c '.[] | select(.command.tapOnElement != null) | {sel: (.command.tapOnElement.selector.idRegex // .command.tapOnElement.selector.textRegex), status: .metadata.status, ms: .metadata.duration, err: .metadata.error.message}' 2>/dev/null | tail -6 >>"$RES/results.txt"
   find "$RES/dbg" -name maestro.log -print0 2>/dev/null | xargs -0 -r grep -hiE 'tap|bounds|click' | tail -12 | cut -c1-240 >>"$RES/results.txt"
   adb exec-out screencap -p >"$RES/fail-$n.png" 2>/dev/null || true
+  [ -f after-swap-tap.png ] && cp after-swap-tap.png "$RES/fail-$n-after-tap.png"
 }
 
 run_flows() {
