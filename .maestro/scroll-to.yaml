@@ -1,0 +1,20 @@
+# Scrolls the workout down until the element with id ${ID} is on screen, then centres it. Swipes run
+# along the left edge (no inputs or buttons there), so a swipe is always a scroll.
+appId: com.gymtracker.app
+---
+- repeat:
+    while:
+      notVisible:
+        id: ${ID}
+    times: 40
+    commands:
+      - swipe:
+          start: 4%, 70%
+          end: 4%, 40%
+          duration: 500
+- scrollUntilVisible:
+    element:
+      id: ${ID}
+    direction: DOWN
+    centerElement: true
+    timeout: 10000

@@ -30,11 +30,10 @@ appId: com.gymtracker.app
           visible:
             id: "exercise-0"
           timeout: 20000
-      - scrollUntilVisible:
-          element:
-            id: "log-0-1"
-          direction: DOWN
-          centerElement: true
+      - runFlow:
+          file: scroll-to.yaml
+          env:
+            ID: "log-0-1"
       - runFlow: no-errors.yaml
       # Log-set validation: first time there is no weight yet, so logging must ask for it.
       - runFlow:
@@ -68,11 +67,10 @@ appId: com.gymtracker.app
                 id: "rest-skip"
       # Second set reuses the first set's numbers: one tap. (No hideKeyboard here: logging already
       # closed the keyboard, and on Android hideKeyboard with no keyboard open presses Back.)
-      - scrollUntilVisible:
-          element:
-            id: "log-0-1"
-          direction: DOWN
-          centerElement: true
+      - runFlow:
+          file: scroll-to.yaml
+          env:
+            ID: "log-0-1"
       - tapOn:
           id: "log-0-1"
       - extendedWaitUntil:
@@ -92,11 +90,10 @@ appId: com.gymtracker.app
                 id: "rest-skip"
       - runFlow: no-errors.yaml
       # Swap the second exercise to its first alternative (or back to the original).
-      - scrollUntilVisible:
-          element:
-            id: "swap-1"
-          direction: DOWN
-          centerElement: true
+      - runFlow:
+          file: scroll-to.yaml
+          env:
+            ID: "swap-1"
       - tapOn:
           id: "swap-1"
       - tapOn:
@@ -113,11 +110,10 @@ appId: com.gymtracker.app
                 id: "weight-1-0"
             - inputText: "30"
             - hideKeyboard
-      - scrollUntilVisible:
-          element:
-            id: "log-1-0"
-          direction: DOWN
-          centerElement: true
+      - runFlow:
+          file: scroll-to.yaml
+          env:
+            ID: "log-1-0"
       - tapOn:
           id: "log-1-0"
       - extendedWaitUntil:
@@ -136,7 +132,10 @@ appId: com.gymtracker.app
             - tapOn:
                 id: "rest-skip"
       # Finish: saved first, then the celebration.
-      - runFlow: scroll-to-finish.yaml
+      - runFlow:
+          file: scroll-to.yaml
+          env:
+            ID: "finish-workout"
       - tapOn:
           id: "finish-workout"
       - extendedWaitUntil:
