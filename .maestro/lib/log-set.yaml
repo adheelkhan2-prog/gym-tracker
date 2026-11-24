@@ -1,4 +1,4 @@
-# Log set ${SET} of exercise card ${CARD} (typing ${WEIGHT} first when given), expect the day's
+# Log set ${SET} of exercise card ${CARD} (run type-weight.yaml first to enter a weight), expect the day's
 # count to read "${COUNT} of N sets", then skip the rest timer if it shows.
 appId: com.gymtracker.app
 ---
@@ -6,15 +6,6 @@ appId: com.gymtracker.app
     file: scroll-to.yaml
     env:
       ID: "log-${CARD}-${SET}"
-- runFlow:
-    when:
-      true: ${WEIGHT ? 'true' : 'false'}
-    commands:
-      - tapOn:
-          id: "weight-${CARD}-${SET}"
-      - inputText: ${WEIGHT}
-# No hideKeyboard: logging the set closes the keyboard (and on Android, hideKeyboard with no
-# keyboard open presses Back).
 - tapOn:
     id: "log-${CARD}-${SET}"
 - extendedWaitUntil:

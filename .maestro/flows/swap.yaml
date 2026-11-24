@@ -17,5 +17,8 @@ appId: com.gymtracker.app
     index: 1
 - runFlow: ../lib/no-errors.yaml
 - runFlow:
+    file: ../lib/type-weight.yaml
+    env: { CARD: "1", SET: "0", WEIGHT: "30" }
+- runFlow:
     file: ../lib/log-set.yaml
-    env: { CARD: "1", SET: "0", WEIGHT: "30", COUNT: "1" }
+    env: { CARD: "1", SET: "0", COUNT: "1" }

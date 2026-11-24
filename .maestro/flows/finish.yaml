@@ -3,8 +3,11 @@ appId: com.gymtracker.app
 ---
 - runFlow: ../lib/begin-workout.yaml
 - runFlow:
+    file: ../lib/type-weight.yaml
+    env: { CARD: "0", SET: "0", WEIGHT: "40" }
+- runFlow:
     file: ../lib/log-set.yaml
-    env: { CARD: "0", SET: "0", WEIGHT: "40", COUNT: "1" }
+    env: { CARD: "0", SET: "0", COUNT: "1" }
 - runFlow:
     file: ../lib/scroll-to.yaml
     env:

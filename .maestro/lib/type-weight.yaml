@@ -1,0 +1,11 @@
+# Type ${WEIGHT} into set ${SET} of exercise card ${CARD}. No hideKeyboard afterwards: logging
+# the set closes the keyboard (and on Android, hideKeyboard with no keyboard open presses Back).
+appId: com.gymtracker.app
+---
+- runFlow:
+    file: scroll-to.yaml
+    env:
+      ID: "weight-${CARD}-${SET}"
+- tapOn:
+    id: "weight-${CARD}-${SET}"
+- inputText: "${WEIGHT}"

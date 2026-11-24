@@ -10,8 +10,11 @@ appId: com.gymtracker.app
     id: "log-0-0"
 - assertVisible: "Add your .* first"
 - runFlow:
-    file: ../lib/log-set.yaml
-    env: { CARD: "0", SET: "0", WEIGHT: "40", COUNT: "1" }
+    file: ../lib/type-weight.yaml
+    env: { CARD: "0", SET: "0", WEIGHT: "40" }
 - runFlow:
     file: ../lib/log-set.yaml
-    env: { CARD: "0", SET: "1", WEIGHT: "", COUNT: "2" }
+    env: { CARD: "0", SET: "0", COUNT: "1" }
+- runFlow:
+    file: ../lib/log-set.yaml
+    env: { CARD: "0", SET: "1", COUNT: "2" }
