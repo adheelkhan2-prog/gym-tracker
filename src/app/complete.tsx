@@ -448,3 +448,6 @@ const s = StyleSheet.create({
   copy: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.text, marginBottom: space.lg },
   actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../components/RouteError';

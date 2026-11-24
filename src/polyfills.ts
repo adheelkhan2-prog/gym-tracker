@@ -23,4 +23,9 @@ if (typeof g.TextDecoder === 'undefined') {
   g.TextDecoder = Utf8Decoder;
 }
 
+// Node-only APIs some npm packages call at load time (three.js's CommonJS stub called
+// process.emitWarning, the build-7 crash). In React Native they don't exist; make them harmless.
+const proc = (globalThis as unknown as { process?: Record<string, unknown> }).process;
+if (proc && typeof proc.emitWarning !== 'function') proc.emitWarning = () => {};
+
 export {};

@@ -743,3 +743,6 @@ const s = StyleSheet.create({
   },
   prText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.accentText, letterSpacing: 0.3 },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../components/RouteError';

@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '../../notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -238,3 +238,6 @@ const s = StyleSheet.create({
   strong: { fontFamily: font.bodyBold, color: color.text },
   addInput: { flex: 1, fontFamily: font.body, color: color.text, fontSize: size.body, minHeight: touch.min },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

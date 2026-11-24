@@ -328,3 +328,6 @@ const s = StyleSheet.create({
   creditTitle: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text, marginBottom: space.xs },
   creditText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

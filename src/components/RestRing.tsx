@@ -1,5 +1,5 @@
-import { useAudioPlayer } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
+import { safeRequire } from '../safe';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -43,6 +43,14 @@ type Props = {
  * background to shrink it to a slim bar so the next set stays 1–2 taps away.
  * Pulses in the last 5 seconds, buzzes (and optionally beeps) at zero.
  */
+type Sound = { seekTo: (s: number) => unknown; play: () => void } | null;
+const SOUND = require('../../assets/sounds/rest-done.wav');
+// The rest-done chime. The audio module is loaded guarded (never a crash); if it can't load the
+// timer is silent. Picked once here, so the hook order never changes between renders.
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- guarded optional native module
+const audio = safeRequire('expo-audio', () => require('expo-audio') as typeof import('expo-audio'));
+const useRestSound: () => Sound = audio ? () => audio.useAudioPlayer(SOUND) as unknown as Sound : () => null;
+
 export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, onAdd, onSkip, onDone, startMini = false }: Props) {
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -51,7 +59,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
   const [left, setLeft] = useState(() => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
   const progress = useSharedValue(left / total);
   const beat = useSharedValue(1);
-  const player = useAudioPlayer(require('../../assets/sounds/rest-done.wav'));
+  const player = useRestSound();
   const lastBeat = useRef(left);
 
   useEffect(() => {
@@ -72,8 +80,8 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
         haptic.timerEnd();
         if (sound) {
           try {
-            player.seekTo(0);
-            player.play();
+            player?.seekTo(0);
+            player?.play();
           } catch {}
         }
         onDone();

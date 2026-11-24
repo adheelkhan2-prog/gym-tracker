@@ -241,3 +241,6 @@ const s = StyleSheet.create({
   dotOn: { width: 20, backgroundColor: color.accent },
   note: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../components/RouteError';

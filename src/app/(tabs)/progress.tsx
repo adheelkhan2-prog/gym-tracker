@@ -314,3 +314,6 @@ const s = StyleSheet.create({
     gap: space.sm,
   },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

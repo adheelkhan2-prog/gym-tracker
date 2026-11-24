@@ -1,4 +1,5 @@
-import * as Notifications from 'expo-notifications';
+import { NOTIFY_OK, Notifications } from './notifications';
+import type { NotificationResponse } from 'expo-notifications';
 import { Platform } from 'react-native';
 import { todayKey, type State } from './store';
 import { color } from './theme';
@@ -19,7 +20,7 @@ import { color } from './theme';
  * the schedule so it stays DAYS_AHEAD days long.
  */
 
-export const SUPPORTED = Platform.OS !== 'web';
+export const SUPPORTED = Platform.OS !== 'web' && NOTIFY_OK;
 const CHANNEL = 'supplements';
 const CATEGORY = 'supplement';
 const PREFIX = 'supp-';
@@ -43,7 +44,6 @@ export async function setupNotifications(): Promise<boolean> {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL, {
       name: 'Supplement reminders',
-      // eslint-disable-next-line import/namespace -- exported at runtime; the lint parser misses it
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 150, 250],
       lightColor: color.accent,
@@ -146,7 +146,7 @@ export function applyReminderAction<S extends Pick<State, 'taken' | 'supplements
 /** Listen for taps on reminder notifications / their buttons. */
 export function onReminderResponse(handler: (date: string, action: 'taken' | 'later' | 'open') => void) {
   if (!SUPPORTED) return () => {};
-  const handle = (r: Notifications.NotificationResponse | null) => {
+  const handle = (r: NotificationResponse | null) => {
     if (!r) return;
     const data = r.notification.request.content.data as { date?: string } | undefined;
     if (!r.notification.request.identifier.startsWith(PREFIX) || !data?.date) return;

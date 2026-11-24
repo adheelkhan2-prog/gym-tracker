@@ -271,3 +271,6 @@ const s = StyleSheet.create({
   rest: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, paddingHorizontal: space.sm, borderRadius: radius.pill, backgroundColor: color.accentDim, marginLeft: 'auto' },
   restText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.accentText },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../components/RouteError';

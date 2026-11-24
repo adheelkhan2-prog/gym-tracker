@@ -456,3 +456,6 @@ const s = StyleSheet.create({
   ctaBar: { position: 'absolute', left: space.lg, right: space.lg },
   ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -(floating.tabBar + floating.gap) },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

@@ -1,3 +1,5 @@
+// First: make Node-only APIs that npm packages may touch at load time harmless (see polyfills.ts).
+import '../polyfills';
 import { BricolageGrotesque_700Bold } from '@expo-google-fonts/bricolage-grotesque/700Bold';
 import { BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque/800ExtraBold';
 import { Figtree_500Medium } from '@expo-google-fonts/figtree/500Medium';
@@ -108,3 +110,6 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../components/RouteError';

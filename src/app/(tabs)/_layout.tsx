@@ -105,3 +105,6 @@ const s = StyleSheet.create({
   tab: { flex: 1, minWidth: 0, minHeight: touch.primary + space.xs, alignItems: 'center', justifyContent: 'center', gap: space.xxs, paddingHorizontal: space.xxs, borderRadius: radius.lg },
   label: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
 });
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';
