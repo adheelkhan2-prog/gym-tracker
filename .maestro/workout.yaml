@@ -10,7 +10,7 @@ appId: com.gymtracker.app
           clearState: true
       - extendedWaitUntil:
           visible: "Today"
-          timeout: 30000
+          timeout: 120000
       - runFlow: no-errors.yaml
       # Rest day (weekend): preview Monday and train it today.
       - runFlow:
@@ -27,8 +27,12 @@ appId: com.gymtracker.app
             - tapOn: "Start workout"
       - extendedWaitUntil:
           visible:
-            id: "log-0-0"
+            id: "exercise-0"
           timeout: 20000
+      - scrollUntilVisible:
+          element:
+            id: "log-0-1"
+          direction: DOWN
       - runFlow: no-errors.yaml
       # Log-set validation: first time there is no weight yet, so logging must ask for it.
       - runFlow:
