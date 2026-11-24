@@ -59,7 +59,10 @@ export default function BuilderScreen() {
   const base = template ? allPrograms(state).find((p) => p.id === template) : undefined;
   const [draft, setDraft] = useState<Program>(
     () =>
-      existing ??
+      // Editing the plan you're on (or one booked to start): the Schedule shows the weekdays you use.
+      (existing
+        ? { ...existing, week: state.programId === existing.id ? state.week : state.pending?.programId === existing.id ? state.pending.week : existing.week }
+        : null) ??
       (base ? copyOf(base) : null) ?? {
         id: `custom-${uid()}`,
         name: '',
@@ -122,8 +125,9 @@ export default function BuilderScreen() {
       return {
         ...st,
         customPrograms: [...others, p],
-        week: st.programId === p.id ? (p.rotation ? p.week : fit(st.week)) : st.week,
-        pending: st.pending?.programId === p.id ? { ...st.pending, week: p.rotation ? p.week : fit(st.pending.week) } : st.pending,
+        // The Schedule you just edited is the one used (it started from your current weekdays).
+        week: st.programId === p.id ? p.week : st.week,
+        pending: st.pending?.programId === p.id ? { ...st.pending, week: p.week } : st.pending,
       };
     });
     router.back();

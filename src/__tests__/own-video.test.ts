@@ -21,3 +21,7 @@ test('own videos are kept per exercise; an older save (plain file path) gets a d
   const s = migrate({ ...DEFAULT_STATE, userVideos: { flat_bench: 'file:///data/videos/a.mp4', lat_pulldown: { uri: 'file:///b.mp4', start: 1, end: 4 } } }, false);
   expect(s.userVideos).toEqual({ flat_bench: { uri: 'file:///data/videos/a.mp4', start: 0, end: 6 }, lat_pulldown: { uri: 'file:///b.mp4', start: 1, end: 4 } });
 });
+
+test('re-opening Trim before the clip length is known keeps the saved start', () => {
+  expect(clampTrim(3, 3, 0)).toEqual({ start: 3, end: 6 });
+});

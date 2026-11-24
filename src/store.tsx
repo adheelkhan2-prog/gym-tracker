@@ -500,8 +500,8 @@ export function weekSummary(state: State, today = todayKey()) {
   const keys = weekKeys(today);
   // A rotating plan has no weekdays: plan one session per day in the rotation (at most 7).
   const program = activeProgram(state);
-  const planned = program.rotation ? Math.min(7, program.days.filter((d) => d.exercises.length).length) : keys.filter((d) => scheduled(state, d)).length;
   const trained = keys.filter((d) => trainedOn(state, d)).length;
+  const planned = program.rotation ? Math.max(trained, Math.min(7, program.days.filter((d) => d.exercises.length).length)) : keys.filter((d) => scheduled(state, d)).length;
   const prs = keys.reduce((n, d) => n + prSetsOn(state.logs, d).length, 0);
   const supps = keys.filter((d) => allTaken(state, d)).length;
   const daysSoFar = keys.filter((d) => d <= today).length;

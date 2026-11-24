@@ -144,9 +144,10 @@ export function stalledLifts(state: State, today = todayKey(), plans: PlannedExe
   for (const id of ids) {
     const weeks = [0, 1, 2, 3, 4, 5, 6, 7].map((w) => bestIn(state, id, weekDates(addDays(monday, -7 * w))));
     if (weeks.slice(0, 3).filter(Boolean).length < 2) continue;
-    // Count back from this week while no week beat the best that came before it.
+    // Count back while no week beat the best that came before it. This week only counts once you've
+    // trained the lift in it (an untrained, still-running week isn't a stalled one).
     let n = 0;
-    for (let w = 0; w < weeks.length; w++) {
+    for (let w = weeks[0] ? 0 : 1; w < weeks.length; w++) {
       const wk = weeks[w];
       const before = bestScoreBefore(state, id, addDays(monday, -7 * w));
       if (before <= 0) break; // reached the first weeks of this lift: nothing to stall against
@@ -182,9 +183,10 @@ export function weeklyTarget(state: State, exerciseId: string, plan: PlannedExer
   const unit = state.unit;
   const monday = weekStart(today);
   const lastWeek = bestIn(state, exerciseId, weekDates(addDays(monday, -7)));
-  // No set last week: fall back to the most recent week that has one.
-  const before = Object.keys(state.logs).filter((d) => d < monday);
-  const base = lastWeek ?? bestIn(state, exerciseId, before);
+  // No set last week: fall back to the most recent earlier week that has one (not the all-time best).
+  let base = lastWeek;
+  const first = Object.keys(state.logs).sort()[0];
+  for (let w = 2; !base && first && addDays(monday, -7 * (w - 1)) > first; w++) base = bestIn(state, exerciseId, weekDates(addDays(monday, -7 * w)));
   const top = plan ? targetTop(plan.target) : null;
   const bottom = plan ? targetBottom(plan.target) : null;
   if (!base) {

@@ -91,7 +91,19 @@ describe('stalled lifts', () => {
   });
 });
 
+describe('stalled lifts: an untrained current week', () => {
+  test('one flat week (and nothing yet this week) is not "stalled 2 weeks"', () => {
+    // Progressed 2 weeks ago (week of 9 Nov), flat last week (16 Nov); Monday 23 Nov, not trained yet.
+    const s = st({ '2026-11-03': { flat_bench: { sets: [kg(57.5, 8)] } }, '2026-11-10': { flat_bench: { sets: [kg(60, 8)] } }, '2026-11-17': { flat_bench: { sets: [kg(60, 8)] } } });
+    expect(stalledLifts(s, '2026-11-23')).toEqual([]);
+  });
+});
+
 describe('target this week (progressive overload)', () => {
+  test('no set last week: the most recent week, not an old all-time best', () => {
+    const s = st({ '2025-11-03': { flat_bench: { sets: [kg(100, 8)] } }, '2026-11-03': { flat_bench: { sets: [kg(70, 6)] } } });
+    expect(weeklyTarget(s, 'flat_bench', plan, TODAY)).toMatchObject({ kg: 70, reps: 7 });
+  });
   test('below the top of the range: same weight, one more rep', () => {
     const s = st({ '2026-11-17': { flat_bench: { sets: [kg(60, 7)] } } });
     expect(weeklyTarget(s, 'flat_bench', plan, TODAY)).toMatchObject({ kg: 60, reps: 8, text: '60 kg × 8', lastText: 'last week 60 kg × 7', reason: 'reps' });

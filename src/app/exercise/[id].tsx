@@ -17,7 +17,7 @@ import { swapsFor } from '../../data/swaps';
 import { haptic } from '../../feedback';
 import { activeProgram, dateFromKey, dayById, todayKey, useStore } from '../../store';
 import { color, fmtClock, font, leading, radius, size, space, themed, type } from '../../theme';
-import { exerciseFor, swapSlot } from '../../workout';
+import { exerciseFor, swapSlot, visiblePlans } from '../../workout';
 import { bestText, chartValue, compareWeeks, weeklySeries, weeklyTarget, type Trend } from '../../weekly';
 
 type Tab = 'howto' | 'muscles';
@@ -74,7 +74,9 @@ export default function ExerciseScreen() {
   const chartUnit = kind === 'weight_reps' ? `${unit} e1RM` : kind === 'weight_time' ? unit : kind === 'time' ? 's' : 'reps';
   const points = series.map((p) => ({ label: short(p.week), value: chartValue(p.best!, kind, unit), detail: `Week of ${short(p.week)}: ${bestText(p.best!, kind, unit)}` }));
   const original = slotPlan ? pickOption(slotPlan, state.variants) : id;
-  const swaps = slotPlan ? swapsFor(original) : [];
+  // Never swap to an exercise another slot of the day already uses (they'd share one log).
+  const taken = day && slotPlan ? visiblePlans(state, day).filter((p) => p.slot !== slotPlan.slot).map((p) => exerciseFor(state, p)) : [];
+  const swaps = slotPlan ? swapsFor(original).filter((x) => x.id === id || !taken.includes(x.id)) : [];
   const credit = mediaCredit(id, state.userVideos);
 
   return (

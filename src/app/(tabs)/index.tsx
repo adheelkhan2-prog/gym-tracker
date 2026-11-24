@@ -112,10 +112,15 @@ export default function TodayScreen() {
         .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
         .filter((x) => dayHasWork(state, state.week[x.wd]))
         .map((x) => ({ ...x, id: state.week[x.wd]! }));
-  const passPlanned = program.rotation ? Math.min(7, program.days.length) : pass.length;
+  const passDone = pass.filter((x) => trainedOn(state, x.d)).length;
+  // Rotating plans: one pass through the rotation is the goal; training more never reads "5 of 3".
+  const passPlanned = program.rotation ? Math.max(passDone, Math.min(7, program.days.length)) : pass.length;
   const shownWd = picked ? picked.wd : weekday;
   const mins = progress ? Math.round(progress.total * 2.6) : 0;
-  const cta = which.preview ? 'Train' : finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
+  // Looking at another day (a preview, or a past day in the strip): the button only ever trains that
+  // day today; it never finishes or continues a past date.
+  const trainToday = which.preview || viewDate !== date;
+  const cta = trainToday ? 'Train' : finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
 
   return (
     <View style={{ flex: 1 }}>
@@ -202,7 +207,7 @@ export default function TodayScreen() {
         <View style={s.sectionHead}>
           <Text style={type.label}>This week</Text>
           <Text style={s.sectionCount}>
-            {pass.filter((x) => trainedOn(state, x.d)).length} of {passPlanned}
+            {passDone} of {passPlanned}
           </Text>
         </View>
         <View style={s.pass}>
@@ -357,7 +362,7 @@ export default function TodayScreen() {
           onLayout={(e) => setCtaH(e.nativeEvent.layout.height)}
         >
           <LinearGradient colors={[color.fadeFrom, color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
-          <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!which.preview && progress.allDone ? finish : openWorkout} />
+          <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && progress.allDone ? finish : openWorkout} />
         </View>
       )}
     </View>

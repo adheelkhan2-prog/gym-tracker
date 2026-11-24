@@ -14,9 +14,12 @@ export function defaultTrim(duration: number | undefined) {
   return { start: 0, end: snap(Math.min(MAX_LOOP, d)) || Math.min(MAX_LOOP, d) };
 }
 
-/** Clamp a trim to the clip: start inside it, length between MIN_LOOP and MAX_LOOP seconds. */
+/**
+ * Clamp a trim to the clip: start inside it, length between MIN_LOOP and MAX_LOOP seconds. An unknown
+ * duration (0, the player hasn't reported it yet) keeps the start as it is.
+ */
 export function clampTrim(start: number, length: number, duration: number) {
   const len = Math.max(MIN_LOOP, Math.min(MAX_LOOP, length, duration || MAX_LOOP));
-  const s = Math.max(0, Math.min(start, Math.max(0, (duration || len) - len)));
+  const s = Math.max(0, duration > 0 ? Math.min(start, Math.max(0, duration - len)) : start);
   return { start: snap(s), end: snap(s) + snap(len) };
 }

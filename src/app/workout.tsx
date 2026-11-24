@@ -1,78 +1,27 @@
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useReducedMotion,
-} from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  ExerciseMedia,
-  HowToSteps,
-  MachineSheet,
-  MuscleLegend,
-  SwapSheet,
-  Tips,
-  mediaCredit,
-} from "../components/ExerciseParts";
-import { OwnVideoButtons } from "../components/RecordVideo";
-import { Backdrop, Glass } from "../components/glass";
-import { Icon } from "../components/icons";
-import { Burst, Flash } from "../components/motion";
-import { RestTimer } from "../components/RestRing";
-import { Badge, Button, Chip, IconButton, Press } from "../components/ui";
-import { crumb, logCrash } from "../crash";
-import { EQUIPMENT_LABEL, EXERCISES } from "../data/exercises";
-import { pickOption, restFor } from "../data/program";
-import { swapsFor } from "../data/swaps";
-import { haptic } from "../feedback";
-import {
-  fmtKg,
-  fromKg,
-  loadTypeOf,
-  loadTypesFor,
-  round1,
-  weightFromLoad,
-} from "../load";
-import { restCarry } from "../restCarry";
-import { missingFor, suggestSet, weightIn } from "../sets";
-import {
-  bestBefore,
-  dayById,
-  prMetric,
-  todayKey,
-  useStore,
-  type SetEntry,
-  type State,
-} from "../store";
-import {
-  color,
-  fmtClock,
-  font,
-  motion,
-  radius,
-  size,
-  space,
-  themed,
-  touch,
-  type,
-} from "../theme";
-import {
-  setText,
-  slotStatuses,
-  swapSlot,
-  titleOf,
-  type SlotStatus,
-} from "../workout";
-import { weeklyTarget } from "../weekly";
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ExerciseMedia, HowToSteps, MachineSheet, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
+import { OwnVideoButtons } from '../components/RecordVideo';
+import { Backdrop, Glass } from '../components/glass';
+import { Icon } from '../components/icons';
+import { Burst, Flash } from '../components/motion';
+import { RestTimer } from '../components/RestRing';
+import { Badge, Button, Chip, IconButton, Press } from '../components/ui';
+import { crumb, logCrash } from '../crash';
+import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
+import { pickOption, restFor } from '../data/program';
+import { swapsFor } from '../data/swaps';
+import { haptic } from '../feedback';
+import { fmtKg, fromKg, loadTypeOf, loadTypesFor, round1, weightFromLoad } from '../load';
+import { restCarry } from '../restCarry';
+import { missingFor, suggestSet, weightIn } from '../sets';
+import { bestBefore, dayById, prMetric, todayKey, useStore, type SetEntry, type State } from '../store';
+import { color, fmtClock, font, motion, radius, size, space, themed, touch, type } from '../theme';
+import { setText, slotStatuses, swapSlot, titleOf, type SlotStatus } from '../workout';
+import { weeklyTarget } from '../weekly';
 
 type Missing = {
   slot: string;
@@ -101,14 +50,12 @@ export default function WorkoutScreen() {
   const done = statuses.reduce((a, x) => a + Math.min(x.done, x.plan.sets), 0);
   const allDone = statuses.length > 0 && statuses.every((x) => x.complete);
 
-  const [restEnd, setRestEnd] = useState<number | null>(() =>
-    restCarry.endsAt && restCarry.endsAt > Date.now() ? restCarry.endsAt : null,
-  );
+  const [restEnd, setRestEnd] = useState<number | null>(() => (restCarry.endsAt && restCarry.endsAt > Date.now() ? restCarry.endsAt : null));
   const [playing, setPlaying] = useState(0);
   const [viewH, setViewH] = useState(600);
   const cardY = useRef<({ y: number; h: number } | undefined)[]>([]);
   const [restTotal, setRestTotal] = useState(restCarry.total);
-  const [restNext, setRestNext] = useState("");
+  const [restNext, setRestNext] = useState('');
   const [pr, setPr] = useState<string | null>(null);
   const [flash, setFlash] = useState(0);
   const [swapFor, setSwapFor] = useState<SlotStatus | null>(null);
@@ -123,23 +70,14 @@ export default function WorkoutScreen() {
       <Backdrop>
         <View style={[s.empty, { paddingTop: insets.top + space.x4 }]}>
           <Text style={type.title}>No workout today</Text>
-          <Button
-            variant="outline"
-            label="Close"
-            onPress={() => router.back()}
-          />
+          <Button variant="outline" label="Close" onPress={() => router.back()} />
         </View>
       </Backdrop>
     );
   }
 
   /** A set was logged on a card: rest, PR moment. */
-  const onLogged = (info: {
-    pr: string | null;
-    rest: number;
-    next: string;
-    dayDone: boolean;
-  }) => {
+  const onLogged = (info: { pr: string | null; rest: number; next: string; dayDone: boolean }) => {
     if (info.pr) {
       haptic.thump();
       setTimeout(() => haptic.pr(), 120);
@@ -162,7 +100,7 @@ export default function WorkoutScreen() {
     if (finishing.current) return;
     finishing.current = true;
     haptic.pr();
-    crumb("finish workout");
+    crumb('finish workout');
     // eslint-disable-next-line react-hooks/purity -- runs in the tap handler, not during render
     const at = Date.now();
     await commit((st) => ({
@@ -175,19 +113,15 @@ export default function WorkoutScreen() {
           finishedAt: at,
         },
       },
-    })).catch((e) => logCrash("error", e, "saving finished workout"));
+    })).catch((e) => logCrash('error', e, 'saving finished workout'));
     setRestEnd(null);
-    router.replace({ pathname: "/complete", params: { date } });
+    router.replace({ pathname: '/complete', params: { date } });
   };
 
   return (
     <Backdrop>
       <View style={[s.header, { paddingTop: insets.top + space.sm }]}>
-        <IconButton
-          icon="close"
-          label="Close workout"
-          onPress={() => router.back()}
-        />
+        <IconButton icon="close" label="Close workout" onPress={() => router.back()} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={s.title} numberOfLines={1} accessibilityRole="header">
             {titleOf(day)}
@@ -198,12 +132,7 @@ export default function WorkoutScreen() {
         </View>
       </View>
       <View style={s.track}>
-        <View
-          style={[
-            s.trackFill,
-            { width: `${total ? (done / total) * 100 : 0}%` },
-          ]}
-        />
+        <View style={[s.trackFill, { width: `${total ? (done / total) * 100 : 0}%` }]} />
       </View>
 
       <ScrollView
@@ -218,9 +147,7 @@ export default function WorkoutScreen() {
         onScroll={(e) => {
           // Only the card in the middle of the screen plays its video.
           const mid = e.nativeEvent.contentOffset.y + viewH / 2;
-          const i = cardY.current.findIndex(
-            (c) => c && mid >= c.y && mid < c.y + c.h,
-          );
+          const i = cardY.current.findIndex((c) => c && mid >= c.y && mid < c.y + c.h);
           if (i >= 0 && i !== playing) setPlaying(i);
         }}
       >
@@ -252,12 +179,8 @@ export default function WorkoutScreen() {
         ))}
         <Button
           size="lg"
-          variant={allDone ? "solid" : "outline"}
-          label={
-            allDone
-              ? "Finish workout"
-              : `Finish workout · ${done} of ${total} sets`
-          }
+          variant={allDone ? 'solid' : 'outline'}
+          label={allDone ? 'Finish workout' : `Finish workout · ${done} of ${total} sets`}
           iconRight="flag"
           onPress={finish}
           testID="finish-workout"
@@ -269,7 +192,7 @@ export default function WorkoutScreen() {
           endsAt={restEnd}
           total={restTotal}
           tint={color.accent}
-          nextLabel={restNext || "Next set"}
+          nextLabel={restNext || 'Next set'}
           skipLabel="Skip"
           sound={state.restSound}
           onAdd={() => {
@@ -281,13 +204,7 @@ export default function WorkoutScreen() {
         />
       )}
       <Flash fire={flash} />
-      <Burst
-        burst={flash}
-        x={width / 2}
-        y={260}
-        colors={[color.accent, color.accentPressed, color.text]}
-        count={28}
-      />
+      <Burst burst={flash} x={width / 2} y={260} colors={[color.accent, color.accentPressed, color.text]} count={28} />
       {pr && (
         <Animated.View
           entering={reduce ? undefined : FadeIn.duration(motion.fast)}
@@ -306,15 +223,11 @@ export default function WorkoutScreen() {
         <SwapSheet
           original={pickOption(swapFor.plan, state.variants)}
           current={swapFor.exerciseId}
-          swaps={swapsFor(pickOption(swapFor.plan, state.variants)).filter(
-            (x) =>
-              x.id === swapFor.exerciseId ||
-              !statuses.some((o) => o !== swapFor && o.exerciseId === x.id),
-          )}
+          swaps={swapsFor(pickOption(swapFor.plan, state.variants)).filter((x) => x.id === swapFor.exerciseId || !statuses.some((o) => o !== swapFor && o.exerciseId === x.id))}
           note={
             swapFor.done > 0
               ? `Same primary muscles only. Sets you've logged stay under the exercise you did them on; the remaining ${Math.max(0, swapFor.plan.sets - swapFor.done)} continue on the new one.`
-              : "Same primary muscles only."
+              : 'Same primary muscles only.'
           }
           onPick={(to) => {
             haptic.setDone();
@@ -323,14 +236,7 @@ export default function WorkoutScreen() {
             setSwapFor(null);
           }}
           onReset={() => {
-            update((cur) =>
-              swapSlot(
-                cur,
-                date,
-                swapFor.plan,
-                pickOption(swapFor.plan, state.variants),
-              ),
-            );
+            update((cur) => swapSlot(cur, date, swapFor.plan, pickOption(swapFor.plan, state.variants)));
             setSwapFor(null);
           }}
           onClose={() => setSwapFor(null)}
@@ -361,12 +267,7 @@ function ExerciseCard({
   dayId: string;
   statuses: SlotStatus[];
   update: (fn: (s: State) => State) => void;
-  onLogged: (info: {
-    pr: string | null;
-    rest: number;
-    next: string;
-    dayDone: boolean;
-  }) => void;
+  onLogged: (info: { pr: string | null; rest: number; next: string; dayDone: boolean }) => void;
   onSwap: () => void;
   active: boolean;
 }) {
@@ -374,8 +275,8 @@ function ExerciseCard({
   const plan = st.plan;
   const ex = EXERCISES[id];
   const kind = ex.kind;
-  const weighted = kind === "weight_reps" || kind === "weight_time";
-  const secs = kind === "time" || kind === "weight_time";
+  const weighted = kind === 'weight_reps' || kind === 'weight_time';
+  const secs = kind === 'time' || kind === 'weight_time';
   const unit = state.unit;
   const lt = loadTypeOf(id, state.loadTypes);
   const machine = state.machines[id];
@@ -404,8 +305,7 @@ function ExerciseCard({
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
     const loggedBefore = rows.slice(0, i).some((x) => x.done);
-    if (!loggedBefore && target && target.reason !== "first")
-      return fromTarget(target, kind, unit, machine, lt);
+    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit, machine, lt);
     return suggestSet(state, id, plan, date, i).set;
   };
   const setDraft = (i: number, v: SetEntry) => {
@@ -458,16 +358,11 @@ function ExerciseCard({
     setMissing(null);
     const entry: SetEntry = { ...value, done: true };
     const sets = [...rows];
-    while (sets.length < i) sets.push({ weight: "", reps: "", done: false });
+    while (sets.length < i) sets.push({ weight: '', reps: '', done: false });
     sets[i] = entry;
     const metric = prMetric(entry, kind);
     const best = bestBefore(state.logs, id, date);
-    const bestToday = Math.max(
-      0,
-      ...rows
-        .filter((r, j) => j !== i && r.done)
-        .map((r) => prMetric(r, kind) || 0),
-    );
+    const bestToday = Math.max(0, ...rows.filter((r, j) => j !== i && r.done).map((r) => prMetric(r, kind) || 0));
     write(sets);
     setDrafts((d) => {
       const { [i]: _, ...rest } = d;
@@ -481,17 +376,14 @@ function ExerciseCard({
     const dayDone = exDone && others.every((o) => o.complete);
     const nextSt = exDone ? others.find((o) => !o.complete) : undefined;
     onLogged({
-      pr: isPr
-        ? weighted
-          ? fmtKg(metric, unit)
-          : `${metric}${secs ? " s" : " reps"}`
-        : null,
+      pr: isPr ? (weighted ? fmtKg(metric, unit) : `${metric}${secs ? ' s' : ' reps'}`) : null,
       rest: restFor(id, plan),
       next: exDone
         ? nextSt
           ? `Next: ${EXERCISES[nextSt.exerciseId].name}`
-          : "Last sets done"
-        : `Set ${doneNow + 1} · ${setText(suggestSet({ ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets } } } }, id, plan, date, i + 1).set, kind, unit)}`,
+          : 'Last sets done'
+        : // The same value the next row will show: what you typed there, else the suggestion.
+          `Set ${doneNow + 1} · ${setText(drafts[i + 1] ?? suggestSet({ ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets } } } }, id, plan, date, i + 1).set, kind, unit)}`,
       dayDone,
     });
   };
@@ -506,34 +398,14 @@ function ExerciseCard({
           </Text>
           <Text style={type.small}>
             {plan.sets} × {plan.target}
-            {secs ? " s" : ""} · rest {fmtClock(restFor(id, plan))} ·{" "}
-            {EQUIPMENT_LABEL[ex.equipment]}
+            {secs ? ' s' : ''} · rest {fmtClock(restFor(id, plan))} · {EQUIPMENT_LABEL[ex.equipment]}
           </Text>
         </View>
         {st.complete && <Badge label="Done" icon="check" />}
       </View>
       <View style={s.actions}>
-        {canSwap && (
-          <Button
-            size="sm"
-            variant="outline"
-            icon="swap"
-            label="Swap"
-            accessibilityLabel={`Swap ${ex.name}`}
-            onPress={onSwap}
-            testID={`swap-${n}`}
-          />
-        )}
-        <Button
-          size="sm"
-          variant="ghost"
-          icon="chart"
-          label="History"
-          accessibilityLabel={`${ex.name} history`}
-          onPress={() =>
-            router.push({ pathname: "/exercise/[id]", params: { id } })
-          }
-        />
+        {canSwap && <Button size="sm" variant="outline" icon="swap" label="Swap" accessibilityLabel={`Swap ${ex.name}`} onPress={onSwap} testID={`swap-${n}`} />}
+        <Button size="sm" variant="ghost" icon="chart" label="History" accessibilityLabel={`${ex.name} history`} onPress={() => router.push({ pathname: '/exercise/[id]', params: { id } })} />
       </View>
 
       <OwnVideoButtons exerciseId={id} />
@@ -545,7 +417,7 @@ function ExerciseCard({
           {loadTypesFor(id).map((t) => (
             <Chip
               key={t}
-              label={t === "stack" ? "Machine pin" : `Weight (${unit})`}
+              label={t === 'stack' ? 'Machine pin' : `Weight (${unit})`}
               active={lt === t}
               onPress={() =>
                 update((st2) => ({
@@ -555,19 +427,10 @@ function ExerciseCard({
               }
             />
           ))}
-          {lt === "stack" && (
-            <Press
-              onPress={() => setMachineOpen(true)}
-              style={s.gear}
-              accessibilityRole="button"
-              accessibilityLabel={`Machine settings for ${ex.name}`}
-            >
+          {lt === 'stack' && (
+            <Press onPress={() => setMachineOpen(true)} style={s.gear} accessibilityRole="button" accessibilityLabel={`Machine settings for ${ex.name}`}>
               <Icon name="sliders" size={14} color={color.muted} />
-              <Text style={s.gearText}>
-                {machine?.perPlate
-                  ? `${round1(machine.perPlate)} kg / plate`
-                  : "Set kg per plate"}
-              </Text>
+              <Text style={s.gearText}>{machine?.perPlate ? `${round1(machine.perPlate)} kg / plate` : 'Set kg per plate'}</Text>
             </Press>
           )}
         </View>
@@ -592,21 +455,15 @@ function ExerciseCard({
           <Icon name="flame" size={16} color={color.accent} />
           <Text style={s.targetText}>
             Target this week: <Text style={s.targetStrong}>{target.text}</Text>
-            {target.lastText ? (
-              <Text style={type.small}> ({target.lastText})</Text>
-            ) : null}
+            {target.lastText ? <Text style={type.small}> ({target.lastText})</Text> : null}
           </Text>
         </View>
       )}
 
       <View style={s.setsHead}>
         <Text style={[type.label, { width: 34 }]}>Set</Text>
-        {weighted && (
-          <Text style={[type.label, { flex: 1 }]}>
-            {lt === "stack" ? "Pin" : unit}
-          </Text>
-        )}
-        <Text style={[type.label, { flex: 1 }]}>{secs ? "Sec" : "Reps"}</Text>
+        {weighted && <Text style={[type.label, { flex: 1 }]}>{lt === 'stack' ? 'Pin' : unit}</Text>}
+        <Text style={[type.label, { flex: 1 }]}>{secs ? 'Sec' : 'Reps'}</Text>
         <View style={{ width: touch.primary }} />
       </View>
       {Array.from({ length: count }, (_, i) => (
@@ -618,7 +475,7 @@ function ExerciseCard({
           value={valueOf(i)}
           logged={!!rows[i]?.done}
           weighted={weighted}
-          stack={lt === "stack"}
+          stack={lt === 'stack'}
           unit={unit}
           warn={missing?.i === i ? missing : null}
           onChange={(v) => setDraft(i, v)}
@@ -627,12 +484,7 @@ function ExerciseCard({
           exName={ex.name}
         />
       ))}
-      <Press
-        onPress={() => setExtra((x) => x + 1)}
-        style={s.addSet}
-        accessibilityRole="button"
-        accessibilityLabel={`Add a set to ${ex.name}`}
-      >
+      <Press onPress={() => setExtra((x) => x + 1)} style={s.addSet} accessibilityRole="button" accessibilityLabel={`Add a set to ${ex.name}`}>
         <Icon name="plus" size={16} color={color.muted} />
         <Text style={s.addSetText}>Add set</Text>
       </Press>
@@ -647,11 +499,7 @@ function ExerciseCard({
       >
         <Icon name="info" size={18} color={color.muted} />
         <Text style={[type.h3, { flex: 1 }]}>How to, muscles & tips</Text>
-        <Icon
-          name={notes ? "chevronUp" : "chevronDown"}
-          size={18}
-          color={color.muted}
-        />
+        <Icon name={notes ? 'chevronUp' : 'chevronDown'} size={18} color={color.muted} />
       </Press>
       {notes && (
         <View style={{ gap: space.md }}>
@@ -672,25 +520,18 @@ function ExerciseCard({
 }
 
 /** This week's target as a set to log. */
-function fromTarget(
-  t: NonNullable<ReturnType<typeof weeklyTarget>>,
-  kind: string,
-  unit: State["unit"],
-  machine: State["machines"][string] | undefined,
-  lt: string,
-): SetEntry {
+function fromTarget(t: NonNullable<ReturnType<typeof weeklyTarget>>, kind: string, unit: State['unit'], machine: State['machines'][string] | undefined, lt: string): SetEntry {
   const reps = String(t.reps);
-  if (kind === "reps" || kind === "time")
-    return { weight: "", reps, done: false };
-  if (lt === "stack")
+  if (kind === 'reps' || kind === 'time') return { weight: '', reps, done: false };
+  if (lt === 'stack')
     return t.pin !== undefined
       ? {
-          ...weightFromLoad({ t: "stack", pin: t.pin }, machine),
+          ...weightFromLoad({ t: 'stack', pin: t.pin }, machine),
           reps,
           done: false,
         }
-      : { weight: "", reps, done: false };
-  if (t.kg === null) return { weight: "", reps, u: unit, done: false };
+      : { weight: '', reps, done: false };
+  if (t.kg === null) return { weight: '', reps, u: unit, done: false };
   return { weight: round1(fromKg(t.kg, unit)), u: unit, reps, done: false };
 }
 
@@ -718,21 +559,17 @@ function SetRow({
   logged: boolean;
   weighted: boolean;
   stack: boolean;
-  unit: State["unit"];
+  unit: State['unit'];
   warn: Missing | null;
   onChange: (v: SetEntry) => void;
   onLog: () => void;
-  machine: State["machines"][string] | undefined;
+  machine: State['machines'][string] | undefined;
   exName: string;
 }) {
-  const w = weighted && value.weight !== "" ? weightIn(value, unit) : null;
-  const shownWeight = stack
-    ? value.load?.pin !== undefined
-      ? String(value.load.pin)
-      : ""
-    : w === null
-      ? ""
-      : round1(w);
+  const w = weighted && value.weight !== '' ? weightIn(value, unit) : null;
+  // Typed in your unit: show exactly what was typed (so "62." stays while you type 62.5). Only a
+  // set stored in the other unit is converted for display.
+  const shownWeight = stack ? (value.load?.pin !== undefined ? String(value.load.pin) : '') : w === null ? '' : !value.u || value.u === unit ? value.weight : round1(w);
   return (
     <View>
       <View style={[s.row, logged && s.rowDone]}>
@@ -742,35 +579,32 @@ function SetRow({
             value={shownWeight}
             editable={!logged}
             onChangeText={(t) => {
-              const clean = t.replace(/[^0-9.,]/g, "").replace(",", ".");
+              const clean = t.replace(/[^0-9.,]/g, '').replace(',', '.');
               if (stack) {
                 const pin = parseInt(clean, 10);
                 onChange(
                   Number.isFinite(pin)
                     ? {
                         ...value,
-                        ...weightFromLoad({ t: "stack", pin }, machine),
+                        ...weightFromLoad({ t: 'stack', pin }, machine),
                       }
-                    : { ...value, weight: "", load: undefined },
+                    : { ...value, weight: '', load: undefined },
                 );
-              } else
-                onChange({ ...value, weight: clean, u: unit, load: undefined });
+              } else onChange({ ...value, weight: clean, u: unit, load: undefined });
             }}
-            placeholder={stack ? "Pin ?" : "—"}
+            placeholder={stack ? 'Pin ?' : '—'}
             placeholderTextColor={color.subtle}
-            keyboardType={stack ? "number-pad" : "decimal-pad"}
+            keyboardType={stack ? 'number-pad' : 'decimal-pad'}
             selectTextOnFocus
             style={[s.input, warn?.load && s.inputWarn]}
-            accessibilityLabel={`Set ${label} ${stack ? "pin" : `weight in ${unit}`} for ${exName}`}
+            accessibilityLabel={`Set ${label} ${stack ? 'pin' : `weight in ${unit}`} for ${exName}`}
             testID={`weight-${slotN}-${i}`}
           />
         )}
         <TextInput
           value={value.reps}
           editable={!logged}
-          onChangeText={(t) =>
-            onChange({ ...value, reps: t.replace(/[^0-9]/g, "") })
-          }
+          onChangeText={(t) => onChange({ ...value, reps: t.replace(/[^0-9]/g, '') })}
           placeholder="—"
           placeholderTextColor={color.subtle}
           keyboardType="number-pad"
@@ -784,18 +618,10 @@ function SetRow({
           style={[s.check, logged && s.checkDone]}
           accessibilityRole="button"
           accessibilityState={{ checked: logged }}
-          accessibilityLabel={
-            logged
-              ? `Set ${label} of ${exName} logged. Tap to undo`
-              : `Log set ${label} of ${exName}`
-          }
+          accessibilityLabel={logged ? `Set ${label} of ${exName} logged. Tap to undo` : `Log set ${label} of ${exName}`}
           testID={`log-${slotN}-${i}`}
         >
-          <Icon
-            name="check"
-            size={22}
-            color={logged ? color.onAccent : color.text}
-          />
+          <Icon name="check" size={22} color={logged ? color.onAccent : color.text} />
         </Press>
       </View>
       {warn && (
@@ -810,10 +636,10 @@ function SetRow({
 
 const s = themed(() =>
   StyleSheet.create({
-    empty: { flex: 1, alignItems: "center", gap: space.lg, padding: space.xl },
+    empty: { flex: 1, alignItems: 'center', gap: space.lg, padding: space.xl },
     header: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.md,
       paddingHorizontal: space.lg,
       paddingBottom: space.sm,
@@ -824,21 +650,21 @@ const s = themed(() =>
       marginHorizontal: space.lg,
       borderRadius: 2,
       backgroundColor: color.inkTrack,
-      overflow: "hidden",
+      overflow: 'hidden',
     },
-    trackFill: { height: "100%", backgroundColor: color.accent },
+    trackFill: { height: '100%', backgroundColor: color.accent },
     card: { padding: space.lg, gap: space.md },
-    cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
-    actions: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+    cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
     loadRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
       gap: space.sm,
     },
     gear: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 4,
       minHeight: touch.min,
       paddingHorizontal: space.sm,
@@ -849,9 +675,9 @@ const s = themed(() =>
       color: color.muted,
     },
     target: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: space.sm,
-      alignItems: "flex-start",
+      alignItems: 'flex-start',
       padding: space.md,
       borderRadius: radius.md,
       backgroundColor: color.accentDim,
@@ -867,14 +693,14 @@ const s = themed(() =>
     },
     targetStrong: { fontFamily: font.bodyBlack, color: color.accentText },
     setsHead: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.sm,
       marginTop: space.xs,
     },
     row: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.sm,
       paddingVertical: space.xs,
       borderRadius: radius.md,
@@ -885,7 +711,7 @@ const s = themed(() =>
       fontFamily: font.display,
       fontSize: size.h3,
       color: color.muted,
-      textAlign: "center",
+      textAlign: 'center',
     },
     input: {
       flex: 1,
@@ -896,25 +722,25 @@ const s = themed(() =>
       borderRadius: radius.md,
       backgroundColor: color.surface2,
       color: color.text,
-      textAlign: "center",
+      textAlign: 'center',
       fontFamily: font.display,
       fontSize: size.h3,
       borderWidth: 1,
-      borderColor: "transparent",
+      borderColor: 'transparent',
     },
     inputWarn: { borderColor: color.warnEdge, backgroundColor: color.warnDim },
     check: {
       width: touch.primary,
       height: touch.min,
       borderRadius: radius.md,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: color.surface3,
     },
     checkDone: { backgroundColor: color.accent },
     missing: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.xs,
       marginLeft: 34 + space.sm,
       marginTop: 2,
@@ -925,10 +751,10 @@ const s = themed(() =>
       color: color.warn,
     },
     addSet: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.xs,
-      alignSelf: "flex-start",
+      alignSelf: 'flex-start',
       minHeight: touch.min,
       paddingHorizontal: space.sm,
     },
@@ -938,8 +764,8 @@ const s = themed(() =>
       color: color.muted,
     },
     notesHead: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.sm,
       minHeight: touch.min,
       borderTopWidth: 1,
@@ -948,10 +774,10 @@ const s = themed(() =>
     },
     credit: { ...type.small, fontSize: size.tiny, color: color.subtle },
     pr: {
-      position: "absolute",
-      alignSelf: "center",
-      flexDirection: "row",
-      alignItems: "center",
+      position: 'absolute',
+      alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: space.sm,
       paddingHorizontal: space.lg,
       paddingVertical: space.sm,
@@ -969,4 +795,4 @@ const s = themed(() =>
 );
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
-export { RouteError as ErrorBoundary } from "../components/RouteError";
+export { RouteError as ErrorBoundary } from '../components/RouteError';
