@@ -28,6 +28,15 @@ diagnose() {
   echo "::group::Diagnostics: last Maestro steps"
   find "$OUT" -name 'maestro.log' -newer "$OUT/.start" -print0 2>/dev/null | xargs -0 -r tail -n 40 | cut -c1-300 || true
   echo "::endgroup::"
+  echo "::group::Diagnostics: screenshot (base64 image)"
+  adb exec-out screencap -p > "$OUT/fail.png" 2>/dev/null || true
+  if command -v ffmpeg >/dev/null; then
+    ffmpeg -loglevel error -y -i "$OUT/fail.png" -vf scale=360:-1 -q:v 5 "$OUT/fail.jpg" && base64 -w 0 "$OUT/fail.jpg" | sed 's/^/SHOT:/' || true
+  else
+    base64 -w 0 "$OUT/fail.png" | sed 's/^/SHOT:/' || true
+  fi
+  echo
+  echo "::endgroup::"
   echo "::group::Diagnostics: current activity"
   adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | head -5 || true
   echo "::endgroup::"

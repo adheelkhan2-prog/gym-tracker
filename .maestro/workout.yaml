@@ -56,6 +56,9 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
+      - extendedWaitUntil:
+          visible: "1 of .* sets"
+          timeout: 10000
       # Second set reuses the first set's numbers: one tap.
       - hideKeyboard
       - scrollUntilVisible:
@@ -71,6 +74,9 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
+      - extendedWaitUntil:
+          visible: "2 of .* sets"
+          timeout: 10000
       - runFlow: no-errors.yaml
       # Swap the second exercise to its first alternative (or back to the original).
       - scrollUntilVisible:
@@ -106,6 +112,9 @@ appId: com.gymtracker.app
           commands:
             - tapOn:
                 id: "rest-skip"
+      - extendedWaitUntil:
+          visible: "3 of .* sets"
+          timeout: 10000
       # Finish: saved first, then the celebration.
       - scrollUntilVisible:
           element:
