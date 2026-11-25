@@ -86,7 +86,7 @@ VARIANT=${VARIANT:-normal}
 # Build the given variant (normal | perf) of the commit, rebuilding the JS bundle when the variant
 # changes (the flag is baked into the bundle, so the cached one can't be reused).
 build_variant() {
-  local want="$1" v="$2" ref
+  local want="$1" v="$2" ref prev="$VARIANT"
   # Start from exactly the requested commit (an earlier "ref=" run leaves another commit's src/ behind).
   git reset -q --hard && git clean -fdq src
   # "perf" with "ref=<commit>" on line 3: measure that commit's app (src/) with today's test scripts.
@@ -101,7 +101,7 @@ build_variant() {
     VARIANT=forced
   fi
   if [ "$v" = "$VARIANT" ]; then build_if_needed "$want"; return; fi
-  log "rebuild: $VARIANT -> $v build"
+  log "rebuild: $prev -> $v build$([ -n "$ref" ] && [ "$v" = perf ] && echo " (of $ref's app code)")"
   native_prep "$built" "$want"; [ $? = 1 ] && return 1
   rm -rf android/app/build/generated/assets android/app/build/generated/res/createBundleReleaseJsAndAssets \
     android/app/build/intermediates/assets android/app/build/intermediates/merged_assets node_modules/.cache "${TMPDIR:-/tmp}"/metro-* 2>/dev/null

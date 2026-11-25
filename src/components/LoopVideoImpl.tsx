@@ -46,7 +46,8 @@ export function LoopVideo(props: Props) {
   const segment = end !== undefined && end > start;
   const pool = useContext(VideoPoolContext);
   if (pool && !segment && pool.manages(source)) return <PooledVideo {...props} pool={pool} />;
-  return <OwnVideo {...props} />;
+  // In a workout, your own clip pauses too while another screen or sheet is on top.
+  return <OwnVideo {...props} paused={props.paused || !!pool?.hold} />;
 }
 
 function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
@@ -148,10 +149,11 @@ function PlayerVideo({
     if (!settled || shown) return;
     // Only once the video is really moving (its clock has advanced), or after a while at the latest.
     const since = Date.now();
+    const from = player.currentTime; // (a kept player may resume part-way through)
     const t = setInterval(() => {
       let moving = false;
       try {
-        moving = player.currentTime > 0.25;
+        moving = Math.abs(player.currentTime - from) > 0.25;
       } catch {
         // Released: the page is leaving.
       }

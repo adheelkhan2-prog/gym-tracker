@@ -148,10 +148,11 @@ export function VideoPoolHost({ current, next, onPool }: { current: Src; next: S
   useEffect(() => players.sync(current, next), [players, current, next]);
   useEffect(
     () => () => {
-      // The players go a moment later, once nothing shows them: if this host ever fails, its fallback
-      // switches the page to its own players first. (A remount meanwhile, e.g. React's dev
-      // double-run, keeps them.)
-      players.closeSoon();
+      // Released at once (the page, rendered before this host, has already let go of them), so
+      // reopening the workout never finds the old players still alive. In development React runs
+      // this twice on mount, so there they go a moment later unless the pool is used again.
+      if (__DEV__) players.closeSoon();
+      else players.releaseAll();
     },
     [players],
   );
