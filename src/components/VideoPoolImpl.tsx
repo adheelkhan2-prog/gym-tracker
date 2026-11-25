@@ -41,11 +41,8 @@ class Players {
   sync(current: Src, next: Src) {
     // A video whose player couldn't be made gets another try once it's off screen and comes back.
     this.failed = this.failed.filter((f) => sameSource(f, current) || sameSource(f, next));
-    const p = plan(
-      this.held.map((h) => h.src),
-      current,
-      next,
-    );
+    // A video whose player failed is not retried while it's current or next (it uses its own player).
+    const p = plan([...this.held.map((h) => h.src), ...this.failed], current, next);
     if (this.later && !sameSource(this.later.src, p.createLater)) {
       clearTimeout(this.later.timer);
       this.later = null;
@@ -67,7 +64,7 @@ class Players {
         src,
         timer: setTimeout(() => {
           this.later = null;
-          if (this.held.some((h) => sameSource(h.src, src))) return;
+          if ([...this.held.map((h) => h.src), ...this.failed].some((h) => sameSource(h, src))) return;
           this.make(src);
           this.emit();
         }, 400),

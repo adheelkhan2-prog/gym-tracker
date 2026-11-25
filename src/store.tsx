@@ -4,8 +4,9 @@ import { EXERCISES, type LogKind } from './data/exercises';
 import type { MuscleId } from './data/muscles';
 import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
 import { PROGRAMS, type Program } from './data/programs';
-import { PERF, bigHistory } from './perf';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
+import { PERF } from './perf';
+import { bigHistory } from './perfHistory';
 
 export type { Unit } from './load';
 export type ThemeSetting = 'system' | 'light' | 'dark';

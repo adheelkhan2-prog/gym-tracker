@@ -20,7 +20,6 @@ import { shareCrashLog } from '../crashShare';
 import { applyReminderAction, onReminderResponse, setupNotifications, syncReminders } from '../reminders';
 import { StoreProvider, useStore } from '../store';
 import { applyScheme, color, type Scheme } from '../theme';
-import { perfMark } from '../perf';
 
 // Before anything renders: log an unexpected close from last time, catch fatal JS errors.
 installCrashReporting();
@@ -136,8 +135,6 @@ function Gate() {
     </ThemeGate>
   );
 }
-
-perfMark('js-start');
 
 export default function RootLayout() {
   return (
