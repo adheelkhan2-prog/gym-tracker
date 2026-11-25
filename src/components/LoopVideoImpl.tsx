@@ -72,7 +72,9 @@ function PlayerVideo({
   posterContain = true,
 }: Props & { player: VideoPlayer; pooled?: boolean }) {
   const segment = end !== undefined && end > start;
-  const [shown, setShown] = useState(false);
+  // Shown for THIS player: a new source (a new player) brings its still back until its first frame.
+  const [shownFor, setShownFor] = useState<VideoPlayer | null>(null);
+  const shown = shownFor === player;
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   useEffect(() => {
     if (paused) player.pause();
@@ -113,9 +115,9 @@ function PlayerVideo({
   const settled = isPlaying || (paused && status === 'readyToPlay');
   useEffect(() => {
     if (!settled || shown) return;
-    const t = setTimeout(() => setShown(true), 600);
+    const t = setTimeout(() => setShownFor(player), 600);
     return () => clearTimeout(t);
-  }, [settled, shown]);
+  }, [settled, shown, player]);
   useEffect(() => {
     if (shown) perfMark('video-shown');
   }, [shown]);
@@ -132,7 +134,7 @@ function PlayerVideo({
         surfaceType="textureView"
         onFirstFrameRender={() => {
           perfMark('video-frame');
-          setShown(true);
+          setShownFor(player);
         }}
       />
       {!shown && <Poster poster={poster} contain={posterContain} />}

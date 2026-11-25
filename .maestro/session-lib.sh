@@ -95,7 +95,8 @@ build_variant() {
     # Exactly that commit's src/: nothing added since may stay behind (e.g. a newer route).
     git rm -rq --cached src && rm -rf src && git checkout -q "$ref" -- src || return 1
     log "measuring the app code of $(git rev-parse --short "$ref") (src/), test scripts of $(git rev-parse --short "$want")"
-    VARIANT=forced; want="$ref"
+    # Native config (app.json, packages) is still $want's, so the build is compared against $want.
+    VARIANT=forced
   fi
   if [ "$v" = "$VARIANT" ]; then build_if_needed "$want"; return; fi
   log "rebuild: $VARIANT -> $v build"
@@ -124,6 +125,7 @@ pss() {
   gfx=$(echo "$m" | grep -m1 -E '^ *Graphics:' | grep -oE '[0-9]+' | head -1)
   native=$(echo "$m" | grep -m1 -E '^ *Native Heap:' | grep -oE '[0-9]+' | head -1)
   java=$(echo "$m" | grep -m1 -E '^ *Java Heap:' | grep -oE '[0-9]+' | head -1)
+  if [ -z "$pid" ] || [ -z "$total" ]; then log "MEM $1: app not running"; return; fi
   log "MEM $1: total PSS $((total / 1024)) MB (native $((native / 1024)), java $((java / 1024)), graphics $((gfx / 1024)))"
 }
 

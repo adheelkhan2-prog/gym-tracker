@@ -1,7 +1,7 @@
 import { createVideoPlayer, type VideoPlayer, type VideoSource } from 'expo-video';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { logCrash } from '../crash';
-import { LOCAL_BUFFER, plan, sameSource, type Src, type VideoPool } from './videoPool';
+import { LOCAL_BUFFER, plan, sameSource, type HeldPlayers, type Src } from './videoPool';
 
 type Held = { src: Src; player: VideoPlayer };
 
@@ -90,19 +90,19 @@ class Players {
 
 /**
  * Holds the workout's players (the exercise on screen and the next one, made in advance) and hands
- * the pool to `onPool`. It renders nothing, so if it ever fails only the pool is lost, never the page.
+ * what it holds to `onPool`. It renders nothing, so if it ever fails only the pool is lost, never the page.
  */
-export function VideoPoolHost({ current, next, onPool }: { current: Src; next: Src; onPool: (pool: VideoPool | 'off') => void }) {
+export function VideoPoolHost({ current, next, onPool }: { current: Src; next: Src; onPool: (pool: HeldPlayers | 'off') => void }) {
   const [players] = useState(() => new Players());
   const held = useSyncExternalStore(players.subscribe, players.snapshot);
   useEffect(() => players.sync(current, next), [players, current, next]);
   useEffect(() => () => players.releaseAll(), [players]);
-  const value: VideoPool = useMemo(
+  const value: HeldPlayers = useMemo(
     () => ({
-      manages: (src) => (sameSource(src, current) || sameSource(src, next)) && !players.failed.some((f) => sameSource(f, src)),
+      failed: (src) => players.failed.some((f) => sameSource(f, src)),
       playerFor: (src) => held.find((h) => sameSource(h.src, src))?.player ?? null,
     }),
-    [held, current, next, players],
+    [held, players],
   );
   useEffect(() => {
     onPool(value);

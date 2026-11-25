@@ -90,8 +90,8 @@ export function ExerciseMedia({ exerciseId, height = 300, label, active = true }
           paused={paused}
           start={m.kind === 'mine' ? m.start : undefined}
           end={m.kind === 'mine' ? m.end : undefined}
-          // The still shows at once and stays until the video's first frame is drawn.
-          poster={howToImages(exerciseId)?.start}
+          // The still shows at once and stays until the video's first frame is drawn (not over your own clip).
+          poster={m.kind === 'video' ? howToImages(exerciseId)?.start : undefined}
           posterContain={!!howToImages(exerciseId)?.clay}
         />
       ) : (
