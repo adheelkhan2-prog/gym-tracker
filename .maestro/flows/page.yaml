@@ -13,11 +13,11 @@ appId: com.gymtracker.app
 - extendedWaitUntil:
     visible: "Exercise 1 of .*"
     timeout: 5000
-# Swipe right-to-left across the picture: next exercise.
+# Swipe right-to-left across the exercise name: next exercise.
 - swipe:
-    start: 85%, 30%
-    end: 10%, 30%
-    duration: 300
+    start: 85%, 47%
+    end: 10%, 47%
+    duration: 400
 - extendedWaitUntil:
     visible: "Exercise 2 of .*"
     timeout: 5000
