@@ -76,7 +76,14 @@ VARIANT=${VARIANT:-normal}
 # Build the given variant (normal | perf) of the commit, rebuilding the JS bundle when the variant
 # changes (the flag is baked into the bundle, so the cached one can't be reused).
 build_variant() {
-  local want="$1" v="$2"
+  local want="$1" v="$2" ref
+  # "perf" with "ref=<commit>" on line 3: measure that commit's app (src/) with today's test scripts.
+  ref=$(echo "${flows:-}" | grep -oE 'ref=[0-9a-f]+' | cut -d= -f2)
+  if [ "$v" = perf ] && [ -n "$ref" ]; then
+    git checkout -q "$ref" -- src || return 1
+    log "measuring the app code of $(git rev-parse --short "$ref") (src/), test scripts of $(git rev-parse --short "$want")"
+    VARIANT=forced; want="$ref"
+  fi
   if [ "$v" = "$VARIANT" ]; then build_if_needed "$want"; return; fi
   log "rebuild: $VARIANT -> $v build"
   rm -rf android/app/build/generated/assets android/app/build/generated/res/createBundleReleaseJsAndAssets \
@@ -93,7 +100,11 @@ mark() { awk -v n="$2" -v t="${3:-0}" '/\[perf\] / {for(i=1;i<=NF;i++) if($i=="[
 start_ms() { awk -v p="$PKG" '/ActivityTaskManager: START u0/ && index($0,p) {split($1,a,"."); print a[1] substr(a[2]"000",1,3); exit}' "$1"; }
 avg() { awk '{s+=$1; n++} END {if(n) printf "%.0f", s/n; else print "n/a"}'; }
 pss() {
-  local m; m=$(adb shell dumpsys meminfo "$PKG")
+  local m pid
+  # Collect garbage first (SIGUSR1 makes ART run a GC), so the Java heap shows what's really in use.
+  pid=$(adb shell pidof "$PKG" | tr -d '\r')
+  [ -n "$pid" ] && { adb shell su 0 kill -10 "$pid" 2>/dev/null || adb shell kill -10 "$pid" 2>/dev/null; }; sleep 3
+  m=$(adb shell dumpsys meminfo "$PKG")
   local total gfx native java
   total=$(echo "$m" | grep -m1 -oE 'TOTAL PSS: *[0-9]+' | grep -oE '[0-9]+$')
   gfx=$(echo "$m" | grep -m1 -E '^ *Graphics:' | grep -oE '[0-9]+' | head -1)
@@ -128,12 +139,13 @@ perf_run() {
     adb logcat -c
     run_flows perf perf/open || ok=1
     adb logcat -d -v epoch >"$RES/lc.txt"
-    s=$(mark "$RES/lc.txt" tap-start); t=$(mark "$RES/lc.txt" workout-ready "$s"); d=$(mark "$RES/lc.txt" video-frame "$s")
+    vm=video-frame; grep -q '\[perf\] video-shown' "$RES/lc.txt" && vm=video-shown
+    s=$(mark "$RES/lc.txt" tap-start); t=$(mark "$RES/lc.txt" workout-ready "$s"); d=$(mark "$RES/lc.txt" "$vm" "$s")
     [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/open.txt"
     [ -n "$s" ] && [ -n "$d" ] && echo $((d - s)) >>"$RES/frame.txt"
-    log "open workout $i: screen $([ -n "$t" ] && echo $((t - s)) || echo '?') ms, first video frame $([ -n "$d" ] && echo $((d - s)) || echo 'none') ms"
+    log "open workout $i: screen $([ -n "$t" ] && echo $((t - s)) || echo '?') ms, moving video $([ -n "$d" ] && echo $((d - s)) || echo 'none') ms"
   done
-  log "PERF open workout (avg of 3): screen $(avg <"$RES/open.txt") ms, first video frame $(avg <"$RES/frame.txt") ms"
+  log "PERF open workout (avg of 3): screen $(avg <"$RES/open.txt") ms, moving video $(avg <"$RES/frame.txt") ms"
   sleep 5; pss "workout, page 1"
   # 3. Every page with Next, then back with Previous: page change -> its video's first frame.
   adb logcat -c
@@ -146,11 +158,15 @@ perf_run() {
     adb shell dumpsys activity exit-info "$PKG" | grep -E "reason|description|pss|rss" | head -8 >>"$RES/results.txt"; ok=1
   fi
   adb logcat -d -v epoch >"$RES/lc.txt"
-  grep -oE '\[perf\] (page-[0-9]+|video-frame) [0-9]+' "$RES/lc.txt" | awk '
-    $2 ~ /^page-/ {p=$2; t=$3; next}
-    $2=="video-frame" && p!="" {print p, $3-t; p=""}' >"$RES/pages.txt"
-  log "page change -> video frame (ms): $(tr '\n' ' ' <"$RES/pages.txt")"
-  log "PERF page change -> video frame (avg of $(wc -l <"$RES/pages.txt") with video): $(awk '{print $2}' "$RES/pages.txt" | avg) ms"
+  # When the moving video is on screen: "video-shown" (the still gives way to it); builds without
+  # that mark show nothing before the first frame, so for them it's "video-frame".
+  vm=video-frame; grep -q '\[perf\] video-shown' "$RES/lc.txt" && vm=video-shown
+  grep -oE "\[perf\] (page-[0-9]+|$vm) [0-9]+" "$RES/lc.txt" | awk -v vm="$vm" '
+    $2 ~ /^page-/ {if (p!="") print p, "none"; p=$2; t=$3; next}
+    $2==vm && p!="" {print p, $3-t; p=""}
+    END {if (p!="") print p, "none"}' >"$RES/pages.txt"
+  log "page change -> moving video on screen, ms ($vm): $(tr '\n' ' ' <"$RES/pages.txt")"
+  log "PERF page change -> moving video (avg of $(grep -vc none "$RES/pages.txt") pages with video): $(grep -v none "$RES/pages.txt" | awk '{print $2}' | avg) ms"
   log "video players created: $(grep -c 'ExoPlayerImpl: Init' "$RES/lc.txt"), released: $(grep -c 'ExoPlayerImpl: Release' "$RES/lc.txt")"
   # 4. Progress with ~900 days of history x3 (fresh process each time): tap -> screen ready.
   : >"$RES/prog.txt"

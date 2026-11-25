@@ -112,6 +112,9 @@ function PlayerVideo({
     const t = setTimeout(() => setShown(true), 600);
     return () => clearTimeout(t);
   }, [isPlaying, shown]);
+  useEffect(() => {
+    if (shown) perfMark('video-shown');
+  }, [shown]);
   // Explicit 100% size inside a fill wrapper: on web the <video> otherwise keeps its own 1024 px size.
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
