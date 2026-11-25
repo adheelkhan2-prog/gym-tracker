@@ -19,6 +19,8 @@ export type PooledPlayer = unknown;
 export type VideoPool = {
   /** Is this video one the pool looks after (the current or next exercise's)? Others use their own player. */
   manages: (source: number | { uri: string }) => boolean;
+  /** Hold every pooled video paused (another screen or a sheet is on top, playing its own). */
+  hold?: boolean;
   /** Its player, or null while it's being made, or if it failed (the still shows meanwhile). */
   playerFor: (source: number | { uri: string }) => PooledPlayer | null;
 };

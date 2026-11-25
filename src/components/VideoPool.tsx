@@ -21,7 +21,7 @@ const Host = lazySafe<HostProps>(
   NoPool,
 );
 
-export function VideoPoolProvider({ current, next, children }: { current: Src; next: Src; children: React.ReactNode }) {
+export function VideoPoolProvider({ current, next, hold, children }: { current: Src; next: Src; hold?: boolean; children: React.ReactNode }) {
   const [held, setHeld] = useState<HeldPlayers | 'off' | null>(null);
   // Which videos are pooled comes from THIS render's pages, so a page that just came on screen never
   // makes a throwaway player of its own while the pool catches up: it shows its still for that moment.
@@ -30,10 +30,11 @@ export function VideoPoolProvider({ current, next, children }: { current: Src; n
       held === 'off'
         ? null
         : {
+            hold,
             manages: (src) => sameSource(src, current) || sameSource(src, next),
             playerFor: (src) => held?.playerFor(src) ?? null,
           },
-    [held, current, next],
+    [held, current, next, hold],
   );
   // The host comes AFTER the page: on leaving the workout the page lets go of its players first,
   // then the host releases them.

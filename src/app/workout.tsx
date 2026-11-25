@@ -176,7 +176,8 @@ export default function WorkoutScreen() {
   // Videos: only this exercise's and the next one's are loaded (the next is preloaded); the rest
   // stay released. Your own clips use their own player.
   // The next video is made in advance only while this page is what you're looking at: behind
-  // History or the swap sheet (which play a video of their own) it's let go, to leave a decoder free.
+  // History or the swap sheet (which play a video of their own) it's let go and the current one is
+  // paused, so only one video decodes at a time.
   const preload = focused && !swapFor;
   const videoOf = (i: number) => {
     const x = statuses[i];
@@ -215,7 +216,7 @@ export default function WorkoutScreen() {
         </View>
       </Press>
 
-      <VideoPoolProvider current={videoOf(at)} next={preload ? videoOf(at + 1) : null}>
+      <VideoPoolProvider current={videoOf(at)} next={preload ? videoOf(at + 1) : null} hold={!preload}>
         <GestureDetector gesture={pan}>
           <Animated.View style={[{ flex: 1 }, dragStyle]}>
             <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>

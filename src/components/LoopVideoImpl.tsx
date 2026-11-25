@@ -56,7 +56,7 @@ function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
   const live = useCallback(() => pool.playerFor(source) === player, [pool, source, player]);
   // The player is being made (opening the workout, or going back): the still shows meanwhile.
   if (!player) return <Poster poster={props.poster} />;
-  return <PlayerVideo key={keyOf(player)} {...props} player={player} pooled live={live} />;
+  return <PlayerVideo key={keyOf(player)} {...props} paused={props.paused || !!pool.hold} player={player} pooled live={live} />;
 }
 
 function OwnVideo(props: Props) {
@@ -141,14 +141,24 @@ function PlayerVideo({
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
   // The still goes at this view's first frame. Safety net: a pooled player (made before its view, or
   // already drawn into another view) may never report a first frame to this view (seen on the
-  // emulator), so once it's playing its still goes after a moment. A video's own fresh player keeps
+  // emulator), so once it's playing and really moving its still goes. A video's own fresh player keeps
   // its still until its first frame: a still for longer on a slow phone, never a black panel.
   const settled = isPlaying && (!!pooled || drawn.has(player));
   useEffect(() => {
     if (!settled || shown) return;
-    const t = setTimeout(() => setShown(true), 800);
-    return () => clearTimeout(t);
-  }, [settled, shown]);
+    // Only once the video is really moving (its clock has advanced), or after a while at the latest.
+    const since = Date.now();
+    const t = setInterval(() => {
+      let moving = false;
+      try {
+        moving = player.currentTime > 0.25;
+      } catch {
+        // Released: the page is leaving.
+      }
+      if (moving || Date.now() - since > 2500) setShown(true);
+    }, 150);
+    return () => clearInterval(t);
+  }, [settled, shown, player]);
   useEffect(() => {
     if (shown) perfMark('video-shown');
   }, [shown]);
