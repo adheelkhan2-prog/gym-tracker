@@ -73,7 +73,9 @@ function PlayerVideo({
 }: Props & { player: VideoPlayer; pooled?: boolean }) {
   const segment = end !== undefined && end > start;
   // Shown for THIS player: a new source (a new player) brings its still back until its first frame.
-  const [shownFor, setShownFor] = useState<VideoPlayer | null>(null);
+  // A pooled player that's already playing (the same video on the next page too) is drawing frames
+  // and may not report a first one again: it shows at once. A preloaded one keeps its still until then.
+  const [shownFor, setShownFor] = useState<VideoPlayer | null>(() => (pooled && player.playing ? player : null));
   const shown = shownFor === player;
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   useEffect(() => {

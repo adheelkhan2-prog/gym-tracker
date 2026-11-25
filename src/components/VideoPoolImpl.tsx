@@ -39,6 +39,8 @@ class Players {
   failed: Src[] = [];
 
   sync(current: Src, next: Src) {
+    // A video whose player couldn't be made gets another try once it's off screen and comes back.
+    this.failed = this.failed.filter((f) => sameSource(f, current) || sameSource(f, next));
     const p = plan(
       this.held.map((h) => h.src),
       current,
@@ -65,7 +67,8 @@ class Players {
         src,
         timer: setTimeout(() => {
           this.later = null;
-          if (!this.held.some((h) => sameSource(h.src, src))) this.make(src);
+          if (this.held.some((h) => sameSource(h.src, src))) return;
+          this.make(src);
           this.emit();
         }, 400),
       };

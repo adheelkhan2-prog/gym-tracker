@@ -107,6 +107,9 @@ build_variant() {
   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -q) >"$RES/build.log" 2>&1 || { tail -40 "$RES/build.log" | tee -a "$RES/results.txt"; return 1; }
   adb install -r "$APK" >/dev/null || return 1
   built="$want"; VARIANT="$v"
+  # A build of another commit's src/ is never reused: the next request always rebuilds.
+  [ -n "$ref" ] && [ "$v" = perf ] && VARIANT=forced
+  return 0
 }
 
 # Epoch ms of the first "[perf] <name>" mark in the logcat dump $1 at or after epoch ms $2.
