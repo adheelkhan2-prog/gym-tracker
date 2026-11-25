@@ -1,4 +1,4 @@
-# Log one set, Finish workout, the celebration screen (3D model), Done, back on Today.
+# Log one set, go to the last exercise, Finish workout, the celebration screen (3D model), Done, back on Today.
 appId: com.gymtracker.app
 ---
 - runFlow: ../lib/begin-workout.yaml
@@ -8,10 +8,15 @@ appId: com.gymtracker.app
 - runFlow:
     file: ../lib/log-set.yaml
     env: { CARD: "0", SET: "0", COUNT: "1" }
-- runFlow:
-    file: ../lib/scroll-to.yaml
-    env:
-      ID: "finish-workout"
+- repeat:
+    while:
+      notVisible:
+        id: "finish-workout"
+    commands:
+      - tapOn:
+          id: "next-exercise"
+      - waitForAnimationToEnd:
+          timeout: 2000
 - tapOn:
     id: "finish-workout"
 - extendedWaitUntil:

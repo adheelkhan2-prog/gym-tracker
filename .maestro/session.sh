@@ -14,7 +14,7 @@
 # traffic counters must stay at zero), then again in airplane mode, plus a logcat crash check.
 set -uo pipefail
 PKG=com.gymtracker.app
-BRANCH="${E2E_BRANCH:-round-6}"
+BRANCH="${E2E_BRANCH:-round-7}"
 APK=android/app/build/outputs/apk/release/app-release.apk
 export PATH="$PATH:$HOME/.maestro/bin"
 RES=$(mktemp -d)
@@ -68,7 +68,7 @@ while [ $SECONDS -lt $END ]; do
     else
       adb logcat -c
       # shellcheck disable=SC2086
-      run_flows quick ${flows:-nav start log scroll swap finish} || status=FAILED
+      run_flows quick ${flows:-nav start log scroll page swap finish} || status=FAILED
       crashes || status=FAILED
     fi
     log "RESULT $id: $status"
