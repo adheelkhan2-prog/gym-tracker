@@ -1,6 +1,6 @@
 // The workout's video players. The pool logic is loaded fail-safe and sits BESIDE the page, not
 // around it: if expo-video can't load or the pool fails, only the pool is lost (each video then
-// uses its own player, or its still), and the workout page itself is never remounted.
+// uses its own player, or shows its still), and the workout page itself is never remounted.
 import React, { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { lazySafe } from '../safe';
 import { sameSource, VideoPoolContext, type HeldPlayers, type Src, type VideoPool } from './videoPool';

@@ -6,6 +6,9 @@ import { logCrash } from '../crash';
 import { perfMark } from '../perf';
 import { LOCAL_BUFFER, VideoPoolContext, type VideoPool } from './videoPool';
 
+/** Players that have drawn a frame into some view (a new view on one may not report a first frame). */
+const drawn = new WeakSet<object>();
+
 /** A key per player, so a new player gets a fresh view (its still, playing state and safety net). */
 const playerKeys = new WeakMap<object, number>();
 let nextKey = 1;
@@ -126,16 +129,19 @@ function PlayerVideo({
     }
   });
   useEventListener(player, 'sourceLoad', ({ duration }) => onDuration?.(duration));
+  // A pooled player may have loaded before this view existed: report its length now.
+  useEffect(() => {
+    if (pooled && player.duration > 0) onDuration?.(player.duration);
+  }, [pooled, player, onDuration]);
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
-  // Safety net: if a playing video never reports its first frame (e.g. a player already shown
-  // before), the still goes after a while (long enough for a slow phone's first frame), so it can
-  // never stay stuck over a moving video. Paused (reduce motion), a pooled video's still stays until
-  // a frame is drawn (it IS the picture then); a video's own fresh player is ready once loaded.
-  const { status } = useEvent(player, 'statusChange', { status: player.status });
-  const settled = isPlaying || (paused && !pooled && status === 'readyToPlay');
+  // The still goes at this view's first frame. Safety net: a pooled player (made before its view, or
+  // already drawn into another view) may never report a first frame to this view (seen on the
+  // emulator), so once it's playing its still goes after a moment. A video's own fresh player keeps
+  // its still until its first frame: a still for longer on a slow phone, never a black panel.
+  const settled = isPlaying && (!!pooled || drawn.has(player));
   useEffect(() => {
     if (!settled || shown) return;
-    const t = setTimeout(() => setShown(true), 1500);
+    const t = setTimeout(() => setShown(true), 800);
     return () => clearTimeout(t);
   }, [settled, shown]);
   useEffect(() => {
@@ -153,6 +159,7 @@ function PlayerVideo({
         // A TextureView clips to the card's rounded corners and moves with it (a SurfaceView doesn't).
         surfaceType="textureView"
         onFirstFrameRender={() => {
+          drawn.add(player);
           perfMark('video-frame');
           setShown(true);
         }}

@@ -66,7 +66,8 @@ class Players {
         // Already gone.
       }
   }
-  /** Videos whose player couldn't be made: their still shows until they're off screen and back. */
+  private current: Src = null;
+  /** Videos whose player couldn't be made: their still shows (see sync for when they're retried). */
   failed: Src[] = [];
 
   sync(current: Src, next: Src) {
@@ -74,8 +75,12 @@ class Players {
     this.closing = null;
     this.freeRetired();
     // A video whose player couldn't be made gets another try once it's off screen and comes back.
-    this.failed = this.failed.filter((f) => sameSource(f, current) || sameSource(f, next));
-    // A video whose player failed is not retried while it's current or next (it uses its own player).
+    const arrived = !sameSource(current, this.current);
+    this.current = current;
+    this.failed = this.failed.filter((f) => (sameSource(f, current) && !arrived) || sameSource(f, next));
+    // A video whose player failed shows its still. It gets one more try when it comes on screen (a
+    // preload can fail just because the page before still held the decoder), and again once it has
+    // been off screen; a current one that fails stays a still, never retried in a loop.
     const p = plan([...this.held.map((h) => h.src), ...this.failed], current, next);
     if (this.later && !sameSource(this.later.src, p.createLater)) {
       clearTimeout(this.later.timer);
