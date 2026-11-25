@@ -316,9 +316,65 @@
  },
  "lat_pulldown": {
   "file": "lat_pulldown.mp4",
-  "credit": "3D clay render made for this app (CC BY-SA 4.0)",
-  "source": "render/ (this repo)",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-working-out-on-a-lat-pulldown-machine-100549/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100549/1725385782/100549-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 5.1 s loop (11.17-16.67 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "push_ups": {
+  "file": "push_ups.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-doing-push-ups-731/",
+  "original": "https://assets.mixkit.co/videos/731/731-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 3.5 s loop (1.5-5.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "pull_ups": {
+  "file": "pull_ups.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/muscular-man-doing-pull-ups-on-a-bar-44410/",
+  "original": "https://assets.mixkit.co/videos/44410/44410-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 3.2 s loop (12.58-16.17 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "machine_chest_press": {
+  "file": "machine_chest_press.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-exercising-on-chest-press-machine-in-gym-100538/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100538/1725384701/100538-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 3.8 s loop (1.0-5.2 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "cable_crossover": {
+  "file": "cable_crossover.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-performing-cable-fly-exercise-in-gym-100546/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100546/1725385655/100546-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 4.9 s loop (7.33-12.58 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "hanging_leg_raise": {
+  "file": "hanging_leg_raise.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/toned-man-performing-pull-ups-100551/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100551/1725385878/100551-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 5.5 s loop (4.75-10.67 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "front_squat": {
+  "file": "front_squat.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/257/view/",
+  "original": "https://wger.de/media/exercise-video/257/520b98d4-c767-47dd-83e6-850189217925.MOV",
+  "author": "Goulart",
   "licence": "CC BY-SA 4.0",
-  "author": "this app"
+  "changes": "Trimmed to a 2.1 s loop (9.0-11.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
  }
 }

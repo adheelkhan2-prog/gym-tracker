@@ -213,8 +213,8 @@ const list: Base[] = [
     kind: 'weight_reps',
     heavy: true,
     press: true,
-    primary: ['anterior_delt', 'lateral_delt'],
-    secondary: [...TRICEPS, 'upper_traps'],
+    primary: ['anterior_delt'],
+    secondary: ['lateral_delt', ...TRICEPS, 'upper_traps'],
     steps: [
       'Sit upright with back support. Hold the dumbbells at shoulder height, palms forward.',
       'Press up until your arms are straight, without arching your lower back.',

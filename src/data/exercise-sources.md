@@ -22,7 +22,7 @@ primary muscles; each pair and its sources are listed under Swap pairs. Rest rul
 |---|---|---|---|
 | 45° Back Extension | erector_spinae, glute_max / medial_hamstrings, lateral_hamstrings | none (no exact primary-muscle match) | [XH], [RDL], [HEX], [SBSTRAP] |
 | Ab Wheel Rollout | rectus_abdominis / obliques, transverse_abdominis, upper_lats, lower_lats | none (no exact primary-muscle match) | [XW], [ESCAMILLA] |
-| Arnold Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long | Machine Shoulder Press, Overhead Press, Smith Machine Shoulder Press | [XS], [OHP1], [OHP2] |
+| Arnold Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long | Dumbbell Shoulder Press, Machine Shoulder Press, Overhead Press, Smith Machine Shoulder Press | [XS], [OHP1], [OHP2] |
 | Back Squat | vastus_group, rectus_femoris, glute_max / adductors, erector_spinae, medial_hamstrings, lateral_hamstrings | Leg Press, Smith Machine Squat, Goblet Squat | [XT], [SQUAT], [THRUST] |
 | Band-Assisted Pull-Up | upper_lats, lower_lats / teres_major, biceps, rhomboids | Lat Pulldown, Wide-Grip Pulldown, Pull-Ups, Close-Grip Pulldown, Single-Arm Pulldown | [XB], [PULLDOWN1], [PULLDOWN2], [PULLDOWN3] |
 | Barbell Bent-Over Row | upper_lats, lower_lats, mid_traps, rhomboids / posterior_delt, biceps, erector_spinae | Dumbbell Bent-Over Row, T-Bar Row, Chest-Supported Dumbbell Row, Seated Cable Row, Machine Row, Inverted Row | [XB], [PULLDOWN2] |
@@ -64,13 +64,13 @@ primary muscles; each pair and its sources are listed under Swap pairs. Rest rul
 | Dumbbell Pullover | upper_lats, lower_lats / pec_major_lower, teres_major, triceps_long, serratus_anterior | Straight-Arm Pulldown, Rope Straight-Arm Pulldown | [XB], [PULLDOWN1] |
 | Dumbbell Reverse Wrist Curl | forearm_extensors / brachioradialis | Reverse Wrist Curl | [XF], [GRIP] |
 | Dumbbell Romanian Deadlift | medial_hamstrings, lateral_hamstrings, glute_max / erector_spinae, forearm_flexors | Romanian Deadlift | [XH], [RDL], [HEX], [SBSTRAP] |
-| Dumbbell Shoulder Press | anterior_delt, lateral_delt / triceps_lateral, triceps_medial, triceps_long, upper_traps | none (no exact primary-muscle match) | [XS], [OHP1], [OHP2] |
+| Dumbbell Shoulder Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long, upper_traps | Machine Shoulder Press, Overhead Press, Arnold Press, Smith Machine Shoulder Press | [XS], [OHP1], [OHP2] |
 | Dumbbell Shrug | upper_traps / forearm_flexors, hand_muscles | Barbell Shrug, Cable Shrug | [XB], [XS] |
 | Dumbbell Step-Up | vastus_group, rectus_femoris, glute_max / glute_med, medial_hamstrings, lateral_hamstrings | Bulgarian Split Squat, Dumbbell Walking Lunge, Reverse Lunge | [XT], [LUNGE], [BULG], [ACEGLUTE] |
 | Dumbbell Walking Lunge | vastus_group, rectus_femoris, glute_max / adductors, glute_med, medial_hamstrings, lateral_hamstrings | Bulgarian Split Squat, Reverse Lunge, Dumbbell Step-Up | [XT], [LUNGE], [BULG], [ACEGLUTE] |
 | Dumbbell Wrist Curl | forearm_flexors / hand_muscles | Wrist Curl, Cable Wrist Curl | [XF], [GRIP] |
 | EZ-Bar Curl | biceps / brachialis, brachioradialis | Barbell Curl, Cable Curl, Dumbbell Curl, Preacher Curl, Incline Dumbbell Curl, Concentration Curl, Machine Curl | [XA], [ACEBI], [GRIP] |
-| EZ-Bar Skull Crusher | triceps_long, triceps_lateral, triceps_medial / – | none (no exact primary-muscle match) | [XA], [MAEO22] |
+| EZ-Bar Skull Crusher | triceps_long, triceps_lateral, triceps_medial / – | Close-Grip Bench Press, Triceps Dip | [XA], [MAEO22] |
 | Face Pull | posterior_delt / mid_traps, rhomboids, rotator_cuff | Cable Rear Delt Fly, Rear Delt Fly, Bent-Over Rear Raise, Chest-Supported Rear Raise | [XS], [XB] |
 | Farmer’s Walk | forearm_flexors, hand_muscles, upper_traps / forearm_extensors, mid_traps | Trap Bar Carry | [XF], [XB] |
 | Flat Bench Press | pec_major_upper, pec_major_lower / anterior_delt, triceps_lateral, triceps_medial, triceps_long | Flat Dumbbell Press, Machine Chest Press, Smith Machine Bench Press, Push-Ups, Weighted Push-Up, Dumbbell Floor Press | [XC], [BENCH], [PUSHUP], [ACECHEST] |
@@ -102,9 +102,9 @@ primary muscles; each pair and its sources are listed under Swap pairs. Rest rul
 | Machine Crunch | rectus_abdominis / obliques | Cable Crunch, Decline Crunch | [XW], [ACEABS] |
 | Machine Curl | biceps / brachialis | Incline Dumbbell Curl, EZ-Bar Curl, Concentration Curl, Barbell Curl, Dumbbell Curl, Cable Curl, Preacher Curl | [XA], [ACEBI], [GRIP] |
 | Machine Row | rhomboids, mid_traps, upper_lats, lower_lats / posterior_delt, biceps | Seated Cable Row, Barbell Bent-Over Row, Dumbbell Bent-Over Row, Chest-Supported Dumbbell Row, T-Bar Row, Inverted Row | [XB], [PULLDOWN2] |
-| Machine Shoulder Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long | Overhead Press, Arnold Press, Smith Machine Shoulder Press | [XS], [OHP1], [OHP2] |
+| Machine Shoulder Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long | Dumbbell Shoulder Press, Overhead Press, Arnold Press, Smith Machine Shoulder Press | [XS], [OHP1], [OHP2] |
 | Overhead Dumbbell Extension | triceps_long / triceps_lateral, triceps_medial | Cable Overhead Extension | [XA], [MAEO22] |
-| Overhead Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long, upper_traps, serratus_anterior | Machine Shoulder Press, Smith Machine Shoulder Press, Arnold Press | [XS], [OHP1], [OHP2] |
+| Overhead Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long, upper_traps, serratus_anterior | Dumbbell Shoulder Press, Machine Shoulder Press, Smith Machine Shoulder Press, Arnold Press | [XS], [OHP1], [OHP2] |
 | Pec Deck | pec_major_upper, pec_major_lower / anterior_delt | Cable Fly, Cable Crossover, Dumbbell Fly | [XC], [ACECHEST] |
 | Plank | rectus_abdominis, transverse_abdominis / obliques | none (no exact primary-muscle match) | [XW], [ESCAMILLA] |
 | Plate Front Raise | anterior_delt / lateral_delt, pec_major_upper | Front Raise, Cable Front Raise | [XS], [OHP2] |
@@ -132,7 +132,7 @@ primary muscles; each pair and its sources are listed under Swap pairs. Rest rul
 | Sissy Squat | vastus_group, rectus_femoris / – | Leg Extension | [XT], [SQUAT] |
 | Smith Machine Bench Press | pec_major_upper, pec_major_lower / anterior_delt, triceps_lateral, triceps_medial, triceps_long | Flat Bench Press, Machine Chest Press, Flat Dumbbell Press, Push-Ups, Weighted Push-Up, Dumbbell Floor Press | [XC], [BENCH], [PUSHUP], [ACECHEST] |
 | Smith Machine Calf Raise | gastrocnemius / soleus | Standing Calf Raise, Leg Press Calf Raise | [XL], [CALF] |
-| Smith Machine Shoulder Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long | Overhead Press, Machine Shoulder Press, Arnold Press | [XS], [OHP1], [OHP2] |
+| Smith Machine Shoulder Press | anterior_delt / lateral_delt, triceps_lateral, triceps_medial, triceps_long | Dumbbell Shoulder Press, Overhead Press, Machine Shoulder Press, Arnold Press | [XS], [OHP1], [OHP2] |
 | Smith Machine Squat | vastus_group, rectus_femoris, glute_max / adductors, medial_hamstrings, lateral_hamstrings | Back Squat, Goblet Squat, Leg Press | [XT], [SQUAT], [THRUST] |
 | Stability Ball Leg Curl | medial_hamstrings, lateral_hamstrings / glute_max | Lying Leg Curl, Seated Leg Curl, Standing Leg Curl, Glute-Ham Raise | [XT], [MAEO21], [RDL] |
 | Standing Calf Raise | gastrocnemius / soleus | Leg Press Calf Raise, Smith Machine Calf Raise | [XL], [CALF] |
@@ -157,6 +157,7 @@ sources that cover both patterns count.
 
 | Exercise | Swap | Primary muscles | Sources |
 |---|---|---|---|
+| Arnold Press | Dumbbell Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Arnold Press | Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Arnold Press | Overhead Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Arnold Press | Smith Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
@@ -290,6 +291,10 @@ sources that cover both patterns count.
 | Dumbbell Pullover | Rope Straight-Arm Pulldown | upper_lats, lower_lats | [XB], [PULLDOWN1] |
 | Dumbbell Reverse Wrist Curl | Reverse Wrist Curl | forearm_extensors | [XF], [GRIP] |
 | Dumbbell Romanian Deadlift | Romanian Deadlift | medial_hamstrings, lateral_hamstrings, glute_max | [XH], [RDL], [HEX], [SBSTRAP] |
+| Dumbbell Shoulder Press | Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
+| Dumbbell Shoulder Press | Overhead Press | anterior_delt | [XS], [OHP1], [OHP2] |
+| Dumbbell Shoulder Press | Arnold Press | anterior_delt | [XS], [OHP1], [OHP2] |
+| Dumbbell Shoulder Press | Smith Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Dumbbell Shrug | Barbell Shrug | upper_traps | [XB], [XS] |
 | Dumbbell Shrug | Cable Shrug | upper_traps | [XB], [XS] |
 | Dumbbell Step-Up | Bulgarian Split Squat | vastus_group, rectus_femoris, glute_max | [XT], [LUNGE], [BULG], [ACEGLUTE] |
@@ -307,6 +312,8 @@ sources that cover both patterns count.
 | EZ-Bar Curl | Incline Dumbbell Curl | biceps | [XA], [ACEBI], [GRIP] |
 | EZ-Bar Curl | Concentration Curl | biceps | [XA], [ACEBI], [GRIP] |
 | EZ-Bar Curl | Machine Curl | biceps | [XA], [ACEBI], [GRIP] |
+| EZ-Bar Skull Crusher | Close-Grip Bench Press | triceps_long, triceps_lateral, triceps_medial | [XA], [ACETRI] |
+| EZ-Bar Skull Crusher | Triceps Dip | triceps_long, triceps_lateral, triceps_medial | [XA], [ACETRI] |
 | Face Pull | Cable Rear Delt Fly | posterior_delt | [XS], [XB] |
 | Face Pull | Rear Delt Fly | posterior_delt | [XS], [XB] |
 | Face Pull | Bent-Over Rear Raise | posterior_delt | [XS], [XB] |
@@ -405,10 +412,12 @@ sources that cover both patterns count.
 | Machine Row | Chest-Supported Dumbbell Row | rhomboids, mid_traps, upper_lats, lower_lats | [XB], [PULLDOWN2] |
 | Machine Row | T-Bar Row | rhomboids, mid_traps, upper_lats, lower_lats | [XB], [PULLDOWN2] |
 | Machine Row | Inverted Row | rhomboids, mid_traps, upper_lats, lower_lats | [XB], [PULLDOWN2] |
+| Machine Shoulder Press | Dumbbell Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Machine Shoulder Press | Overhead Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Machine Shoulder Press | Arnold Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Machine Shoulder Press | Smith Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Overhead Dumbbell Extension | Cable Overhead Extension | triceps_long | [XA], [MAEO22] |
+| Overhead Press | Dumbbell Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Overhead Press | Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Overhead Press | Smith Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Overhead Press | Arnold Press | anterior_delt | [XS], [OHP1], [OHP2] |
@@ -484,6 +493,7 @@ sources that cover both patterns count.
 | Smith Machine Bench Press | Dumbbell Floor Press | pec_major_upper, pec_major_lower | [XC], [BENCH], [PUSHUP], [ACECHEST] |
 | Smith Machine Calf Raise | Standing Calf Raise | gastrocnemius | [XL], [CALF] |
 | Smith Machine Calf Raise | Leg Press Calf Raise | gastrocnemius | [XL], [CALF] |
+| Smith Machine Shoulder Press | Dumbbell Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Smith Machine Shoulder Press | Overhead Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Smith Machine Shoulder Press | Machine Shoulder Press | anterior_delt | [XS], [OHP1], [OHP2] |
 | Smith Machine Shoulder Press | Arnold Press | anterior_delt | [XS], [OHP1], [OHP2] |

@@ -33,10 +33,12 @@ const CREDITS: { title: string; note: string; links: { label: string; url: strin
   },
   {
     title: 'Exercise videos',
-    note: '35 exercises play a short looping video of a real person by Goulart, from the open exercise database wger (wger.de), CC BY-SA 4.0. Changes: chosen per exercise, trimmed to a 3–6 s loop, cross-faded at the loop point, sound removed, re-encoded at the original resolution; shared under CC BY-SA 4.0. The source of every clip is listed in the app’s asset-licences file. Videos you import stay on this phone.',
+    note: '42 exercises play a short looping video of a real person: 36 by Goulart from the open exercise database wger (wger.de, CC BY-SA 4.0) and 6 from Mixkit (mixkit.co, Mixkit Stock Video Free License). Changes: chosen per exercise, trimmed to a 3–6 s loop, cross-faded at the loop point, sound removed, re-encoded at the original resolution; the wger clips are shared under CC BY-SA 4.0. The source of every clip is listed in the app’s asset-licences file. Videos you import stay on this phone.',
     links: [
       { label: 'wger exercise database (videos by Goulart)', url: 'https://wger.de/en/exercise/overview/' },
       { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+      { label: 'Mixkit free stock video', url: 'https://mixkit.co/free-stock-video/' },
+      { label: 'Mixkit Stock Video Free License', url: 'https://mixkit.co/license/#videoFree' },
     ],
   },
   {

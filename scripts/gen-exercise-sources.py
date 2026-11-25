@@ -89,7 +89,13 @@ for e in sorted(EX, key=lambda e: e['name']):
 BY = {e['id']: e for e in EX}
 # Extra sources for pairs that cross movement patterns (ExRx's upper-arm directory lists both
 # close-grip bench and triceps dips as triceps compound exercises).
-PAIR = {frozenset(('close_grip_bench', 'triceps_dips')): ['XA']}
+PAIR = {
+    frozenset(('close_grip_bench', 'triceps_dips')): ['XA'],
+    # Skull crusher, close-grip bench and dips all load the three triceps heads (ExRx upper-arm
+    # directory; ACE triceps EMG study covers dips and extensions).
+    frozenset(('skull_crusher', 'close_grip_bench')): ['XA', 'ACETRI'],
+    frozenset(('skull_crusher', 'triceps_dips')): ['XA', 'ACETRI'],
+}
 L += ['', '## Swap pairs', '',
       'Every swap the app offers, with the sources that back it. A swap is only offered when both exercises',
       'have exactly the same primary muscles. When the two exercises use different movement patterns, only the',

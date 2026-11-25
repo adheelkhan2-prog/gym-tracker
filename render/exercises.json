@@ -347,10 +347,10 @@
   "id": "db_shoulder_press",
   "name": "Dumbbell Shoulder Press",
   "primary": [
-   "anterior_delt",
-   "lateral_delt"
+   "anterior_delt"
   ],
   "secondary": [
+   "lateral_delt",
    "triceps_lateral",
    "triceps_medial",
    "triceps_long",
@@ -358,7 +358,28 @@
   ],
   "equipment": "dumbbell",
   "pattern": "v_press",
-  "swaps": []
+  "swaps": [
+   {
+    "id": "machine_shoulder_press",
+    "match": "same",
+    "why": "Same vertical press on a fixed path; front delts and triceps."
+   },
+   {
+    "id": "bb_ohp",
+    "match": "same",
+    "why": "Same overhead press with a barbell; heavier loading."
+   },
+   {
+    "id": "arnold_press",
+    "match": "same",
+    "why": "Dumbbell press with a twist; same front and side delt work."
+   },
+   {
+    "id": "smith_ohp",
+    "match": "same",
+    "why": "Overhead press on a guided bar."
+   }
+  ]
  },
  {
   "id": "lateral_raise",
@@ -1481,6 +1502,11 @@
   "pattern": "v_press",
   "swaps": [
    {
+    "id": "db_shoulder_press",
+    "match": "same",
+    "why": "Same vertical press with dumbbells; similar delt activation."
+   },
+   {
     "id": "machine_shoulder_press",
     "match": "same",
     "why": "Same press on a fixed path, less balance needed."
@@ -1512,6 +1538,11 @@
   "equipment": "machine",
   "pattern": "v_press",
   "swaps": [
+   {
+    "id": "db_shoulder_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
    {
     "id": "bb_ohp",
     "match": "same",
@@ -1545,6 +1576,11 @@
   "pattern": "v_press",
   "swaps": [
    {
+    "id": "db_shoulder_press",
+    "match": "same",
+    "why": "Same dumbbell overhead press without the twist."
+   },
+   {
     "id": "machine_shoulder_press",
     "match": "same",
     "why": "Same vertical press on a machine."
@@ -1576,6 +1612,11 @@
   "equipment": "smith",
   "pattern": "v_press",
   "swaps": [
+   {
+    "id": "db_shoulder_press",
+    "match": "same",
+    "why": "Same movement pattern and the same primary muscles."
+   },
    {
     "id": "bb_ohp",
     "match": "same",
@@ -2369,7 +2410,18 @@
   "secondary": [],
   "equipment": "ez_bar",
   "pattern": "tri_overhead",
-  "swaps": []
+  "swaps": [
+   {
+    "id": "close_grip_bench",
+    "match": "same",
+    "why": "Triceps-led press for all three heads; load it heavier."
+   },
+   {
+    "id": "triceps_dips",
+    "match": "same",
+    "why": "Bodyweight press that works all three triceps heads."
+   }
+  ]
  },
  {
   "id": "cable_overhead_ext",

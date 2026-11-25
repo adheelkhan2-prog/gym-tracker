@@ -57,7 +57,11 @@ describe('swap options', () => {
   });
 
   test('exercises with no exact match get no swaps rather than a near miss', () => {
-    expect(swapsFor('db_shoulder_press')).toEqual([]);
+    expect(swapsFor('chest_dips')).toEqual([]);
+  });
+
+  test('dumbbell shoulder press swaps to the other overhead presses (front delts primary in all of them)', () => {
+    expect(swapsFor('db_shoulder_press').map((s) => s.id).sort()).toEqual(['arnold_press', 'bb_ohp', 'machine_shoulder_press', 'smith_ohp']);
   });
 });
 

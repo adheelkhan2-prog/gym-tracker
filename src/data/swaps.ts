@@ -172,6 +172,8 @@ export const SWAPS: Record<string, Swap[]> = {
   skull_crusher: [
     same('overhead_db_ext', 'Overhead extension; same long-head stretch.'),
     same('cable_overhead_ext', 'Overhead extension on a cable.'),
+    same('close_grip_bench', 'Triceps-led press for all three heads; load it heavier.'),
+    same('triceps_dips', 'Bodyweight press that works all three triceps heads.'),
   ],
   close_grip_bench: [
     same('triceps_dips', 'Compound triceps press with bodyweight.'),
