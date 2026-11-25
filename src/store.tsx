@@ -512,10 +512,6 @@ export type HistoryPoint = {
   pin?: number;
 };
 
-/**
- * One point per day. `machine` (the exercise's current stack setup) turns old pin-only sets into kg,
- * so logging pins first and adding kg per plate later still charts one continuous line.
- */
 /** One chart point: an exercise's done sets on one day (null when none). */
 function historyPoint(date: string, log: ExerciseLog | undefined, kind: LogKind, machine?: MachineSetup): HistoryPoint | null {
   const sets = doneSets(log, kind);
@@ -548,6 +544,10 @@ function historyPoint(date: string, log: ExerciseLog | undefined, kind: LogKind,
   return point;
 }
 
+/**
+ * One point per day. `machine` (the exercise's current stack setup) turns old pin-only sets into kg,
+ * so logging pins first and adding kg per plate later still charts one continuous line.
+ */
 export function exerciseHistory(logs: State['logs'], exerciseId: string, machine?: MachineSetup): HistoryPoint[] {
   const kind = kindOf(exerciseId);
   return Object.keys(logs)

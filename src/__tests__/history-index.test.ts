@@ -75,14 +75,16 @@ describe('one-pass history indexes match the old full scans', () => {
     const state = randomState();
     const dates = Object.keys(state.logs).sort();
     test(`PRs on every day (history ${run + 1})`, () => {
-      let n = 0;
+      const kinds = { metric: 0, pin: 0 };
       for (const d of [...dates, '2024-12-31', '2026-06-01']) {
         expect(prSetsOn(state.logs, d)).toEqual(oldPrSetsOn(state.logs, d));
         // Same records (the order isn't used anywhere: callers look records up by exercise).
         expect(new Map(dayPRs(state, d))).toEqual(oldDayPRs(state, d));
-        n += oldDayPRs(state, d).size;
+        for (const r of oldDayPRs(state, d).values()) kinds[r.kind]++;
       }
-      expect(n).toBeGreaterThan(5); // the history really has records of both kinds in it
+      // The history really has records of both kinds in it.
+      expect(kinds.metric).toBeGreaterThan(5);
+      expect(kinds.pin).toBeGreaterThan(0);
     });
     test(`lift histories (history ${run + 1})`, () => {
       const all = allHistories(state.logs, IDS, state.machines);

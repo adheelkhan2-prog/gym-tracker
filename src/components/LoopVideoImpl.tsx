@@ -106,12 +106,15 @@ function PlayerVideo({
   useEventListener(player, 'sourceLoad', ({ duration }) => onDuration?.(duration));
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
   // Safety net: if a player never reports its first frame (e.g. one already shown before), the still
-  // goes once it has been playing for a moment, so it can never stay stuck over the video.
+  // goes once the video is playing, or loaded and paused (reduce motion), for a moment, so it can
+  // never stay stuck over the video.
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const settled = isPlaying || (paused && status === 'readyToPlay');
   useEffect(() => {
-    if (!isPlaying || shown) return;
+    if (!settled || shown) return;
     const t = setTimeout(() => setShown(true), 600);
     return () => clearTimeout(t);
-  }, [isPlaying, shown]);
+  }, [settled, shown]);
   useEffect(() => {
     if (shown) perfMark('video-shown');
   }, [shown]);

@@ -1,6 +1,7 @@
 import { createVideoPlayer, type VideoPlayer, type VideoSource } from 'expo-video';
-import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { VideoPoolContext, plan, sameSource, type Src, type VideoPool } from './videoPool';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { logCrash } from '../crash';
+import { plan, sameSource, type Src, type VideoPool } from './videoPool';
 
 type Held = { src: Src; player: VideoPlayer };
 
@@ -21,11 +22,20 @@ class Players {
     this.listeners.forEach((l) => l());
   }
   private make(src: Src) {
-    const player = createVideoPlayer(src as VideoSource);
-    player.loop = true;
-    player.muted = true;
-    this.held.push({ src, player });
+    // A player that can't be made (e.g. no free decoder on the phone) is simply not pooled: that
+    // page's video then gets its own player, or its still shows. Never fatal.
+    try {
+      const player = createVideoPlayer(src as VideoSource);
+      player.loop = true;
+      player.muted = true;
+      this.held.push({ src, player });
+    } catch (e) {
+      this.failed.push(src);
+      logCrash('error', e, 'video player could not be made');
+    }
   }
+  /** Videos whose player couldn't be made: they use their own player instead. */
+  failed: Src[] = [];
 
   sync(current: Src, next: Src) {
     const p = plan(
@@ -77,18 +87,24 @@ class Players {
   }
 }
 
-/** The workout's players: the exercise on screen and the next one (made in advance). */
-export function VideoPoolProvider({ current, next, children }: { current: Src; next: Src; children: React.ReactNode }) {
+/**
+ * Holds the workout's players (the exercise on screen and the next one, made in advance) and hands
+ * the pool to `onPool`. It renders nothing, so if it ever fails only the pool is lost, never the page.
+ */
+export function VideoPoolHost({ current, next, onPool }: { current: Src; next: Src; onPool: (pool: VideoPool | 'off') => void }) {
   const [players] = useState(() => new Players());
   const held = useSyncExternalStore(players.subscribe, players.snapshot);
   useEffect(() => players.sync(current, next), [players, current, next]);
   useEffect(() => () => players.releaseAll(), [players]);
   const value: VideoPool = useMemo(
     () => ({
-      manages: (src) => sameSource(src, current) || sameSource(src, next),
+      manages: (src) => (sameSource(src, current) || sameSource(src, next)) && !players.failed.some((f) => sameSource(f, src)),
       playerFor: (src) => held.find((h) => sameSource(h.src, src))?.player ?? null,
     }),
-    [held, current, next],
+    [held, current, next, players],
   );
-  return <VideoPoolContext.Provider value={value}>{children}</VideoPoolContext.Provider>;
+  useEffect(() => {
+    onPool(value);
+  }, [value, onPool]);
+  return null;
 }
