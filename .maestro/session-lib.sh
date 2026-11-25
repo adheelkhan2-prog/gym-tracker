@@ -115,6 +115,7 @@ pss() {
 
 perf_run() {
   local ok=0 i t s r d
+  adb logcat -G 16M 2>/dev/null || true  # room for every perf mark of a whole pass
   # Seed the big history once (fresh start), then let it save.
   adb shell pm clear "$PKG" >/dev/null
   adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 25
@@ -150,6 +151,7 @@ perf_run() {
   # 3. Every page with Next, then back with Previous: page change -> its video's first frame.
   adb logcat -c
   run_flows perf perf/pages || ok=1
+  adb logcat -d -v epoch >"$RES/lc-fwd.txt"; adb logcat -c
   pss "workout, after Next through all 7 pages"
   run_flows perf perf/back || ok=1
   pss "workout, after Previous back to page 1"
@@ -157,7 +159,8 @@ perf_run() {
     log "FAIL: the app is no longer running. Android's record of why:"
     adb shell dumpsys activity exit-info "$PKG" | grep -E "reason|description|pss|rss" | head -8 >>"$RES/results.txt"; ok=1
   fi
-  adb logcat -d -v epoch >"$RES/lc.txt"
+  adb logcat -d -v epoch >"$RES/lc-back.txt"
+  cat "$RES/lc-fwd.txt" "$RES/lc-back.txt" >"$RES/lc.txt"
   # When the moving video is on screen: "video-shown" (the still gives way to it); builds without
   # that mark show nothing before the first frame, so for them it's "video-frame".
   vm=video-frame; grep -q '\[perf\] video-shown' "$RES/lc.txt" && vm=video-shown
