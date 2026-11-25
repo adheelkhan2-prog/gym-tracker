@@ -85,7 +85,15 @@ export function ExerciseMedia({ exerciseId, height = 300, label, active = true }
       testID={isVideo ? 'exercise-video' : 'exercise-photo'}
     >
       {isVideo ? (
-        <LoopVideo source={m.video} paused={paused} start={m.kind === 'mine' ? m.start : undefined} end={m.kind === 'mine' ? m.end : undefined} />
+        <LoopVideo
+          source={m.video}
+          paused={paused}
+          start={m.kind === 'mine' ? m.start : undefined}
+          end={m.kind === 'mine' ? m.end : undefined}
+          // The still shows at once and stays until the video's first frame is drawn.
+          poster={howToImages(exerciseId)?.start}
+          posterContain={!!howToImages(exerciseId)?.clay}
+        />
       ) : (
         <>
           <Image source={m.img!.start} style={s.img} resizeMode={m.kind === 'clay' ? 'contain' : 'cover'} />

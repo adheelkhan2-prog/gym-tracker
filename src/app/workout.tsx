@@ -5,7 +5,8 @@ import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ExerciseMedia, HowToSteps, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
+import { ExerciseMedia, HowToSteps, MuscleLegend, SwapSheet, Tips, mediaCredit, mediaFor } from '../components/ExerciseParts';
+import { VideoPoolProvider } from '../components/VideoPool';
 import { OwnVideoButtons } from '../components/ImportVideo';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
@@ -171,6 +172,14 @@ export default function WorkoutScreen() {
 
   const st = statuses[at];
   const last = at === count - 1;
+  // Videos: only this exercise's and the next one's are loaded (the next is preloaded); the rest
+  // stay released. Your own trimmed clips use their own player.
+  const videoOf = (i: number) => {
+    const x = statuses[i];
+    if (!x) return null;
+    const m = mediaFor(x.exerciseId, state.userVideos);
+    return m.kind === 'video' ? (m.video as number | { uri: string }) : null;
+  };
   const draftKey = `${st.plan.slot}-${st.exerciseId}`;
   const anyLogged = done > 0;
 
@@ -202,27 +211,29 @@ export default function WorkoutScreen() {
         </View>
       </Press>
 
-      <GestureDetector gesture={pan}>
-        <Animated.View style={[{ flex: 1 }, dragStyle]}>
-          <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: navH + (restEnd ? 96 : space.lg) }} keyboardShouldPersistTaps="handled">
-              <ExerciseCard
-                n={at}
-                st={st}
-                state={state}
-                date={date}
-                dayId={day.id}
-                statuses={statuses}
-                update={update}
-                onLogged={onLogged}
-                onSwap={() => setSwapFor(st)}
-                drafts={drafts[draftKey] ?? {}}
-                setDrafts={(fn) => setDrafts((d) => ({ ...d, [draftKey]: fn(d[draftKey] ?? {}) }))}
-              />
-            </ScrollView>
+      <VideoPoolProvider current={videoOf(at)} next={videoOf(at + 1)}>
+        <GestureDetector gesture={pan}>
+          <Animated.View style={[{ flex: 1 }, dragStyle]}>
+            <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>
+              <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: navH + (restEnd ? 96 : space.lg) }} keyboardShouldPersistTaps="handled">
+                <ExerciseCard
+                  n={at}
+                  st={st}
+                  state={state}
+                  date={date}
+                  dayId={day.id}
+                  statuses={statuses}
+                  update={update}
+                  onLogged={onLogged}
+                  onSwap={() => setSwapFor(st)}
+                  drafts={drafts[draftKey] ?? {}}
+                  setDrafts={(fn) => setDrafts((d) => ({ ...d, [draftKey]: fn(d[draftKey] ?? {}) }))}
+                />
+              </ScrollView>
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
-      </GestureDetector>
+        </GestureDetector>
+      </VideoPoolProvider>
 
       {/* Previous / Next (Finish on the last page), in thumb reach. */}
       <View style={[s.nav, { paddingBottom: insets.bottom + space.md }]} onLayout={(e) => setNavH(e.nativeEvent.layout.height)}>

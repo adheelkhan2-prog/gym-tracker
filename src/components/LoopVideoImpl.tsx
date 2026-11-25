@@ -1,8 +1,9 @@
 import { useEvent, useEventListener } from 'expo';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useContext, useEffect, useState } from 'react';
+import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { perfMark } from '../perf';
+import { VideoPoolContext } from './videoPool';
 
 /** Seek the native player (kept outside the component: the player is an imperative handle). */
 function seek(p: VideoPlayer, seconds: number) {
@@ -21,6 +22,8 @@ export function LoopVideo({
   end,
   onPlaying,
   onDuration,
+  poster,
+  posterContain = true,
 }: {
   source: number | { uri: string };
   paused: boolean;
@@ -28,13 +31,22 @@ export function LoopVideo({
   end?: number;
   onPlaying?: (playing: boolean) => void;
   onDuration?: (seconds: number) => void;
+  /** Still shown on top until the first video frame is drawn (no blank or black flash). */
+  poster?: ImageSourcePropType;
+  posterContain?: boolean;
 }) {
   const segment = end !== undefined && end > start;
-  const player = useVideoPlayer(source, (p) => {
+  // In a workout the pool already holds (and has preloaded) this video: use that player. A trimmed
+  // clip of your own always gets its own player.
+  const pool = useContext(VideoPoolContext);
+  const pooled = segment ? null : ((pool?.playerFor(source) as VideoPlayer | null | undefined) ?? null);
+  const [shown, setShown] = useState(false);
+  const own = useVideoPlayer(pooled ? null : source, (p) => {
     p.loop = !segment;
     p.muted = true;
     p.timeUpdateEventInterval = segment ? 0.05 : 0;
   });
+  const player = pooled ?? own;
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   useEffect(() => {
     if (paused) player.pause();
@@ -56,6 +68,13 @@ export function LoopVideo({
   });
   useEventListener(player, 'sourceLoad', ({ duration }) => onDuration?.(duration));
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
+  // Safety net: if a reused (preloaded) player never reports its first frame, the still goes once
+  // it has been playing for a moment, so it can never stay stuck over the video.
+  useEffect(() => {
+    if (!isPlaying || shown) return;
+    const t = setTimeout(() => setShown(true), 600);
+    return () => clearTimeout(t);
+  }, [isPlaying, shown]);
   // Explicit 100% size inside a fill wrapper: on web the <video> otherwise keeps its own 1024 px size.
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -67,8 +86,12 @@ export function LoopVideo({
         allowsPictureInPicture={false}
         // A TextureView clips to the card's rounded corners and moves with it (a SurfaceView doesn't).
         surfaceType="textureView"
-        onFirstFrameRender={() => perfMark('video-frame')}
+        onFirstFrameRender={() => {
+          perfMark('video-frame');
+          setShown(true);
+        }}
       />
+      {poster && !shown ? <Image source={poster} style={StyleSheet.absoluteFill} resizeMode={posterContain ? 'contain' : 'cover'} /> : null}
     </View>
   );
 }
