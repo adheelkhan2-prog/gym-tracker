@@ -1,19 +1,21 @@
-/** The workout's two video players: current + preloaded next, nothing else kept. */
-import { assign } from '../components/videoPool';
+/** The workout's video players: only the current video and the next one, nothing else kept. */
+import { plan } from '../components/videoPool';
 
-test('first page: current in one player, next preloading in the other', () => {
-  expect(assign({ a: null, b: null }, 1, 2)).toEqual({ a: 1, b: 2 });
+test('opening the workout: the current video at once, the next a moment later', () => {
+  expect(plan([], 1, 2)).toEqual({ release: [], createNow: 1, createLater: 2 });
 });
-test('moving to the preloaded next: it stays where it is (no reload) and the old one makes way for the new next', () => {
-  expect(assign({ a: 1, b: 2 }, 2, 3)).toEqual({ a: 3, b: 2 });
-  expect(assign({ a: 3, b: 2 }, 3, 4)).toEqual({ a: 3, b: 4 });
+test('moving to the next page: its player is already there; the old one is released, the new next is made', () => {
+  expect(plan([1, 2], 2, 3)).toEqual({ release: [1], createNow: null, createLater: 3 });
 });
-test('going back reuses whichever player still has it; otherwise loads it', () => {
-  expect(assign({ a: 3, b: 2 }, 2, 3)).toEqual({ a: 3, b: 2 });
-  expect(assign({ a: 3, b: 4 }, 1, 2)).toEqual({ a: 1, b: 2 });
+test('going back: the previous video gets a new player, the page you left stays as the next', () => {
+  expect(plan([2, 3], 1, 2)).toEqual({ release: [3], createNow: 1, createLater: null });
 });
-test('no video on a page (a still image): nothing is held for it; the last page has no next', () => {
-  expect(assign({ a: 1, b: 2 }, null, 3)).toEqual({ a: 3, b: 2 });
-  expect(assign({ a: 5, b: 6 }, 6, null)).toEqual({ a: null, b: 6 });
-  expect(assign({ a: 1, b: { uri: 'x' } }, { uri: 'x' }, null)).toEqual({ a: null, b: { uri: 'x' } });
+test('jumping far releases both; a page with only stills holds nothing for itself; the last page has no next', () => {
+  expect(plan([1, 2], 5, 6)).toEqual({ release: [1, 2], createNow: 5, createLater: 6 });
+  expect(plan([1, 2], null, 3)).toEqual({ release: [1, 2], createNow: null, createLater: 3 });
+  expect(plan([5, 6], 6, null)).toEqual({ release: [5], createNow: null, createLater: null });
+});
+test('your own videos compare by file; the same video twice in a row shares one player', () => {
+  expect(plan([{ uri: 'x' }], { uri: 'x' }, null)).toEqual({ release: [], createNow: null, createLater: null });
+  expect(plan([], 4, 4)).toEqual({ release: [], createNow: 4, createLater: null });
 });

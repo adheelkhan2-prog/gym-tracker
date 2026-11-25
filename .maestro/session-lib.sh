@@ -141,6 +141,10 @@ perf_run() {
   pss "workout, after Next through all 7 pages"
   run_flows perf perf/back || ok=1
   pss "workout, after Previous back to page 1"
+  if ! adb shell pidof "$PKG" >/dev/null; then
+    log "FAIL: the app is no longer running. Android's record of why:"
+    adb shell dumpsys activity exit-info "$PKG" | grep -E "reason|description|pss|rss" | head -8 >>"$RES/results.txt"; ok=1
+  fi
   adb logcat -d -v epoch >"$RES/lc.txt"
   grep -oE '\[perf\] (page-[0-9]+|video-frame) [0-9]+' "$RES/lc.txt" | awk '
     $2 ~ /^page-/ {p=$2; t=$3; next}
