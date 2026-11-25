@@ -137,7 +137,7 @@ CRASH_RE="FATAL EXCEPTION|AndroidRuntime: Process: $PKG|ReactNativeJS: .*(TypeEr
 clear_log() { adb logcat -d | grep -E "$CRASH_RE" >>"$RES/perf-crash.txt"; adb logcat -c; }
 
 perf_run() {
-  local ok=0 i t s r d
+  local ok=0 i t s r d vm
   : >"$RES/perf-crash.txt"
   adb logcat -G 16M 2>/dev/null || true  # room for every perf mark of a whole pass
   # Seed the big history once (fresh start), then let it save.
@@ -156,8 +156,7 @@ perf_run() {
   done
   log "PERF cold start (avg of 5): Today ready $(avg <"$RES/cold.txt") ms, Android TotalTime $(avg <"$RES/total.txt") ms"
   adb shell am force-stop "$PKG"; sleep 2
-  pss_after_start() { adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 12; pss "Today after a cold start"; }
-  pss_after_start
+  adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 12; pss "Today after a cold start"
   # 2. Opening a workout x3 (each a fresh start with the big history): tap -> screen, tap -> first video frame.
   : >"$RES/open.txt"; : >"$RES/frame.txt"
   for i in 1 2 3; do

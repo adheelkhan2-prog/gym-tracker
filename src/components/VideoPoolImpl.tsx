@@ -35,9 +35,10 @@ class Players {
         if (status !== 'error' || !this.held.some((h) => h.player === player)) return;
         this.failed.push(src);
         this.held = this.held.filter((h) => h.player !== player);
-        // Freed at the next page change (or on leaving), when its page has long moved off it.
+        // Freed a moment later, once its page has moved off it (or at the next page change, or on leaving).
         this.retired.push(player);
         this.emit();
+        setTimeout(() => this.freeRetired(), 1000);
       });
       this.held.push({ src, player });
     } catch (e) {
@@ -132,12 +133,12 @@ export function VideoPoolHost({ current, next, onPool }: { current: Src; next: S
   useEffect(() => players.sync(current, next), [players, current, next]);
   useEffect(
     () => () => {
-      // The page stops using the pool first (e.g. if this host ever fails) and the players go a moment
-      // later, once nothing shows them. (A remount in the meantime, e.g. React's dev double-run, keeps them.)
-      onPool('off');
+      // The players go a moment later, once nothing shows them: if this host ever fails, its fallback
+      // switches the page to its own players first. (A remount meanwhile, e.g. React's dev
+      // double-run, keeps them.)
       players.closeSoon();
     },
-    [players, onPool],
+    [players],
   );
   const value: HeldPlayers = useMemo(
     () => ({

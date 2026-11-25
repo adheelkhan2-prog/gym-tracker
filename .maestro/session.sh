@@ -49,8 +49,7 @@ while [ $SECONDS -lt $END ]; do
       status=BUILD-FAILED
     elif [ "$mode" = perf ]; then
       adb logcat -c
-      perf_run || status=FAILED
-      crashes || status=FAILED
+      perf_run || status=FAILED # (it checks for crashes itself, across its log clears)
     elif [ "$mode" = full ]; then
       adb shell dumpsys package "$PKG" | grep -q "android.permission.INTERNET: granted=true" && { log "FAIL: the app holds INTERNET"; status=FAILED; }
       adb logcat -c
