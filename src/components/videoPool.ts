@@ -9,6 +9,12 @@
 import { createContext } from 'react';
 
 export type Src = number | { uri: string } | null;
+
+/**
+ * Every video is a file on the phone, so reading 3 s ahead is plenty (Android's default reads 20 s,
+ * which holds a whole full-quality clip in memory per player). The picture quality is untouched.
+ */
+export const LOCAL_BUFFER = { preferredForwardBufferDuration: 3, minBufferForPlayback: 1 } as const;
 export type PooledPlayer = unknown;
 export type VideoPool = {
   /** Is this video one the pool looks after (the current or next exercise's)? Others use their own player. */

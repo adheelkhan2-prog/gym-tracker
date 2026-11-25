@@ -1,7 +1,7 @@
 import { createVideoPlayer, type VideoPlayer, type VideoSource } from 'expo-video';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { logCrash } from '../crash';
-import { plan, sameSource, type Src, type VideoPool } from './videoPool';
+import { LOCAL_BUFFER, plan, sameSource, type Src, type VideoPool } from './videoPool';
 
 type Held = { src: Src; player: VideoPlayer };
 
@@ -28,6 +28,7 @@ class Players {
       const player = createVideoPlayer(src as VideoSource);
       player.loop = true;
       player.muted = true;
+      player.bufferOptions = LOCAL_BUFFER;
       this.held.push({ src, player });
     } catch (e) {
       this.failed.push(src);

@@ -3,7 +3,7 @@ import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
 import { useContext, useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { perfMark } from '../perf';
-import { VideoPoolContext, type VideoPool } from './videoPool';
+import { LOCAL_BUFFER, VideoPoolContext, type VideoPool } from './videoPool';
 
 /** Seek the native player (kept outside the component: the player is an imperative handle). */
 function seek(p: VideoPlayer, seconds: number) {
@@ -51,6 +51,7 @@ function OwnVideo(props: Props) {
     p.loop = !segment;
     p.muted = true;
     p.timeUpdateEventInterval = segment ? 0.05 : 0;
+    p.bufferOptions = LOCAL_BUFFER;
   });
   return <PlayerVideo {...props} player={player} />;
 }
