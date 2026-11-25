@@ -58,7 +58,15 @@ export function LoopVideo({
   // Explicit 100% size inside a fill wrapper: on web the <video> otherwise keeps its own 1024 px size.
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={false} allowsPictureInPicture={false} />
+      <VideoView
+        player={player}
+        style={{ width: '100%', height: '100%' }}
+        contentFit="contain"
+        nativeControls={false}
+        allowsPictureInPicture={false}
+        // A TextureView clips to the card's rounded corners and moves with it (a SurfaceView doesn't).
+        surfaceType="textureView"
+      />
     </View>
   );
 }

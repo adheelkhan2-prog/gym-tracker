@@ -51,8 +51,9 @@ export function bestIn(state: State, exerciseId: string, dates: string[]): Best 
   let best: Best | null = null;
   for (const date of dates) {
     for (const s of doneSets(state.logs[date]?.[exerciseId], kind)) {
-      // Compare like with like: pin sets in pin mode, kg sets otherwise.
-      if (loaded(kind) && (s.load?.pin !== undefined) !== pins) continue;
+      // Compare like with like: pin sets in pin mode, otherwise only sets with a known kg (an old
+      // pin-only set has none and is skipped).
+      if (loaded(kind) && (pins ? s.load?.pin === undefined : setKg(s, machine) === null)) continue;
       const sc = scoreOf(s, kind, machine, pins);
       if (!best || sc.score > best.score) best = { date, set: s, ...sc };
     }
@@ -191,30 +192,35 @@ export function weeklyTarget(state: State, exerciseId: string, plan: PlannedExer
   const bottom = plan ? targetBottom(plan.target) : null;
   if (!base) {
     const reps = top ?? bottom;
-    return { kg: null, reps: reps ?? 0, text: reps ? `${reps} ${kind === 'time' ? 's' : 'reps'} with good form` : 'Find your working weight', lastText: '', reason: 'first' };
+    const what = secsKind(kind) ? (plan && top !== bottom ? `${bottom}–${top} s` : `${reps} s`) : `${reps} reps`;
+    return { kg: null, reps: reps ?? 0, text: reps ? `${what} with good form` : 'Find your working weight', lastText: '', reason: 'first' };
   }
   const lastText = `${lastWeek ? 'last week' : formatShort(base.date)} ${bestText(base, kind, unit)}`;
   const capped = top !== null && plan?.target !== 'max';
   if (!loaded(kind)) {
     const step = kind === 'time' ? 5 : 1;
-    const reps = capped && base.reps >= top! ? base.reps : base.reps + step;
+    const reps = capped && base.reps >= top! ? base.reps : Math.min(capped ? top! : Infinity, base.reps + step);
     return { kg: null, reps, text: kind === 'time' ? `${reps} s` : `${reps} reps`, lastText, reason: 'reps' };
   }
   if (capped && base.reps < top!) {
-    const reps = Math.max(base.reps + 1, bottom ?? 0);
-    return { kg: base.pin !== undefined ? null : base.kg, pin: base.pin, reps, text: textFor(base.pin !== undefined ? null : base.kg, base.pin, reps, unit), lastText, reason: 'reps' };
+    // Timed carries add 5 seconds (up to the top of the range); lifts add a rep.
+    const reps = Math.min(top!, Math.max(base.reps + (secsKind(kind) ? 5 : 1), bottom ?? 0));
+    return { kg: base.pin !== undefined ? null : base.kg, pin: base.pin, reps, text: textFor(base.pin !== undefined ? null : base.kg, base.pin, reps, unit, kind), lastText, reason: 'reps' };
   }
   // Top of the range reached (or no range): smallest step up, reps back to the bottom.
   const reps = bottom ?? base.reps;
-  if (base.pin !== undefined) return { kg: null, pin: base.pin + 1, reps, text: textFor(null, base.pin + 1, reps, unit), lastText, reason: 'weight' };
+  if (base.pin !== undefined) return { kg: null, pin: base.pin + 1, reps, text: textFor(null, base.pin + 1, reps, unit, kind), lastText, reason: 'weight' };
   const step = stepFor(unit);
   const inUnit = base.kg === null ? 0 : Math.round(fromKg(base.kg, unit) / step) * step + step;
   const kg = toKg(inUnit, unit);
-  return { kg, reps, text: textFor(kg, undefined, reps, unit), lastText, reason: 'weight' };
+  return { kg, reps, text: textFor(kg, undefined, reps, unit, kind), lastText, reason: 'weight' };
 }
 
-const textFor = (kg: number | null, pin: number | undefined, reps: number, unit: Unit) =>
-  `${kg !== null ? `${round1(fromKg(kg, unit))} ${unit}` : pin !== undefined ? `Pin ${pin}` : '—'} × ${reps}`;
+const textFor = (kg: number | null, pin: number | undefined, reps: number, unit: Unit, kind: LogKind) =>
+  `${kg !== null ? `${round1(fromKg(kg, unit))} ${unit}` : pin !== undefined ? `Pin ${pin}` : '—'} × ${reps}${secsKind(kind) ? ' s' : ''}`;
+
+/** Timed exercises log seconds in the reps field. */
+export const secsKind = (kind: LogKind) => kind === 'time' || kind === 'weight_time';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const formatShort = (key: string) => {

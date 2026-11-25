@@ -86,16 +86,16 @@ function ReminderBridge() {
     setupNotifications().catch(() => {});
   }, [ready]);
 
-  // "Taken" pressed on a notification -> tick every supplement for that day.
+  // "Taken" pressed on a notification -> tick that supplement for that day.
   useEffect(() => {
     if (!ready) return;
-    return onReminderResponse((date, action) => {
-      if (action === 'taken') update((s) => applyReminderAction(s, date, action));
+    return onReminderResponse((date, action, supp) => {
+      if (action === 'taken') update((s) => applyReminderAction(s, date, action, supp));
     });
   }, [ready, update]);
 
   // Rebuild the reminder schedule whenever anything it depends on changes.
-  const deps = JSON.stringify([state.taken, state.reminderTimes, state.supplements, state.remindersOn]);
+  const deps = JSON.stringify([state.taken, state.suppReminders, state.supplements]);
   useEffect(() => {
     if (!ready) return;
     const t = setTimeout(() => syncReminders(state).catch(() => {}), 400);

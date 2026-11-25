@@ -98,7 +98,23 @@ export function Screen({ children, padBottom = space.x5 }: { children: React.Rea
       >
         {children}
       </ScrollView>
+      <StatusBarShade />
     </Backdrop>
+  );
+}
+
+/**
+ * A solid strip behind the phone's status bar (time, battery) with a short fade under it, so
+ * content scrolling up never runs into the status bar text. Put it last in a full-screen view.
+ */
+export function StatusBarShade() {
+  const insets = useSafeAreaInsets();
+  if (!insets.top) return null;
+  return (
+    <View pointerEvents="none" style={[s.shade, { height: insets.top + space.md }]}>
+      <View style={{ height: insets.top, backgroundColor: color.bg }} />
+      <LinearGradient colors={[color.bg, color.fadeFrom]} style={{ flex: 1 }} />
+    </View>
   );
 }
 
@@ -483,9 +499,20 @@ const s = themed(() => StyleSheet.create({
   chipOn: { backgroundColor: color.accentDim, borderColor: color.accentEdge },
   chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   track: { width: '100%', backgroundColor: color.glassBorder, overflow: 'hidden' },
+  shade: { position: 'absolute', top: 0, left: 0, right: 0 },
   switchHit: { width: touch.min + space.md, height: touch.min, borderRadius: radius.pill, justifyContent: 'center', alignItems: 'center' },
-  switchTrack: { width: 54, height: 30, borderRadius: radius.pill, backgroundColor: color.surface3, padding: 3 },
-  switchThumb: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: color.text },
+  switchTrack: { width: 54, height: 30, borderRadius: radius.pill, backgroundColor: color.switchOff, padding: 3 },
+  switchThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
+    backgroundColor: color.knob,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   flame: {
     flexDirection: 'row',
     alignItems: 'center',

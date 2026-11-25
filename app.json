@@ -83,7 +83,8 @@
         }
       ],
       "./plugins/withOfflineRelease",
-      "./plugins/withKeepNativeViews"
+      "./plugins/withKeepNativeViews",
+      "@react-native-community/datetimepicker"
     ],
     "scheme": "gymtracker",
     "backgroundColor": "#070708",

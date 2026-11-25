@@ -17,7 +17,7 @@ import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
 import { Burst, CountUp, Flash } from '../components/motion';
 import { ShareSheet } from '../components/ShareSheet';
-import { Badge, Button, Progress } from '../components/ui';
+import { Badge, Button, StatusBarShade } from '../components/ui';
 import { FINISH, FINISH_PR, line } from '../copy';
 import { EXERCISES } from '../data/exercises';
 import { MUSCLE_LABEL, type MuscleId } from '../data/muscles';
@@ -26,7 +26,7 @@ import { fmtKg, fromKg, round1 } from '../load';
 import { bestBefore, dayById, doneSets, formatDate, prSetsOn, todayKey, trainingStreak, useStore } from '../store';
 import { titleOf } from '../workout';
 import { color, font, leading, motion, radius, size, space, themed, type } from '../theme';
-import { levelFor, pctChange, previousSameDay, rankFor, totalXp, volumeOn, xpOn } from '../xp';
+import { pctChange, previousSameDay, volumeOn } from '../totals';
 
 // Choreography (ms after open). One tap anywhere jumps to the end.
 const T = { muscles: 900, perMuscle: 170, afterMuscles: 250, stats: 650, prGap: 650 };
@@ -77,16 +77,8 @@ export default function CompleteScreen() {
       };
     });
     const mins = session?.startedAt && session.finishedAt ? Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60000)) : null;
-    const xpNow = totalXp(state);
-    const earned = xpOn(state, date).total;
-    return { dayId, muscles, sets, volume, change, prevDate, prs, mins, xpNow, xpBefore: xpNow - earned, earned };
+    return { dayId, muscles, sets, volume, change, prevDate, prs, mins };
   }, [state, date]);
-
-  const before = levelFor(data.xpBefore);
-  const after = levelFor(data.xpNow);
-  const levelUp = after.level > before.level;
-  const rankBefore = rankFor(before.level);
-  const rankAfter = rankFor(after.level);
 
   // ---------- Timeline ----------
   // One clock drives the whole sequence; haptics, flashes and bursts fire from its tick.
@@ -95,19 +87,16 @@ export default function CompleteScreen() {
   const skipped = t === Infinity;
   const tStats = T.muscles + data.muscles.length * T.perMuscle + T.afterMuscles;
   const tPrs = tStats + T.stats + 500;
-  const tXp = tPrs + data.prs.length * T.prGap + 200;
-  const tLevel = tXp + 900;
-  const tEnd = tLevel + 900;
+  const tActions = tPrs + data.prs.length * T.prGap + 200;
+  const tEnd = tActions + 600;
   const litAt = (e: number) => Math.max(0, Math.min(data.muscles.length, Math.floor((e - T.muscles) / T.perMuscle) + 1));
   const prAt = (e: number) => Math.max(0, Math.min(data.prs.length, Math.floor((e - tPrs) / T.prGap) + 1));
   const [flash, setFlash] = useState(0);
   const [burst, setBurst] = useState(0);
   const [burstAt, setBurstAt] = useState({ x: 0, y: 0 });
-  const [lvlAt, setLvlAt] = useState({ x: 0, y: 0 });
   type Node = React.ComponentRef<typeof View>;
   const rootRef = useRef<Node>(null);
   const prIconRefs = useRef<(Node | null)[]>([]);
-  const levelRef = useRef<Node>(null);
   /** Centre of `node` in the screen root's coordinates. */
   const centreOf = (node: Node | null | undefined, done: (p: { x: number; y: number }) => void) => {
     const root = rootRef.current;
@@ -116,8 +105,7 @@ export default function CompleteScreen() {
       node.measureInWindow((x: number, y: number, w: number, h: number) => done({ x: x - rx + w / 2, y: y - ry + h / 2 })),
     );
   };
-  const [lvlBurst, setLvlBurst] = useState(0);
-  const seen = useRef({ lit: 0, prs: 0, level: false });
+  const seen = useRef({ lit: 0, prs: 0 });
   useEffect(() => {
     if (skipped) return;
     const iv = setInterval(() => {
@@ -137,16 +125,6 @@ export default function CompleteScreen() {
           centreOf(prIconRefs.current[p - 1], (at) => {
             setBurstAt(at);
             setBurst((b) => b + 1);
-          }),
-        );
-      }
-      if (levelUp && e >= tLevel && !seen.current.level) {
-        seen.current.level = true;
-        haptic.pr();
-        requestAnimationFrame(() =>
-          centreOf(levelRef.current, (at) => {
-            setLvlAt(at);
-            setLvlBurst(1);
           }),
         );
       }
@@ -174,7 +152,6 @@ export default function CompleteScreen() {
   }, [lit, data.muscles]);
 
   const prShown = skipped ? data.prs.length : prAt(t);
-  const showXp = t >= tXp;
 
   const arrow = useSharedValue(0);
   useEffect(() => {
@@ -205,7 +182,6 @@ export default function CompleteScreen() {
   };
 
   const copy = line(data.prs.length ? FINISH_PR : FINISH, date + data.sets);
-  const xpPctBefore = levelUp ? 0 : before.progress * 100;
   const enter = (delay: number) => (reduce || skipped ? undefined : FadeInDown.delay(delay).springify().damping(15));
 
   return (
@@ -322,41 +298,7 @@ export default function CompleteScreen() {
           </View>
         )}
 
-        {showXp && (
-          <Animated.View entering={enter(0)} style={[s.pad, { marginTop: space.xxl }]}>
-            <Glass strong r={radius.xxl} style={s.xpCard} glow={levelUp ? color.accent : undefined}>
-              <View style={s.xpTop}>
-                <View>
-                  <Text style={type.label}>XP earned</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.xs }}>
-                    <Text style={s.xpPlus}>+</Text>
-                    <CountUp to={data.earned} style={s.xpNum} skip={skipped} />
-                  </View>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={s.rankName}>{rankAfter.name}</Text>
-                  <Text style={type.small}>Level {after.level}</Text>
-                </View>
-              </View>
-              <View style={{ marginTop: space.md }}>
-                <XpFill from={xpPctBefore} to={after.progress * 100} skip={skipped} />
-              </View>
-              <Text style={[type.small, { marginTop: space.sm }]}>
-                {after.next - data.xpNow} XP to level {after.level + 1}
-              </Text>
-              {levelUp && (skipped || lvlBurst > 0) && (
-                <Animated.View ref={levelRef} collapsable={false} entering={reduce || skipped ? undefined : ZoomIn.springify().damping(10)} style={s.levelUp}>
-                  <Icon name="star" size={22} color={color.onAccent} filled />
-                  <Text style={s.levelUpText}>
-                    LEVEL UP · {rankBefore.name !== rankAfter.name ? `${rankBefore.name} → ${rankAfter.name}` : `Level ${after.level}`}
-                  </Text>
-                </Animated.View>
-              )}
-            </Glass>
-          </Animated.View>
-        )}
-
-        {(skipped || t >= tXp) && (
+        {(skipped || t >= tActions) && (
           <Animated.View entering={enter(300)} style={[s.pad, { marginTop: space.xxl }]}>
             <Text style={s.copy}>{copy}</Text>
             <View style={s.actions}>
@@ -368,10 +310,10 @@ export default function CompleteScreen() {
           </Animated.View>
         )}
       </ScrollView>
+      <StatusBarShade />
 
       <Flash fire={flash} />
       <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentPressed, color.text]} />
-      <Burst burst={lvlBurst} x={lvlAt.x} y={lvlAt.y} count={48} power={1.2} colors={[color.accent, color.accentPressed, color.text, color.flash]} />
       {share && (
         <ShareSheet
           onClose={() => setShare(null)}
@@ -383,8 +325,6 @@ export default function CompleteScreen() {
             sets: data.sets,
             minutes: data.mins,
             prs: data.prs.map((p) => ({ name: p.name, value: p.value })),
-            rank: rankAfter.name,
-            level: after.level,
             bodyImage: share.img,
           }}
         />
@@ -392,16 +332,6 @@ export default function CompleteScreen() {
       </View>
     </Backdrop>
   );
-}
-
-/** XP bar: fills from `from`% to `to`% (and from 0 again after a level up). */
-function XpFill({ from, to, skip }: { from: number; to: number; skip: boolean }) {
-  const [filled, setFilled] = useState(false);
-  useEffect(() => {
-    const tm = setTimeout(() => setFilled(true), 250);
-    return () => clearTimeout(tm);
-  }, []);
-  return <Progress value={skip || filled ? to : from} height={14} />;
 }
 
 const s = themed(() => StyleSheet.create({
@@ -428,23 +358,6 @@ const s = themed(() => StyleSheet.create({
   prIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
   prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText },
   prValue: { fontFamily: font.display, fontSize: size.h2, color: color.text },
-  xpCard: { padding: space.xl },
-  xpTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  xpPlus: { fontFamily: font.display, fontSize: size.title, color: color.accent },
-  xpNum: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, color: color.accent, fontVariant: ['tabular-nums'] },
-  rankName: { fontFamily: font.display, fontSize: size.title, color: color.text },
-  levelUp: {
-    marginTop: space.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    alignSelf: 'flex-start',
-    backgroundColor: color.accent,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-  },
-  levelUpText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.onAccent, letterSpacing: 0.6 },
   copy: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.text, marginBottom: space.lg },
   actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
 }));

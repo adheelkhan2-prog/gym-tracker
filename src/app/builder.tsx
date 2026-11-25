@@ -6,7 +6,7 @@ import { Backdrop, Glass } from '../components/glass';
 import { Icon, type IconName } from '../components/icons';
 import { DragRow } from '../components/DragRow';
 import { LibrarySheet, WeekMapper } from '../components/ProgramParts';
-import { Button, Chip, IconButton, Press, SectionTitle } from '../components/ui';
+import { Button, Chip, IconButton, Press, SectionTitle, StatusBarShade } from '../components/ui';
 import { EXERCISES } from '../data/exercises';
 import { PROGRAMS, type Program } from '../data/programs';
 import { type PlannedExercise, type WorkoutDay } from '../data/program';
@@ -303,6 +303,7 @@ export default function BuilderScreen() {
           )}
         </View>
       </ScrollView>
+      <StatusBarShade />
       {picking && (
         <LibrarySheet
           title={picking.replace !== undefined ? 'Swap exercise' : 'Add exercise'}

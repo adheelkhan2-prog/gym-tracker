@@ -14,7 +14,7 @@ import { MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, round1 } from '../../load';
 import { addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { bottomClearance, color, font, heat, leading, motion, radius, size, space, themed, type } from '../../theme';
-import { RANKS, levelFor, pctChange, rankFor, totalXp, volumeOn } from '../../xp';
+import { pctChange, volumeOn } from '../../totals';
 
 type Metric = 'top' | 'e1rm';
 
@@ -40,8 +40,6 @@ export default function ProgressScreen() {
   const vol = Math.round(fromKg(thisWeek.reduce((n, d) => n + volumeOn(state, d), 0), unit));
   const volLast = Math.round(fromKg(lastWeek.reduce((n, d) => n + volumeOn(state, d), 0), unit));
   const change = pctChange(vol, volLast);
-  const lvl = levelFor(totalXp(state));
-  const rank = rankFor(lvl.level);
 
   // ----- Muscle heat map -----
   const muscleSets = useMemo(() => weeklyMuscleSets(state), [state]);
@@ -116,37 +114,6 @@ export default function ProgressScreen() {
         )}
       </Animated.View>
 
-      {/* Rank card overlaps the hero's edge */}
-      <Animated.View entering={enter(1)} style={s.rankWrap}>
-        <Glass strong r={radius.xxl} style={s.rankCard} glow={color.accent}>
-          <View style={s.rankTop}>
-            <View>
-              <Text style={type.label}>Rank</Text>
-              <Text style={s.rankName}>{rank.name}</Text>
-            </View>
-            <View style={s.levelBubble}>
-              <Text style={s.levelText}>L{lvl.level}</Text>
-            </View>
-          </View>
-          <View style={{ marginTop: space.md }}>
-            <Progress value={lvl.progress * 100} height={12} />
-          </View>
-          <Text style={[type.small, { marginTop: space.sm }]}>
-            {lvl.into} / {lvl.span} XP · {lvl.next - lvl.floor - lvl.into} to level {lvl.level + 1}
-          </Text>
-          <View style={s.ladder}>
-            {RANKS.map((r) => {
-              const on = r.name === rank.name;
-              const past = lvl.level >= r.from;
-              return (
-                <View key={r.name} style={[s.rung, past && s.rungPast, on && s.rungOn]}>
-                  <Text style={[s.rungText, (past || on) && { color: on ? color.onAccent : color.accent }]}>{r.name}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </Glass>
-      </Animated.View>
 
       {/* Week ticker: no equal tiles */}
       <Animated.View entering={enter(2)} style={s.ticker}>

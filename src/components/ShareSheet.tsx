@@ -19,8 +19,6 @@ export type ShareData = {
   sets: number;
   minutes: number | null;
   prs: { name: string; value: string }[];
-  rank: string;
-  level: number;
   bodyImage: string | null;
 };
 
@@ -70,9 +68,7 @@ function StoryCard({ d, width }: { d: ShareData; width: number }) {
         </Text>
       ))}
       <View style={s.cardFoot}>
-        <Text style={s.cardRank}>
-          {d.rank} · Level {d.level}
-        </Text>
+        <Text style={s.cardRank}>{d.date}</Text>
         <Text style={s.cardBrand}>GYM TRACKER</Text>
       </View>
     </View>

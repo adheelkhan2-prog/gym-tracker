@@ -12,29 +12,30 @@
 // screens on a switch (see ThemeGate in app/_layout.tsx). Never copy a colour into a module-level
 // constant: read `color.x` at render time, or inside themed().
 const DARK = {
-  // Near-black and graphite ladder
-  bg: '#070708',
-  bgRaised: '#0C0C0E',
+  // Near-black page; cards are a clearly lighter charcoal so panels separate from the page.
+  bg: '#0B0B0D',
+  bgRaised: '#121215',
   stage: '#0A0A0A', // the clay renders' own background: screens showing them sit on exactly this
-  surface: '#111113', // opaque fallback for glass
-  surface2: '#18181B',
-  surface3: '#232327',
-  line: 'rgba(255,255,255,0.06)',
-  // Glass: darker and more transparent, a faint 1px edge, low blur
-  glass: 'rgba(16,16,19,0.46)', // tint over the blur
-  glassSolid: 'rgba(14,14,17,0.92)', // fallback when blur is off
-  glassBorder: 'rgba(255,255,255,0.075)',
-  glassHighlight: 'rgba(255,255,255,0.055)', // soft light from above
-  glassPressed: 'rgba(255,255,255,0.05)',
-  // Text (all ≥4.5:1 on the darkest and lightest glass)
-  text: '#ECECEF',
-  muted: '#A3A3AD',
-  subtle: '#868690',
+  surface: '#1D1D22', // cards
+  surface2: '#26262C', // inputs, boxes, unselected buttons
+  surface3: '#313138', // tracks, chips, empty rings
+  line: 'rgba(255,255,255,0.10)',
+  // Cards are solid (no frosted glass): one charcoal fill and a visible 1px edge.
+  glass: '#1D1D22',
+  glassSolid: '#1D1D22',
+  glassBorder: 'rgba(255,255,255,0.13)',
+  glassHighlight: 'rgba(255,255,255,0.07)', // soft light from above
+  glassPressed: 'rgba(255,255,255,0.06)',
+  // Text, AA on every surface (lowest: subtle on surface3, 5.1:1). Bright enough for a gym at full
+  // phone brightness.
+  text: '#F2F2F5',
+  muted: '#C2C2CB',
+  subtle: '#A2A2AC',
   // Accent: deep crimson. 4.3:1 on black, so it is for lines, rings, icons, glows and large
   // numbers; small accent text uses accentText (≥5:1 on every surface).
   accent: '#E0243A',
   accentPressed: '#FF3B4F',
-  accentText: '#FF5466',
+  accentText: '#FF6676',
   accentDim: 'rgba(224,36,58,0.10)',
   accentGlow: 'rgba(224,36,58,0.32)',
   accentEdge: 'rgba(224,36,58,0.62)', // thin crimson edge on dark-glass buttons
@@ -45,7 +46,7 @@ const DARK = {
   warnDim: 'rgba(255,176,32,0.10)',
   warnEdge: 'rgba(255,176,32,0.55)',
   ink: '#070708', // dark text on light fills
-  scrim: 'rgba(4,4,5,0.78)',
+  scrim: 'rgba(4,4,5,0.72)',
   scrimDeep: 'rgba(4,4,5,0.92)',
   smoke: '#2A2A30', // slow drifting smoke in the backdrop
   inkTrack: 'rgba(10,10,10,0.18)',
@@ -57,12 +58,15 @@ const DARK = {
   musclePrimary: '#E1283A',
   muscleSecondary: '#C8685C', // muted terracotta: soft, never pink
   // Chrome that differs per theme
-  fadeFrom: 'rgba(7,7,8,0)', // transparent end of fades into bg
+  fadeFrom: 'rgba(11,11,13,0)', // transparent end of fades into bg
   sheenTop: 'rgba(255,255,255,0.06)',
   shadow: '#000000',
   chart: '#ECECEF',
   chartGrid: 'rgba(255,255,255,0.08)',
   body3d: '#0C0C0E', // background behind the 3D model
+  // Switches: white knob on crimson when on, on grey when off.
+  knob: '#FFFFFF',
+  switchOff: '#5A5A63',
 };
 
 export type Palette = { [K in keyof typeof DARK]: string };
@@ -80,8 +84,8 @@ const LIGHT: Palette = {
   surface2: '#EEEAE4',
   surface3: '#E2DDD5',
   line: 'rgba(28,22,16,0.08)',
-  glass: 'rgba(255,255,255,0.74)',
-  glassSolid: 'rgba(255,255,255,0.97)',
+  glass: '#FFFFFF',
+  glassSolid: '#FFFFFF',
   glassBorder: 'rgba(28,22,16,0.09)',
   glassHighlight: 'rgba(255,255,255,0.7)',
   glassPressed: 'rgba(28,22,16,0.05)',
@@ -116,6 +120,8 @@ const LIGHT: Palette = {
   chart: '#1C1916',
   chartGrid: 'rgba(28,22,16,0.10)',
   body3d: '#ECE8E2',
+  knob: '#FFFFFF',
+  switchOff: '#A8A29A',
 };
 
 export type Scheme = 'dark' | 'light';
@@ -216,7 +222,7 @@ export const radius = { sm: 12, md: 18, lg: 24, xl: 30, xxl: 36, pill: 999 } as 
 
 export const touch = { min: 48, primary: 56 } as const;
 
-/** Glass panel recipe. `blur` is the expo-blur intensity. */
+/** Card recipe (the name is historical; cards are solid). */
 export const glass = { blur: 18, borderWidth: 1 } as const;
 
 /** Spring physics everywhere; durations only for fades. */

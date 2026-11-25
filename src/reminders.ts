@@ -1,23 +1,23 @@
 import { NOTIFY_OK, Notifications } from './notifications';
 import type { NotificationResponse } from 'expo-notifications';
 import { Platform } from 'react-native';
-import { todayKey, type State } from './store';
+import { reminderFor, todayKey, type State } from './store';
 import { color } from './theme';
 
 /*
  * How the supplement reminders work
  * ---------------------------------
- * For each of the next DAYS_AHEAD days we schedule one notification per reminder
- * time (default 08:00, 13:00, 19:00). Each notification has two buttons:
+ * Every supplement has its own reminders: a morning one, follow-ups while it isn't marked taken,
+ * and a last call (see SuppReminder in store.tsx). For each of the next DAYS_AHEAD days we schedule
+ * one notification per time, per supplement ("Time for your creatine"), each with two buttons:
  *
- *   "Taken"        -> opens the app, marks today's supplements as taken and
- *                     cancels the rest of today's reminders.
- *   "Not yet"      -> just dismisses. The 1 pm / 7 pm follow-ups are already
- *                     scheduled, so you get nagged again later.
+ *   "Taken"        -> opens the app and marks THAT supplement taken for the day, which cancels
+ *                     only its own remaining reminders. Other supplements keep theirs.
+ *   "Not yet"      -> just dismisses. The follow-ups are already scheduled, so you get nagged
+ *                     again later.
  *
- * Because the follow-ups are scheduled in advance, they fire even if the app
- * is closed. Each time the app opens, or a supplement is ticked, we rebuild
- * the schedule so it stays DAYS_AHEAD days long.
+ * Because the follow-ups are scheduled in advance, they fire even if the app is closed. Each time
+ * the app opens, or a supplement is ticked, the schedule is rebuilt so it stays DAYS_AHEAD days long.
  */
 
 export const SUPPORTED = Platform.OS !== 'web' && NOTIFY_OK;
@@ -65,40 +65,51 @@ const atTime = (dateKey: string, hhmm: string) => {
   return new Date(y, m - 1, d, hh, mm, 0, 0);
 };
 
-export type PlannedReminder = { id: string; when: Date; title: string; body: string; date: string; slot: number };
+export type PlannedReminder = { id: string; when: Date; title: string; body: string; date: string; slot: number; supp: string };
+
+/** A short, stable id part for a supplement name. */
+const slug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'supp';
+
+/** "creatine" for the notification text (names keep their own capitals after the first word). */
+const lower = (name: string) => name.charAt(0).toLowerCase() + name.slice(1);
 
 /**
  * The reminders that should be scheduled right now (pure, so it is unit-tested).
- * For today and the next DAYS_AHEAD - 1 days: one per reminder time that is still in the future,
- * skipping any day whose supplements are all marked taken. The first time of the day is the
- * morning reminder; later ones are the "still need them" follow-ups.
+ * For each supplement whose reminders are on, for today and the next DAYS_AHEAD - 1 days: one per
+ * time still in the future, skipping any day it's already marked taken.
  */
-export function planReminders(state: Pick<State, 'remindersOn' | 'supplements' | 'taken' | 'reminderTimes'>, now: Date): PlannedReminder[] {
-  if (!state.remindersOn || !state.supplements.length) return [];
+export function planReminders(state: Pick<State, 'supplements' | 'taken' | 'suppReminders'>, now: Date): PlannedReminder[] {
   const out: PlannedReminder[] = [];
-  const list = state.supplements.join(' + ').toLowerCase();
-  for (let i = 0; i < DAYS_AHEAD; i++) {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-    const key = todayKey(day);
-    const takenToday = state.taken[key] ?? {};
-    const missing = state.supplements.filter((s) => !takenToday[s]);
-    if (!missing.length) continue;
-    const what = (i === 0 ? missing.join(' + ') : list).toLowerCase();
-    state.reminderTimes.forEach((time, slot) => {
-      const when = atTime(key, time);
-      if (when <= now) return;
-      const first = slot === 0;
-      out.push({
-        id: `${PREFIX}${key}-${slot}`,
-        when,
-        date: key,
-        slot,
-        title: first ? 'Morning stack' : 'Still need your supplements',
-        body: first ? `Time for your ${what}.` : `You haven't marked your ${what} as taken today.`,
+  state.supplements.forEach((name, n) => {
+    const r = reminderFor(state, name);
+    if (!r.on) return;
+    const times = [r.morning, ...r.followUps, ...(r.lastCall ? [r.lastCall] : [])];
+    const what = lower(name);
+    for (let i = 0; i < DAYS_AHEAD; i++) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      const key = todayKey(day);
+      if (state.taken[key]?.[name]) continue;
+      times.forEach((time, slot) => {
+        const when = atTime(key, time);
+        if (when <= now) return;
+        const last = !!r.lastCall && slot === times.length - 1;
+        out.push({
+          id: `${PREFIX}${slug(name)}${n}-${key}-${slot}`,
+          when,
+          date: key,
+          slot,
+          supp: name,
+          title: slot === 0 ? `Time for your ${what}` : last ? `Last call: ${what}` : `Still need your ${what}?`,
+          body: slot === 0 ? `Tap Taken once you've had it.` : `You haven't marked your ${what} as taken today.`,
+        });
       });
-    });
-  }
-  return out;
+    }
+  });
+  return out.sort((a, b) => a.when.getTime() - b.when.getTime());
 }
 
 // Syncs run one at a time, and a sync that a newer one has overtaken stops before scheduling
@@ -126,7 +137,7 @@ export function syncReminders(state: State): Promise<void> {
           title: r.title,
           body: r.body,
           categoryIdentifier: CATEGORY,
-          data: { date: r.date, slot: r.slot },
+          data: { date: r.date, slot: r.slot, supp: r.supp },
           ...(Platform.OS === 'android' ? { color: color.accent } : {}),
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.when, channelId: CHANNEL },
@@ -137,23 +148,43 @@ export function syncReminders(state: State): Promise<void> {
   return queue;
 }
 
-/** What a tap on a reminder does: "Taken" marks every supplement for that day; "Not yet" and a plain tap change nothing. */
-export function applyReminderAction<S extends Pick<State, 'taken' | 'supplements'>>(state: S, date: string, action: 'taken' | 'later' | 'open'): S {
+/**
+ * What a tap on a reminder does: "Taken" marks that one supplement for that day (older
+ * notifications without a supplement mark them all); "Not yet" and a plain tap change nothing.
+ */
+export function applyReminderAction<S extends Pick<State, 'taken' | 'supplements'>>(state: S, date: string, action: 'taken' | 'later' | 'open', supp?: string): S {
   if (action !== 'taken') return state;
-  return { ...state, taken: { ...state.taken, [date]: Object.fromEntries(state.supplements.map((x) => [x, true])) } };
+  const names = supp && state.supplements.includes(supp) ? [supp] : state.supplements;
+  return { ...state, taken: { ...state.taken, [date]: { ...state.taken[date], ...Object.fromEntries(names.map((x) => [x, true])) } } };
+}
+
+/** Send one supplement's reminder in a few seconds, to check notifications work. */
+export async function sendTestReminder(name: string, date: string) {
+  if (!SUPPORTED) return;
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${PREFIX}test-${slug(name)}`,
+    content: {
+      title: `Time for your ${lower(name)}`,
+      body: 'Test reminder. Tap Taken to mark it.',
+      categoryIdentifier: CATEGORY,
+      data: { date, slot: -1, supp: name },
+      ...(Platform.OS === 'android' ? { color: color.accent } : {}),
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: CHANNEL },
+  });
 }
 
 /** Listen for taps on reminder notifications / their buttons. */
-export function onReminderResponse(handler: (date: string, action: 'taken' | 'later' | 'open') => void) {
+export function onReminderResponse(handler: (date: string, action: 'taken' | 'later' | 'open', supp?: string) => void) {
   if (!SUPPORTED) return () => {};
   const handle = (r: NotificationResponse | null) => {
     if (!r) return;
-    const data = r.notification.request.content.data as { date?: string } | undefined;
+    const data = r.notification.request.content.data as { date?: string; supp?: string } | undefined;
     if (!r.notification.request.identifier.startsWith(PREFIX) || !data?.date) return;
     const action =
       r.actionIdentifier === ACTION_TAKEN ? 'taken' : r.actionIdentifier === ACTION_LATER ? 'later' : 'open';
     Notifications.dismissNotificationAsync(r.notification.request.identifier).catch(() => {});
-    handler(data.date, action);
+    handler(data.date, action, data.supp);
     Notifications.clearLastNotificationResponse?.();
   };
   // App was launched by tapping a notification button.

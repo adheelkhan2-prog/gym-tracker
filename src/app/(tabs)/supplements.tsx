@@ -1,23 +1,35 @@
-import { Notifications } from '../../notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Glass } from '../../components/glass';
 import { Icon } from '../../components/icons';
 import { Burst, CountUp } from '../../components/motion';
+import { TimeField } from '../../components/TimeField';
 import { Button, IconButton, Press, Screen, SectionTitle, Switch } from '../../components/ui';
 import { SUPPS, line } from '../../copy';
 import { haptic } from '../../feedback';
-import { SUPPORTED } from '../../reminders';
-import { addDays, allTaken, dateFromKey, supplementStreak, todayKey, useStore } from '../../store';
+import { SUPPORTED, sendTestReminder } from '../../reminders';
+import {
+  addDays,
+  addSupplement,
+  allTaken,
+  dateFromKey,
+  reminderFor,
+  removeSupplement,
+  renameSupplement,
+  supplementStreak,
+  supplementStreakFor,
+  todayKey,
+  useStore,
+  type State,
+  type SuppReminder,
+} from '../../store';
 import { bottomClearance, color, fmtTime, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
 
-const SLOT_NAMES = ['Morning reminder', 'If not taken', 'Last call'];
-
-const shift = (hhmm: string, minutes: number) => {
+/** Two hours after a time (for a new follow-up), capped at 22:00. */
+const later = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
-  const t = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  return `${String(Math.min(22, h + 2)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
 function SuppItem({ name, on, onPress, index, boxRef }: { name: string; on: boolean; onPress: () => void; index: number; boxRef: (v: React.ComponentRef<typeof View> | null) => void }) {
@@ -54,7 +66,7 @@ export default function SupplementsScreen() {
   const streak = supplementStreak(state);
   const [newItem, setNewItem] = useState('');
   const [burst, setBurst] = useState(0);
-  const [testSent, setTestSent] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
 
   const rootRef = useRef<React.ComponentRef<typeof View>>(null);
   const boxRefs = useRef<Record<string, React.ComponentRef<typeof View> | null>>({});
@@ -80,21 +92,6 @@ export default function SupplementsScreen() {
     const k = addDays(key, i - 13);
     return { k, d: dateFromKey(k), full: allTaken(state, k) };
   });
-
-  const sendTest = async () => {
-    if (!SUPPORTED) return;
-    await Notifications.scheduleNotificationAsync({
-      identifier: `supp-${key}-test`,
-      content: {
-        title: 'Morning stack',
-        body: `Test reminder: time for your ${state.supplements.join(' + ').toLowerCase()}.`,
-        categoryIdentifier: 'supplement',
-        data: { date: key, slot: -1 },
-      },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: 'supplements' },
-    });
-    setTestSent(true);
-  };
 
   return (
     <View ref={rootRef} collapsable={false} style={{ flex: 1 }}>
@@ -149,51 +146,30 @@ export default function SupplementsScreen() {
           ))}
         </View>
 
-        <SectionTitle right={<Switch checked={state.remindersOn} onCheckedChange={(v) => update((st) => ({ ...st, remindersOn: v }))} label="Reminders on" />}>
-          Reminders
-        </SectionTitle>
-        <Glass r={radius.xxl} style={{ opacity: state.remindersOn ? 1 : 0.5 }}>
-          {state.reminderTimes.map((t, i) => (
-            <View key={i} style={[s.timeRow, i > 0 && s.divider]}>
-              <View style={{ flex: 1 }}>
-                <Text style={type.small}>{SLOT_NAMES[i] ?? `Reminder ${i + 1}`}</Text>
-                <Text style={[type.num, { fontSize: size.h2 }]}>{fmtTime(t)}</Text>
-              </View>
-              <IconButton
-                icon="minus"
-                label={`${SLOT_NAMES[i]} 30 minutes earlier`}
-                onPress={() => update((st) => ({ ...st, reminderTimes: st.reminderTimes.map((x, j) => (j === i ? shift(x, -30) : x)) }))}
-              />
-              <IconButton
-                icon="plus"
-                label={`${SLOT_NAMES[i]} 30 minutes later`}
-                onPress={() => update((st) => ({ ...st, reminderTimes: st.reminderTimes.map((x, j) => (j === i ? shift(x, 30) : x)) }))}
-              />
-            </View>
-          ))}
-        </Glass>
-        <Text style={[type.small, { marginTop: space.md }]}>
-          The morning reminder has <Text style={s.strong}>Taken</Text> and <Text style={s.strong}>Not yet</Text> buttons. Tap Not yet (or ignore it)
-          and you’ll be reminded again at {fmtTime(state.reminderTimes[1] ?? '13:00')} and {fmtTime(state.reminderTimes[2] ?? '19:00')}. Tap Taken
-          and the rest of today’s reminders are cancelled.
-        </Text>
-        {SUPPORTED ? (
-          <View style={{ marginTop: space.md }}>
-            <Button variant="secondary" icon={testSent ? 'check' : 'bell'} label={testSent ? 'Test sent: lock your phone' : 'Send a test reminder'} onPress={sendTest} />
-          </View>
-        ) : (
-          <Text style={[type.small, { color: color.muted, marginTop: space.md }]}>Reminders only work in the Android app, not in a web browser.</Text>
-        )}
-
         <SectionTitle>Your stack</SectionTitle>
-        <Glass r={radius.xxl}>
-          {state.supplements.map((item, i) => (
-            <View key={item} style={[s.timeRow, i > 0 && s.divider]}>
-              <Text style={[type.h3, { flex: 1 }]}>{item}</Text>
-              <IconButton icon="trash" label={`Remove ${item}`} onPress={() => update((st) => ({ ...st, supplements: st.supplements.filter((x) => x !== item) }))} />
-            </View>
+        <Text style={[type.small, { marginBottom: space.md }]}>Tap a supplement to set its own reminders.</Text>
+        <View style={{ gap: space.sm }}>
+          {state.supplements.map((item) => (
+            <StackItem
+              key={item}
+              name={item}
+              state={state}
+              open={open === item}
+              onToggle={() => setOpen((o) => (o === item ? null : item))}
+              onReminder={(r) => update((st) => ({ ...st, suppReminders: { ...st.suppReminders, [item]: r } }))}
+              onRename={(to) => {
+                update((st) => renameSupplement(st, item, to));
+                setOpen(to.trim() || item);
+              }}
+              onDelete={() => {
+                update((st) => removeSupplement(st, item));
+                setOpen(null);
+              }}
+              today={key}
+            />
           ))}
-          <View style={[s.timeRow, state.supplements.length > 0 && s.divider]}>
+          <Glass r={radius.xl} style={s.addRow}>
+            <Icon name="plus" size={18} color={color.muted} />
             <TextInput
               value={newItem}
               onChangeText={setNewItem}
@@ -202,17 +178,156 @@ export default function SupplementsScreen() {
               style={s.addInput}
               onSubmitEditing={() => {
                 const v = newItem.trim();
-                if (v && !state.supplements.includes(v)) update((st) => ({ ...st, supplements: [...st.supplements, v] }));
+                if (v && !state.supplements.includes(v)) {
+                  update((st) => addSupplement(st, v));
+                  setOpen(v);
+                }
                 setNewItem('');
               }}
               returnKeyType="done"
               accessibilityLabel="New supplement name"
             />
-          </View>
-        </Glass>
+          </Glass>
+        </View>
+        {!SUPPORTED && <Text style={[type.small, { color: color.muted, marginTop: space.md }]}>Reminders only work in the Android app, not in a web browser.</Text>}
       </Screen>
       <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentPressed, color.text]} />
     </View>
+  );
+}
+
+/** One supplement in "Your stack": tap to expand its own reminders, streak, test, rename, delete. */
+function StackItem({
+  name,
+  state,
+  open,
+  onToggle,
+  onReminder,
+  onRename,
+  onDelete,
+  today,
+}: {
+  name: string;
+  state: State;
+  open: boolean;
+  onToggle: () => void;
+  onReminder: (r: SuppReminder) => void;
+  onRename: (to: string) => void;
+  onDelete: () => void;
+  today: string;
+}) {
+  const r = reminderFor(state, name);
+  const streak = supplementStreakFor(state, name, today);
+  const [sent, setSent] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const set = (patch: Partial<SuppReminder>) => onReminder({ ...r, ...patch });
+  const summary = r.on ? `${fmtTime(r.morning)}${r.followUps.length ? ` + ${r.followUps.length} follow-up${r.followUps.length > 1 ? 's' : ''}` : ''}${r.lastCall ? ' + last call' : ''}` : 'Reminders off';
+  return (
+    <Glass r={radius.xl} style={[s.stack, open && s.stackOpen]}>
+      <Press onPress={onToggle} style={s.stackHead} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${name} reminders, ${summary}, ${streak} day streak`} testID={`supp-${name}`}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={type.h3} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text style={type.small} numberOfLines={1}>
+            {summary}
+          </Text>
+        </View>
+        <View style={s.streak}>
+          <Icon name="flame" size={16} color={streak > 0 ? color.accent : color.subtle} filled={streak > 0} />
+          <Text style={[s.streakText, streak > 0 && { color: color.accentText }]}>{streak}</Text>
+        </View>
+        <Icon name={open ? 'chevronUp' : 'chevronDown'} size={18} color={color.muted} />
+      </Press>
+      {open && (
+        <View style={s.stackBody}>
+          <View style={s.line}>
+            <Text style={[type.body, { flex: 1 }]}>Reminders</Text>
+            <Switch checked={r.on} onCheckedChange={(v) => set({ on: v })} label={`${name} reminders`} />
+          </View>
+          <View style={{ opacity: r.on ? 1 : 0.45, gap: space.xs }} pointerEvents={r.on ? 'auto' : 'none'}>
+            <TimeField label="Morning" value={r.morning} onChange={(t) => set({ morning: t })} testID={`supp-${name}-morning`} />
+            {r.followUps.map((t, i) => (
+              <View key={i} style={s.line}>
+                <View style={{ flex: 1 }}>
+                  <TimeField label={`If not taken${r.followUps.length > 1 ? ` (${i + 1})` : ''}`} value={t} onChange={(v) => set({ followUps: r.followUps.map((x, j) => (j === i ? v : x)).sort() })} />
+                </View>
+                <IconButton icon="close" label={`Remove follow-up at ${fmtTime(t)}`} onPress={() => set({ followUps: r.followUps.filter((_, j) => j !== i) })} />
+              </View>
+            ))}
+            {r.followUps.length < 4 && (
+              <Press onPress={() => set({ followUps: [...r.followUps, later(r.followUps[r.followUps.length - 1] ?? r.morning)].sort() })} style={s.small} accessibilityRole="button" accessibilityLabel={`Add a follow-up reminder for ${name}`}>
+                <Icon name="plus" size={14} color={color.muted} />
+                <Text style={s.smallText}>Add a follow-up</Text>
+              </Press>
+            )}
+            {r.lastCall ? (
+              <View style={s.line}>
+                <View style={{ flex: 1 }}>
+                  <TimeField label="Last call" value={r.lastCall} onChange={(t) => set({ lastCall: t })} />
+                </View>
+                <IconButton icon="close" label="Turn off the last call" onPress={() => set({ lastCall: null })} />
+              </View>
+            ) : (
+              <Press onPress={() => set({ lastCall: '20:00' })} style={s.small} accessibilityRole="button" accessibilityLabel={`Add a last call for ${name}`}>
+                <Icon name="plus" size={14} color={color.muted} />
+                <Text style={s.smallText}>Add a last call</Text>
+              </Press>
+            )}
+          </View>
+          <Text style={type.small}>
+            Each reminder has <Text style={s.strong}>Taken</Text> and <Text style={s.strong}>Not yet</Text> buttons. Taken stops the rest of today’s {name.toLowerCase()} reminders only.
+          </Text>
+          {SUPPORTED && (
+            <Button
+              variant="secondary"
+              icon={sent ? 'check' : 'bell'}
+              label={sent ? 'Test sent: lock your phone' : 'Send a test reminder'}
+              onPress={async () => {
+                await sendTestReminder(name, today);
+                setSent(true);
+              }}
+            />
+          )}
+          {renaming !== null ? (
+            <View style={s.line}>
+              <TextInput
+                autoFocus
+                value={renaming}
+                onChangeText={setRenaming}
+                onSubmitEditing={() => {
+                  onRename(renaming);
+                  setRenaming(null);
+                }}
+                style={[s.addInput, s.renameInput]}
+                accessibilityLabel={`New name for ${name}`}
+                returnKeyType="done"
+              />
+              <Button
+                size="sm"
+                label="Save"
+                onPress={() => {
+                  onRename(renaming);
+                  setRenaming(null);
+                }}
+              />
+            </View>
+          ) : confirmDelete ? (
+            <View style={s.line}>
+              <Text style={[type.small, { flex: 1 }]}>Delete {name}? Days you took it stay in the log.</Text>
+              <Button size="sm" variant="ghost" label="Keep" onPress={() => setConfirmDelete(false)} />
+              <Button size="sm" variant="destructive" label="Delete" onPress={onDelete} />
+            </View>
+          ) : (
+            <View style={s.line}>
+              <Button size="sm" variant="outline" icon="edit" label="Rename" onPress={() => setRenaming(name)} />
+              <Button size="sm" variant="ghost" icon="trash" label="Delete" onPress={() => setConfirmDelete(true)} />
+            </View>
+          )}
+        </View>
+      )}
+    </Glass>
   );
 }
 
@@ -233,10 +348,19 @@ const s = themed(() => StyleSheet.create({
   dotOn: { backgroundColor: color.accent },
   dotToday: { borderWidth: 1, borderColor: color.accentEdge, backgroundColor: color.bg },
   dotLabel: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm, minHeight: 72 },
-  divider: { borderTopWidth: 1, borderTopColor: color.line },
   strong: { fontFamily: font.bodyBold, color: color.text },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg },
   addInput: { flex: 1, fontFamily: font.body, color: color.text, fontSize: size.body, minHeight: touch.min },
+  renameInput: { paddingHorizontal: space.md, borderRadius: radius.md, backgroundColor: color.surface2 },
+  stack: { overflow: 'hidden' },
+  stackOpen: { borderColor: color.accentEdge },
+  stackHead: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, minHeight: 72 },
+  stackBody: { paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.md, borderTopWidth: 1, borderTopColor: color.line, paddingTop: space.md },
+  streak: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  streakText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.subtle, fontVariant: ['tabular-nums'] },
+  line: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  small: { flexDirection: 'row', alignItems: 'center', gap: space.xs, alignSelf: 'flex-start', minHeight: touch.min, paddingHorizontal: space.xs },
+  smallText: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
 }));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.

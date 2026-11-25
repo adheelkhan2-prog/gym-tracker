@@ -111,14 +111,6 @@ export default function SettingsScreen() {
           checked={state.restSound}
           onChange={(v) => update((st) => ({ ...st, restSound: v }))}
         />
-        <View style={s.divider} />
-        <Toggle
-          icon="layers"
-          title="Frosted glass"
-          sub="Real blur on Android 12+. Turn off for extra speed on older phones."
-          checked={state.blur}
-          onChange={(v) => update((st) => ({ ...st, blur: v }))}
-        />
       </Glass>
 
       <SectionTitle

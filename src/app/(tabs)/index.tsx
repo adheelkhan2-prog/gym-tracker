@@ -23,6 +23,7 @@ import {
   dateFromKey,
   dayById,
   dayHasWork,
+  finishedOn,
   formatDate,
   programById,
   todayKey,
@@ -33,7 +34,6 @@ import {
 } from '../../store';
 import { bottomClearance, color, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
 import { WARMUP, dayProgress, nextInRotation, subtitleOf, titleOf, todayDayId } from '../../workout';
-import { levelFor, rankFor, totalXp } from '../../xp';
 
 export default function TodayScreen() {
   const { state, update, commit } = useStore();
@@ -60,9 +60,8 @@ export default function TodayScreen() {
   const viewDate = picked?.d ?? date;
   const progress = day ? dayProgress(state, day, viewDate) : null;
   const started = !!progress && progress.done > 0;
-  const finished = !!state.sessions[viewDate]?.finishedAt;
-  const lvl = levelFor(totalXp(state));
-  const rank = rankFor(lvl.level);
+  // Done only when the workout was finished with sets logged (never "Done" with 0 sets).
+  const finished = finishedOn(state, viewDate);
 
   const openExercise = (exerciseId: string, slot: string) =>
     router.push({ pathname: '/exercise/[id]', params: { id: exerciseId, day: day!.id, slot } });
@@ -120,7 +119,8 @@ export default function TodayScreen() {
   // Looking at another day (a preview, or a past day in the strip): the button only ever trains that
   // day today; it never finishes or continues a past date.
   const trainToday = which.preview || viewDate !== date;
-  const cta = trainToday ? 'Train' : finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
+  // Today's card always has a way in: Start, Continue, Finish, or Train again once truly done.
+  const cta = trainToday ? 'Train' : finished ? 'Train again' : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
 
   return (
     <View style={{ flex: 1 }}>
@@ -135,12 +135,7 @@ export default function TodayScreen() {
               {line(day ? GREETING : REST_DAY, date)}
             </Text>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: space.xs }}>
-            <Flame count={trainingStreak(state)} label="training" />
-            <Text style={s.rankText} accessibilityLabel={`Level ${lvl.level}, ${rank.name}`}>
-              {rank.name} · L{lvl.level}
-            </Text>
-          </View>
+          <Flame count={trainingStreak(state)} label="training" />
         </View>
 
         {which.preview && (
@@ -362,7 +357,7 @@ export default function TodayScreen() {
           onLayout={(e) => setCtaH(e.nativeEvent.layout.height)}
         >
           <LinearGradient colors={[color.fadeFrom, color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
-          <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && progress.allDone ? finish : openWorkout} />
+          <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && !finished && progress.allDone ? finish : openWorkout} />
         </View>
       )}
     </View>
@@ -381,7 +376,6 @@ const s = themed(() => StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   date: { ...type.label },
   greet: { fontFamily: font.displayBold, fontSize: size.h3, lineHeight: 24, color: color.muted, marginTop: space.sm },
-  rankText: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.4, color: color.subtle },
   preview: {
     marginTop: space.xl,
     flexDirection: 'row',

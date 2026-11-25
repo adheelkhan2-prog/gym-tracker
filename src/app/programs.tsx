@@ -7,7 +7,7 @@ import { BodyModel } from '../components/body/BodyModel';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
 import { ORDER, SwitchSheet, programPaint } from '../components/ProgramParts';
-import { Badge, Button, IconButton, Press } from '../components/ui';
+import { Badge, Button, IconButton, Press, StatusBarShade } from '../components/ui';
 import { WEEKDAY_SHORT } from '../data/program';
 import { trainingDays, type Program } from '../data/programs';
 import { haptic } from '../feedback';
@@ -206,6 +206,7 @@ export default function ProgramsScreen() {
           <Text style={[type.small, { textAlign: 'center' }]}>Templates and their sources are listed in the app’s exercise-sources file.</Text>
         </View>
       </ScrollView>
+      <StatusBarShade />
       {switching && (
         <SwitchSheet
           program={switching}

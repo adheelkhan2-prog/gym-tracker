@@ -73,10 +73,13 @@ export function ExerciseMedia({ exerciseId, height = 300, label, active = true }
     );
   }
   return (
+    // No press ring or press-scale on media: a crimson ring drawn over a native video surface could
+    // linger as a thin red edge, and a video surface doesn't scale with its card on Android.
     <Press
       onPress={() => setPaused((v) => !v)}
       tick
-      scaleTo={0.98}
+      scaleTo={1}
+      glow="transparent"
       style={[s.photo, s.stage, { height }]}
       accessibilityRole="button"
       accessibilityLabel={`${name} ${isVideo ? 'video' : `${end ? 'end' : 'start'} position`}. ${paused ? 'Paused, tap to play' : 'Tap to pause'}`}
