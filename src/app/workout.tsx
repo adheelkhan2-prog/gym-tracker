@@ -70,6 +70,7 @@ export default function WorkoutScreen() {
   const [flash, setFlash] = useState(0);
   const [swapFor, setSwapFor] = useState<SlotStatus | null>(null);
   const focused = useIsFocused();
+  const [videoSheet, setVideoSheet] = useState(false);
   const [navH, setNavH] = useState(88);
   const finishing = useRef(false);
   useEffect(() => perfMark('workout-ready'), []);
@@ -176,9 +177,9 @@ export default function WorkoutScreen() {
   // Videos: only this exercise's and the next one's are loaded (the next is preloaded); the rest
   // stay released. Your own clips use their own player.
   // The next video is made in advance only while this page is what you're looking at: behind
-  // History or the swap sheet (which play a video of their own) it's let go and the current one is
+  // History, the swap sheet or the trim sheet (each plays a video of its own) it's let go and the current one is
   // paused, so only one video decodes at a time.
-  const preload = focused && !swapFor;
+  const preload = focused && !swapFor && !videoSheet;
   const videoOf = (i: number) => {
     const x = statuses[i];
     if (!x) return null;
@@ -216,7 +217,7 @@ export default function WorkoutScreen() {
         </View>
       </Press>
 
-      <VideoPoolProvider current={videoOf(at)} next={preload ? videoOf(at + 1) : null} hold={!preload}>
+      <VideoPoolProvider current={videoOf(at)} next={preload ? videoOf(at + 1) : null} hold={!preload} onSheet={setVideoSheet}>
         <GestureDetector gesture={pan}>
           <Animated.View style={[{ flex: 1 }, dragStyle]}>
             <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>

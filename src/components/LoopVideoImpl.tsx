@@ -141,11 +141,11 @@ function PlayerVideo({
     if (pooled && player.duration > 0) onDuration?.(player.duration);
   }, [pooled, player, onDuration]);
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
-  // The still goes at this view's first frame. Safety net: a pooled player (made before its view, or
-  // already drawn into another view) may never report a first frame to this view (seen on the
-  // emulator), so once it's playing and really moving its still goes. A video's own fresh player keeps
-  // its still until its first frame: a still for longer on a slow phone, never a black panel.
-  const settled = isPlaying && (!!pooled || drawn.has(player));
+  // The still goes at this view's first frame. Safety net: a player made before its view (a pooled
+  // one, or even useVideoPlayer's) may never report a first frame to it (seen on the emulator), so
+  // once it plays and its clock really moves, the still goes. A player that never moves keeps its
+  // still: a still for longer on a slow phone, never a black panel.
+  const settled = isPlaying;
   useEffect(() => {
     if (!settled || shown) return;
     // Only once the video is really moving (its clock has advanced).

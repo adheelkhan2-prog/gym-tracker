@@ -3,7 +3,7 @@
 // uses its own player, or shows its still), and the workout page itself is never remounted.
 import React, { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { lazySafe } from '../safe';
-import { sameSource, VideoHoldContext, VideoPoolContext, type HeldPlayers, type Src, type VideoPool } from './videoPool';
+import { sameSource, VideoHoldContext, VideoPoolContext, VideoSheetContext, type HeldPlayers, type Src, type VideoPool } from './videoPool';
 import type { VideoPoolHost as Impl } from './VideoPoolImpl';
 
 type HostProps = ComponentProps<typeof Impl>;
@@ -21,7 +21,20 @@ const Host = lazySafe<HostProps>(
   NoPool,
 );
 
-export function VideoPoolProvider({ current, next, hold, children }: { current: Src; next: Src; hold?: boolean; children: React.ReactNode }) {
+export function VideoPoolProvider({
+  current,
+  next,
+  hold,
+  onSheet,
+  children,
+}: {
+  current: Src;
+  next: Src;
+  hold?: boolean;
+  /** A sheet with its own video opened / closed inside the workout. */
+  onSheet?: (open: boolean) => void;
+  children: React.ReactNode;
+}) {
   const [held, setHeld] = useState<HeldPlayers | 'off' | null>(null);
   // Which videos are pooled comes from THIS render's pages, so a page that just came on screen never
   // makes a throwaway player of its own while the pool catches up: it shows its still for that moment.
@@ -39,9 +52,11 @@ export function VideoPoolProvider({ current, next, hold, children }: { current: 
   // then the host releases them.
   return (
     <>
-      <VideoHoldContext.Provider value={!!hold}>
-        <VideoPoolContext.Provider value={pool}>{children}</VideoPoolContext.Provider>
-      </VideoHoldContext.Provider>
+      <VideoSheetContext.Provider value={onSheet ?? null}>
+        <VideoHoldContext.Provider value={!!hold}>
+          <VideoPoolContext.Provider value={pool}>{children}</VideoPoolContext.Provider>
+        </VideoHoldContext.Provider>
+      </VideoSheetContext.Provider>
       <Host current={current} next={next} onPool={setHeld} />
     </>
   );

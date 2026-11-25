@@ -6,7 +6,7 @@
 // never piles up decoders or memory. Each player is made for one video and never re-pointed at
 // another, so a page's video view is only ever tied to its own player (on Android a view that's gone
 // stays referenced by its player until that player is released).
-import { createContext } from 'react';
+import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react';
 
 export type Src = number | { uri: string } | null;
 
@@ -25,6 +25,21 @@ export type VideoPool = {
 export const VideoPoolContext = createContext<VideoPool | null>(null);
 /** Hold the workout's videos paused (another screen or a sheet is on top, playing its own). */
 export const VideoHoldContext = createContext(false);
+/** Tells the workout that a sheet with a video of its own is open (null outside a workout). */
+export const VideoSheetContext = createContext<((open: boolean) => void) | null>(null);
+
+/**
+ * Around a sheet's own video inside the workout (e.g. the trim preview): while it's open the workout
+ * holds its video and lets the preloaded one go, and the sheet's video itself plays normally.
+ */
+export function VideoSheetScope({ children }: { children: ReactNode }) {
+  const setOpen = useContext(VideoSheetContext);
+  useEffect(() => {
+    setOpen?.(true);
+    return () => setOpen?.(false);
+  }, [setOpen]);
+  return createElement(VideoHoldContext.Provider, { value: false }, createElement(VideoPoolContext.Provider, { value: null }, children));
+}
 /** What the pool's host reports: the players it holds. */
 export type HeldPlayers = { playerFor: VideoPool['playerFor'] };
 
