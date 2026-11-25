@@ -1,4 +1,5 @@
-# Log-set validation (no weight yet -> asks for it), then log sets 1 and 2 (set 2 is one tap).
+# Log-set validation (no weight yet -> asks for it), then log sets 1 and 2. Set 1's weight is typed;
+# set 2 is adjusted with the − / + buttons only (tap-only logging).
 appId: com.gymtracker.app
 ---
 - runFlow: ../lib/begin-workout.yaml
@@ -15,6 +16,13 @@ appId: com.gymtracker.app
 - runFlow:
     file: ../lib/log-set.yaml
     env: { CARD: "0", SET: "0", COUNT: "1" }
+# Set 2 starts pre-filled from set 1: nudge it with − / + and log it.
+- tapOn:
+    id: "weight-0-1-plus"
+- tapOn:
+    id: "reps-0-1-minus"
+- tapOn:
+    id: "reps-0-1-plus"
 - runFlow:
     file: ../lib/log-set.yaml
     env: { CARD: "0", SET: "1", COUNT: "2" }

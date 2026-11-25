@@ -116,7 +116,7 @@ export function daySession(state: State, date: string): DaySession {
         });
       return { id, sets };
     });
-  const minutes = ses?.startedAt && ses.finishedAt ? Math.max(1, Math.round((ses.finishedAt - ses.startedAt) / 60000)) : null;
+  const minutes = ses?.startedAt != null && ses.finishedAt != null ? Math.max(1, Math.round((ses.finishedAt - ses.startedAt) / 60000)) : null;
   return {
     title: day ? day.name : exercises.length ? 'Workout' : null,
     exercises,

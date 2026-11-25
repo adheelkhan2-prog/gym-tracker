@@ -785,13 +785,16 @@ function Stepper({ onStep, disabled, name, testID, warn, children }: { onStep: (
 
 function HoldButton({ dir, onStep, label, testID }: { dir: 1 | -1; onStep: (dir: 1 | -1) => void; label: string; testID: string }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
   const stop = () => {
+    held.current = false;
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
   };
   useEffect(() => stop, []);
   const repeat = (delay: number) => {
     timer.current = setTimeout(() => {
+      if (!held.current) return;
       haptic.tap();
       onStep(dir);
       repeat(Math.max(60, delay * 0.85));
@@ -799,12 +802,19 @@ function HoldButton({ dir, onStep, label, testID }: { dir: 1 | -1; onStep: (dir:
   };
   return (
     <Pressable
-      onPressIn={() => {
+      // A tap steps once. Press and hold: after a short pause it repeats, a little faster each
+      // time, until you let go (a quick tap can never leave a repeat running).
+      onPress={() => {
         haptic.tap();
         onStep(dir);
+      }}
+      delayLongPress={350}
+      onLongPress={() => {
         stop();
-        // Held: after a short pause, repeat, getting a little faster.
-        timer.current = setTimeout(() => repeat(110), 380);
+        held.current = true;
+        haptic.tap();
+        onStep(dir);
+        repeat(110);
       }}
       onPressOut={stop}
       style={({ pressed }) => [s.stepBtn, pressed && s.stepBtnOn]}

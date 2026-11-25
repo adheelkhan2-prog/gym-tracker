@@ -61,14 +61,14 @@ while [ $SECONDS -lt $END ]; do
       fi
       adb shell cmd connectivity airplane-mode enable || true
       adb shell svc wifi disable || true; adb shell svc data disable || true
-      run_flows airplane full || status=FAILED
+      run_flows airplane airplane || status=FAILED
       adb shell cmd connectivity airplane-mode disable || true
       adb shell svc wifi enable || true; adb shell svc data enable || true
       crashes || status=FAILED
     else
       adb logcat -c
       # shellcheck disable=SC2086
-      run_flows quick ${flows:-nav start log scroll page swap finish} || status=FAILED
+      run_flows quick ${flows:-nav start log scroll page swap calendar finish} || status=FAILED
       crashes || status=FAILED
     fi
     log "RESULT $id: $status"

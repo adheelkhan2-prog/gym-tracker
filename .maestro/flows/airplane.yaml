@@ -1,0 +1,5 @@
+# One quick pass in airplane mode: tabs, a logged set, the calendar.
+appId: com.gymtracker.app
+---
+- runFlow: nav.yaml
+- runFlow: calendar.yaml
