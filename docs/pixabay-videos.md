@@ -1,5 +1,9 @@
 # Pixabay video search (your split)
 
+> **Done with your key:** please open Pixabay → API key and tap **Rotate**, so the key you shared stops
+> working. It was only used in the `?key=` part of Pixabay API requests in this session, and it was never
+> written to a file, the repo or the app.
+
 I searched Pixabay for real-person videos of the 20 exercises in your split that had none. I used
 two or three search terms per exercise, kept the clips tagged as gym or fitness, and watched every
 candidate.
