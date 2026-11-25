@@ -175,7 +175,10 @@ export function migrate(raw: unknown, fromOld: boolean): State {
     theme: r.theme === 'light' || r.theme === 'dark' || r.theme === 'system' ? r.theme : 'dark',
     // Barbell-plate and colour-plate logging were removed: those exercises go back to kg/lb (machine
     // pins stay).
-    loadTypes: Object.fromEntries(Object.entries(r.loadTypes ?? {}).filter(([id, t]) => loadTypesFor(id).includes(t))),
+    loadTypes: keepKgLifts(
+      Object.fromEntries(Object.entries(r.loadTypes ?? {}).filter(([id, t]) => loadTypesFor(id).includes(t))),
+      logs,
+    ),
   };
 }
 
@@ -193,6 +196,20 @@ export function cleanSessions(sessions: Record<string, Session>, logs: State['lo
       out[date] = rest;
     } else out[date] = ses;
   }
+  return out;
+}
+
+/**
+ * Machines and cables default to logging by pin. A lift you've been logging in kg (with no choice
+ * saved) keeps kg, so your history, targets and PRs stay continuous after an update.
+ */
+export function keepKgLifts(loadTypes: Record<string, LoadType>, logs: State['logs']): Record<string, LoadType> {
+  const out = { ...loadTypes };
+  for (const day of Object.values(logs))
+    for (const [id, l] of Object.entries(day)) {
+      if (out[id] || loadTypesFor(id)[0] !== 'stack') continue;
+      if (l.sets.some((st) => st.done && st.weight !== '' && st.load?.pin === undefined)) out[id] = 'weight';
+    }
   return out;
 }
 

@@ -1,6 +1,9 @@
 /** Round 7: Done only with sets, per-supplement streaks / rename / delete, editing and deleting logged sets. */
+import { missingFor, suggestSet } from '../sets';
 import {
   DEFAULT_STATE,
+  keepKgLifts,
+  migrate,
   addSupplement,
   editSet,
   exerciseHistory,
@@ -99,5 +102,20 @@ describe('tap-only − / + steps', () => {
     expect(stepOf('weight', 'kg', true, 10, 1)).toBe(2.5);
     expect(stepOf('weight', 'lb', false, 135, 1)).toBe(5);
     expect(stepOf('weight', 'lb', true, 15, 1)).toBe(2);
+  });
+});
+
+describe('machine pins are kept', () => {
+  test('after an update, a cable or machine lift you logged in kg stays in kg', () => {
+    const logs: State['logs'] = { '2026-11-17': { seated_cable_row: { sets: [{ weight: '50', reps: '10', done: true, u: 'kg' }] } } };
+    expect(keepKgLifts({}, logs)).toEqual({ seated_cable_row: 'weight' });
+    expect(keepKgLifts({ seated_cable_row: 'stack' }, logs)).toEqual({ seated_cable_row: 'stack' });
+    expect(migrate({ ...DEFAULT_STATE, logs }, false).loadTypes.seated_cable_row).toBe('weight');
+  });
+  test('pin mode needs a pin and never pre-fills a hidden kg weight', () => {
+    expect(missingFor({ weight: '60', reps: '10', done: false, u: 'kg' }, 'lat_pulldown', 'stack').message).toBe('Add your pin first');
+    const s = base({ loadTypes: { lat_pulldown: 'stack' }, logs: { '2026-11-17': { lat_pulldown: { sets: [{ weight: '60', reps: '10', done: true, u: 'kg' }] } } } });
+    const p = { slot: 'tue-1', options: ['lat_pulldown'], sets: 3, target: '8-12' };
+    expect(suggestSet(s, 'lat_pulldown', p, '2026-11-24', 0).set.weight).toBe('');
   });
 });

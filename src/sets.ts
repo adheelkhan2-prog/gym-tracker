@@ -68,6 +68,8 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
   if (before) {
     const reps = before.reps || String(top ?? '');
     if (weighted && before.load && before.load.t === lt && lt !== 'weight') return { set: withLoad(before.load, reps), reason: 'today', last };
+    // Pin mode never pre-fills a kg weight (it would be logged as a hidden kg set).
+    if (weighted && lt === 'stack') return { set: plain(null, reps), reason: 'today', last };
     return { set: plain(weighted ? weightIn(before, unit) : null, reps), reason: 'today', last };
   }
 
@@ -83,6 +85,7 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
       const l = lt === 'stack' && up && last.load.pin !== undefined ? { ...last.load, pin: last.load.pin + 1 } : last.load;
       return { set: withLoad(l, reps), reason: up && lt === 'stack' ? 'up' : 'last', last };
     }
+    if (lt === 'stack') return { set: plain(null, reps), reason: 'last', last };
     const w = weightIn(last, unit);
     return { set: plain(w === null ? null : up ? w + stepFor(unit) : w, reps), reason: up ? 'up' : 'last', last };
   }
@@ -96,7 +99,8 @@ export function missingFor(set: SetEntry, exerciseId: string, loadType: string) 
   const kind = EXERCISES[exerciseId].kind;
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
   const secs = kind === 'time' || kind === 'weight_time';
-  const load = weighted && set.weight === '' && set.load?.pin === undefined;
+  // Pin mode needs a pin; weight mode a weight (an old pin-only set still counts as having a load).
+  const load = weighted && (loadType === 'stack' ? set.load?.pin === undefined : set.weight === '' && set.load?.pin === undefined);
   const reps = !(num(set.reps) && num(set.reps)! > 0);
   const loadWord = loadType === 'stack' ? 'pin' : 'weight';
   const repsWord = secs ? 'seconds' : 'reps';

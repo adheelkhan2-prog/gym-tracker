@@ -67,3 +67,12 @@ test('a big history (3 years, 5 days a week) summarises a month quickly', () => 
   monthSummary(st({ logs }), 2026, 10, '2026-11-25');
   expect(Date.now() - t).toBeLessThan(1500);
 });
+
+test('machine-pin PRs count on the calendar (pins compared only with pins)', () => {
+  const pin = (p: number, r: number) => ({ weight: '', reps: String(r), done: true, u: 'kg' as const, load: { t: 'stack' as const, pin: p } });
+  const s = st({ logs: { '2026-11-17': { seated_cable_row: { sets: [pin(5, 10)] } }, '2026-11-24': { seated_cable_row: { sets: [pin(5, 12), pin(6, 10)] } } } });
+  const d = daySession(s, '2026-11-24');
+  expect(d.prs).toBe(1);
+  expect(d.exercises[0].sets.map((x) => x.pr)).toEqual([false, true]);
+  expect(monthSummary(s, 2026, 10, '2026-11-25').prs).toBe(1);
+});

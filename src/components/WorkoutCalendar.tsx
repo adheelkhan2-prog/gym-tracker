@@ -13,7 +13,7 @@ import { allTaken, dateFromKey, formatDate, todayKey, useStore } from '../store'
 import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import { Glass } from './glass';
 import { Icon } from './icons';
-import { SetLine } from './SetHistory';
+import { SetLine, setKey } from './SetHistory';
 import { Sheet } from './Sheet';
 import { Button, IconButton, Press } from './ui';
 
@@ -161,7 +161,7 @@ export function DaySheet({ date, onClose }: { date: string; onClose: () => void 
             <View key={e.id} style={s.ex}>
               <Text style={type.h3}>{EXERCISES[e.id].name}</Text>
               {e.sets.map((x) => (
-                <SetLine key={x.i} id={e.id} date={date} i={x.i} set={x.set} trophy={x.pr} />
+                <SetLine key={setKey(x.i, x.set)} id={e.id} date={date} i={x.i} set={x.set} trophy={x.pr} />
               ))}
             </View>
           ))}

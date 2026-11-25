@@ -12,6 +12,10 @@ import { setText } from '../workout';
 import { Glass } from './glass';
 import { Button, IconButton } from './ui';
 
+/** A row key that changes when the set at an index changes (e.g. after a delete above it), so an
+ * open editor can never end up pointing at a different set. */
+export const setKey = (i: number, st: SetEntry) => `${i}:${st.weight}:${st.u ?? ''}:${st.reps}:${st.load?.pin ?? ''}`;
+
 /** One logged set: "2  60 kg × 8", with edit and delete. `trophy` marks a PR set. */
 export function SetLine({ id, date, i, set, trophy }: { id: string; date: string; i: number; set: SetEntry; trophy?: boolean }) {
   const { state, update } = useStore();
@@ -19,7 +23,8 @@ export function SetLine({ id, date, i, set, trophy }: { id: string; date: string
   const kind = ex?.kind ?? 'weight_reps';
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
   const secs = kind === 'time' || kind === 'weight_time';
-  const pin = set.load?.pin !== undefined && kgOf(set) === null;
+  // A set logged by pin stays a pin when edited (even one that also stored kg).
+  const pin = set.load?.pin !== undefined;
   const unit = state.unit;
   const [edit, setEdit] = useState<{ w: string; r: string } | null>(null);
   const [del, setDel] = useState(false);
@@ -105,6 +110,7 @@ export function SetLine({ id, date, i, set, trophy }: { id: string; date: string
           // Shown in your unit (a set logged in the other unit is converted); a pin stays a pin.
           const kg = kgOf(set);
           const w = pin ? String(set.load!.pin) : kg === null ? '' : !set.u || set.u === unit ? set.weight : round1(fromKg(kg, unit));
+          setDel(false);
           setEdit({ w, r: set.reps });
         }}
       />
@@ -129,7 +135,7 @@ export function SetHistory({ id }: { id: string }) {
       {shown.map((d) => (
         <View key={d} style={s.day}>
           <Text style={s.date}>{formatDate(d)}</Text>
-          {state.logs[d][id].sets.map((st, i) => (st.done ? <SetLine key={i} id={id} date={d} i={i} set={st} /> : null))}
+          {state.logs[d][id].sets.map((st, i) => (st.done ? <SetLine key={setKey(i, st)} id={id} date={d} i={i} set={st} /> : null))}
         </View>
       ))}
       {dates.length > 5 && <Button variant="ghost" size="sm" label={all ? 'Show fewer' : `Show all ${dates.length} sessions`} onPress={() => setAll((v) => !v)} />}

@@ -12,7 +12,7 @@ import { CountUp } from '../../components/motion';
 import { Chip, IconButton, Press, Screen, SectionTitle } from '../../components/ui';
 import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
 import { MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
-import { fromKg, round1 } from '../../load';
+import { fromKg, loadTypeOf, round1 } from '../../load';
 import { activeProgram, addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { bottomClearance, color, font, heat, leading, motion, radius, size, space, themed, type } from '../../theme';
 import { pctChange, volumeOn } from '../../totals';
@@ -90,8 +90,10 @@ export default function ProgressScreen() {
   const kind = id ? EXERCISES[id].kind : 'weight_reps';
   const all = id ? histories[id] : [];
   // Charted in kg (shown in your unit) when known; a machine that was only logged by pin is charted by pin.
-  const byPin = all.length > 0 && all.every((h) => h.top === 0 && h.pin !== undefined);
-  const hist = byPin ? all : all.filter((h) => h.top > 0);
+  // Charted the way the lift is logged now: pins (compared only with pins) or kg.
+  const pinMode = !!id && loadTypeOf(id, state.loadTypes) === 'stack';
+  const byPin = pinMode ? all.some((h) => h.pin !== undefined) : all.length > 0 && all.every((h) => h.top === 0 && h.pin !== undefined);
+  const hist = byPin ? all.filter((h) => h.pin !== undefined) : all.filter((h) => h.top > 0);
   const weightedKind = kind === 'weight_reps' || kind === 'weight_time';
   const showE1rm = metric === 'e1rm' && kind === 'weight_reps' && !byPin;
   const valueUnit = byPin ? 'pin' : kind === 'reps' ? 'reps' : kind === 'time' ? 's' : unit;

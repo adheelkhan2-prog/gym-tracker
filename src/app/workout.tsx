@@ -12,6 +12,7 @@ import { Icon } from '../components/icons';
 import { Burst, Flash } from '../components/motion';
 import { RestTimer } from '../components/RestRing';
 import { Sheet } from '../components/Sheet';
+import { Stepper } from '../components/Stepper';
 import { Badge, Button, IconButton, Press } from '../components/ui';
 import { crumb, logCrash } from '../crash';
 import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
@@ -673,10 +674,19 @@ function SetRow({
     cur.current = v;
     onChange(v);
   };
-  const w = weighted && !stack && value.weight !== '' ? weightIn(value, unit) : null;
+  const w = weighted && value.weight !== '' ? weightIn(value, unit) : null;
   // Typed in your unit: show exactly what was typed (so "62." stays while you type 62.5). Only a
   // set stored in the other unit is converted for display.
-  const shownWeight = stack ? (value.load?.pin !== undefined ? String(value.load.pin) : '') : w === null ? '' : !value.u || value.u === unit ? value.weight : round1(w);
+  // A set shows its own load, whatever the switch says: "Pin 7" on a kg row, "60 kg" on a pin row.
+  const pinNow = value.load?.pin;
+  const kgText = w === null ? '' : !value.u || value.u === unit ? value.weight : round1(w);
+  const shownWeight = stack
+    ? pinNow !== undefined
+      ? String(pinNow)
+      : value.weight !== ''
+        ? `${round1(weightIn(value, unit) ?? 0)} ${unit}`
+        : ''
+    : kgText || (pinNow !== undefined ? `Pin ${pinNow}` : '');
   const stepLoad = (dir: 1 | -1) => {
     const v = cur.current;
     if (stack) {
@@ -687,8 +697,9 @@ function SetRow({
     }
     const now = v.weight === '' ? null : (weightIn(v, unit) ?? 0);
     const base = now ?? 0;
-    const next = Math.max(0, base + dir * stepOf('weight', unit, dumbbell, base, dir));
-    set({ ...v, weight: tidy(next), u: unit, load: undefined });
+    const next = base + dir * stepOf('weight', unit, dumbbell, base, dir);
+    // Stepping down to nothing leaves the box empty (never a silent 0 kg set).
+    set({ ...v, weight: next > 0 ? tidy(next) : '', u: unit, load: undefined });
   };
   const stepReps = (dir: 1 | -1) => {
     const v = cur.current;
@@ -766,65 +777,6 @@ function SetRow({
         </View>
       )}
     </View>
-  );
-}
-
-/**
- * − [number] +. Tap − / + to step; press and hold to repeat quickly with a light haptic tick. The
- * number in the middle can still be tapped to type.
- */
-function Stepper({ onStep, disabled, name, testID, warn, children }: { onStep: (dir: 1 | -1) => void; disabled: boolean; name: string; testID: string; warn: boolean; children: React.ReactNode }) {
-  return (
-    <View style={[s.stepBox, warn && s.inputWarn, disabled && s.stepBoxDone]}>
-      {!disabled && <HoldButton dir={-1} onStep={onStep} label={`Less ${name}`} testID={`${testID}-minus`} />}
-      <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
-      {!disabled && <HoldButton dir={1} onStep={onStep} label={`More ${name}`} testID={`${testID}-plus`} />}
-    </View>
-  );
-}
-
-function HoldButton({ dir, onStep, label, testID }: { dir: 1 | -1; onStep: (dir: 1 | -1) => void; label: string; testID: string }) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const held = useRef(false);
-  const stop = () => {
-    held.current = false;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-  };
-  useEffect(() => stop, []);
-  const repeat = (delay: number) => {
-    timer.current = setTimeout(() => {
-      if (!held.current) return;
-      haptic.tap();
-      onStep(dir);
-      repeat(Math.max(60, delay * 0.85));
-    }, delay);
-  };
-  return (
-    <Pressable
-      // A tap steps once. Press and hold: after a short pause it repeats, a little faster each
-      // time, until you let go (a quick tap can never leave a repeat running).
-      onPress={() => {
-        haptic.tap();
-        onStep(dir);
-      }}
-      delayLongPress={350}
-      onLongPress={() => {
-        stop();
-        held.current = true;
-        haptic.tap();
-        onStep(dir);
-        repeat(110);
-      }}
-      onPressOut={stop}
-      style={({ pressed }) => [s.stepBtn, pressed && s.stepBtnOn]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={4}
-      testID={testID}
-    >
-      <Icon name={dir > 0 ? 'plus' : 'minus'} size={16} color={color.text} />
-    </Pressable>
   );
 }
 
@@ -988,20 +940,6 @@ const s = themed(() =>
     lbOn: { backgroundColor: color.accent },
     lbText: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.muted, letterSpacing: 0.3 },
     lbTextOn: { color: color.onAccent },
-    stepBox: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      minHeight: touch.min,
-      borderRadius: radius.md,
-      backgroundColor: color.surface2,
-      borderWidth: 1,
-      borderColor: 'transparent',
-      overflow: 'hidden',
-    },
-    stepBoxDone: { justifyContent: 'center' },
-    stepBtn: { width: 34, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
-    stepBtnOn: { backgroundColor: color.glassPressed },
     num: { minHeight: touch.min, color: color.text, textAlign: 'center', fontFamily: font.display, fontSize: size.h3, paddingHorizontal: 0 },
     setsHead: {
       flexDirection: 'row',

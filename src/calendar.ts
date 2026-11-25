@@ -10,7 +10,7 @@ import {
   dayHasWork,
   doneSets,
   finishedOn,
-  prCountsByDate,
+  kgOf,
   prMetric,
   prSetsOn,
   todayKey,
@@ -19,6 +19,27 @@ import {
   type State,
 } from './store';
 import { volumeOn } from './totals';
+
+/** Highest pin among pin-only sets of an exercise on a day (0 if none). */
+const topPin = (sets: SetEntry[]) => Math.max(0, ...sets.filter((x) => x.done && x.load?.pin !== undefined && kgOf(x) === null).map((x) => x.load!.pin!));
+
+/**
+ * PRs on a day: kg (or reps / seconds) records as in the weekly tracker, plus machine-pin records
+ * (pins are compared only with pins). Exercise -> what the record is judged on.
+ */
+export function dayPRs(state: Pick<State, 'logs'>, date: string): Map<string, { kind: 'metric' | 'pin'; value: number }> {
+  const out = new Map<string, { kind: 'metric' | 'pin'; value: number }>();
+  for (const p of prSetsOn(state.logs, date)) out.set(p.exerciseId, { kind: 'metric', value: p.value });
+  for (const [id, l] of Object.entries(state.logs[date] ?? {})) {
+    if (out.has(id)) continue;
+    const today = topPin(l.sets);
+    if (!today) continue;
+    let before = 0;
+    for (const [d, day] of Object.entries(state.logs)) if (d < date && day[id]) before = Math.max(before, topPin(day[id].sets));
+    if (before > 0 && today > before) out.set(id, { kind: 'pin', value: today });
+  }
+  return out;
+}
 
 const pad = (n: number) => String(n).padStart(2, '0');
 export const keyOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -60,7 +81,6 @@ export type MonthSummary = { workouts: number; volume: number; prs: number; long
  */
 export function monthSummary(state: State, y: number, m: number, today = todayKey()): MonthSummary {
   const dates = monthDates(y, m).filter((d) => d <= today);
-  const prCounts = prCountsByDate(state.logs);
   const rotation = !!activeProgram(state).rotation;
   let workouts = 0;
   let volume = 0;
@@ -72,7 +92,7 @@ export function monthSummary(state: State, y: number, m: number, today = todayKe
     if (trainedOn(state, d)) {
       workouts++;
       volume += volumeOn(state, d);
-      prs += prCounts[d] ?? 0;
+      prs += dayPRs(state, d).size;
       run++;
       gap = 0;
       best = Math.max(best, run);
@@ -99,7 +119,7 @@ export type DaySession = {
 export function daySession(state: State, date: string): DaySession {
   const ses = state.sessions[date];
   const day = dayById(state, ses?.dayId);
-  const prTop = new Map(prSetsOn(state.logs, date).map((p) => [p.exerciseId, p.value]));
+  const prTop = dayPRs(state, date);
   const exercises = Object.entries(state.logs[date] ?? {})
     .filter(([id, l]) => EXERCISES[id] && doneSets(l, EXERCISES[id].kind).length > 0)
     .map(([id, l]) => {
@@ -110,7 +130,8 @@ export function daySession(state: State, date: string): DaySession {
         .filter(({ set }) => doneSets({ sets: [set] }, kind).length > 0)
         .map(({ i, set }) => {
           // The first set that reached the day's record gets the trophy.
-          const pr = !marked && prTop.has(id) && prMetric(set, kind) >= prTop.get(id)!;
+          const rec = prTop.get(id);
+          const pr = !marked && !!rec && (rec.kind === 'pin' ? set.load?.pin === rec.value && kgOf(set) === null : prMetric(set, kind) >= rec.value);
           if (pr) marked = true;
           return { i, set, pr };
         });
