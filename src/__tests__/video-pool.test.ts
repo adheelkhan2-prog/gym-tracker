@@ -17,7 +17,7 @@ test('jumping far releases both; a page with only stills holds nothing for itsel
   expect(plan([1, 2], null, 3)).toEqual({ release: [1, 2], createNow: null, createLater: 3 });
   expect(plan([5, 6], 6, null)).toEqual({ release: [5], createNow: null, createLater: null });
 });
-test('your own videos compare by file; the same video twice in a row shares one player', () => {
+test('file sources compare by path; the same video twice in a row shares one player', () => {
   expect(plan([{ uri: 'x' }], { uri: 'x' }, null)).toEqual({ release: [], createNow: null, createLater: null });
   expect(plan([], 4, 4)).toEqual({ release: [], createNow: 4, createLater: null });
 });

@@ -36,7 +36,7 @@ type Props = {
  * controlled by the parent, so a tap anywhere on its card can pause it. With `start`/`end` (seconds)
  * only that part loops: that's how a trimmed clip of your own plays, without re-encoding the file.
  * In a workout the pool's player is used (made in advance for the next exercise); anywhere else, or
- * for a trimmed clip of your own, the video gets its own player, released when it leaves the screen.
+ * for a clip of your own, the video gets its own player, released when it leaves the screen.
  */
 export function LoopVideo(props: Props) {
   const { source, start = 0, end } = props;
@@ -81,14 +81,18 @@ function PlayerVideo({
   posterContain = true,
 }: Props & { player: VideoPlayer; pooled?: boolean }) {
   const segment = end !== undefined && end > start;
-  // A pooled player that's already playing (the same video on the next page too) is drawing frames
-  // and may not report a first one again: it shows at once. A preloaded one keeps its still until then.
-  // (A new player always gets a new view, see keyOf, so this starts afresh for each player.)
-  const [shown, setShown] = useState(() => !!pooled && player.playing);
+  // The still stays until this view's first frame (or the safety net below), even for a player that's
+  // already playing elsewhere: a still for a moment, never a black panel. A new player always gets a
+  // new view (see keyOf), so this starts afresh for each player.
+  const [shown, setShown] = useState(false);
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   useEffect(() => {
-    if (paused) player.pause();
-    else player.play();
+    try {
+      if (paused) player.pause();
+      else player.play();
+    } catch {
+      // The pool let go of this player a moment before the page did: nothing to play.
+    }
   }, [paused, player]);
   // A pooled player outlives this page when it becomes the "next" one (going back): leave it paused.
   useEffect(

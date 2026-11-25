@@ -32,9 +32,18 @@ class Players {
       // Most load / decoder failures come later, as an error status: that video then leaves the pool
       // too (its page shows its still, or its own player), and its player is released off screen.
       player.addListener('statusChange', ({ status }) => {
-        if (status !== 'error' || this.failed.some((f) => sameSource(f, src))) return;
+        if (status !== 'error' || !this.held.some((h) => h.player === player)) return;
         this.failed.push(src);
+        this.held = this.held.filter((h) => h.player !== player);
         this.emit();
+        // Freed once its page has moved off it (the page re-renders with the change above first).
+        setTimeout(() => {
+          try {
+            player.release();
+          } catch {
+            // Already gone.
+          }
+        });
       });
       this.held.push({ src, player });
     } catch (e) {
@@ -103,7 +112,14 @@ export function VideoPoolHost({ current, next, onPool }: { current: Src; next: S
   const [players] = useState(() => new Players());
   const held = useSyncExternalStore(players.subscribe, players.snapshot);
   useEffect(() => players.sync(current, next), [players, current, next]);
-  useEffect(() => () => players.releaseAll(), [players]);
+  useEffect(
+    () => () => {
+      // The page stops using the pool before its players go (e.g. if this host ever fails).
+      onPool('off');
+      players.releaseAll();
+    },
+    [players, onPool],
+  );
   const value: HeldPlayers = useMemo(
     () => ({
       failed: (src) => players.failed.some((f) => sameSource(f, src)),
