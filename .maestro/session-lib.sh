@@ -67,3 +67,98 @@ publish() {
   (cd "$RES" && rm -rf .git && git init -q && git checkout -q -b e2e-results && git add results.txt && { ls fail-*.png >/dev/null 2>&1 && git add fail-*.png; true; } && git -c user.name=e2e-session -c user.email=e2e@localhost commit -qm "e2e results: $1" && git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" e2e-results) || echo "publish failed"
 }
 
+
+# --- Speed checks ("perf" requests) --------------------------------------------------------------
+# The perf build is the same release build with EXPO_PUBLIC_PERF=1 inlined in the JS bundle: it logs
+# "[perf] <mark> <epoch ms>" to logcat and seeds ~900 days of history on a fresh start.
+VARIANT=${VARIANT:-normal}
+
+# Build the given variant (normal | perf) of the commit, rebuilding the JS bundle when the variant
+# changes (the flag is baked into the bundle, so the cached one can't be reused).
+build_variant() {
+  local want="$1" v="$2"
+  if [ "$v" = "$VARIANT" ]; then build_if_needed "$want"; return; fi
+  log "rebuild: $VARIANT -> $v build"
+  rm -rf android/app/build/generated/assets android/app/build/generated/res/createBundleReleaseJsAndAssets \
+    android/app/build/intermediates/assets android/app/build/intermediates/merged_assets node_modules/.cache "${TMPDIR:-/tmp}"/metro-* 2>/dev/null
+  if [ "$v" = perf ]; then export EXPO_PUBLIC_PERF=1; else unset EXPO_PUBLIC_PERF; fi
+  (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -q) >"$RES/build.log" 2>&1 || { tail -40 "$RES/build.log" | tee -a "$RES/results.txt"; return 1; }
+  adb install -r "$APK" >/dev/null || return 1
+  built="$want"; VARIANT="$v"
+}
+
+# Epoch ms of the first "[perf] <name>" mark in the logcat dump $1 at or after epoch ms $2.
+mark() { awk -v n="$2" -v t="${3:-0}" '/\[perf\] / {for(i=1;i<=NF;i++) if($i=="[perf]" && $(i+1)==n && $(i+2)+0>=t+0) {print $(i+2); exit}}' "$1"; }
+# Epoch ms of the activity START line for the app in the logcat dump $1.
+start_ms() { awk -v p="$PKG" '/ActivityTaskManager: START u0/ && index($0,p) {split($1,a,"."); print a[1] substr(a[2]"000",1,3); exit}' "$1"; }
+avg() { awk '{s+=$1; n++} END {if(n) printf "%.0f", s/n; else print "n/a"}'; }
+pss() {
+  local m; m=$(adb shell dumpsys meminfo "$PKG")
+  local total gfx native java
+  total=$(echo "$m" | grep -m1 -oE 'TOTAL PSS: *[0-9]+' | grep -oE '[0-9]+$')
+  gfx=$(echo "$m" | grep -m1 -E '^ *Graphics:' | grep -oE '[0-9]+' | head -1)
+  native=$(echo "$m" | grep -m1 -E '^ *Native Heap:' | grep -oE '[0-9]+' | head -1)
+  java=$(echo "$m" | grep -m1 -E '^ *Java Heap:' | grep -oE '[0-9]+' | head -1)
+  log "MEM $1: total PSS $((total / 1024)) MB (native $((native / 1024)), java $((java / 1024)), graphics $((gfx / 1024)))"
+}
+
+perf_run() {
+  local ok=0 i t s r d
+  # Seed the big history once (fresh start), then let it save.
+  adb shell pm clear "$PKG" >/dev/null
+  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 25
+  run_flows seed nav >/dev/null 2>&1 || true
+  # 1. Cold start x5: process start -> Today on screen (JS mark), and Android's own TotalTime.
+  : >"$RES/cold.txt"; : >"$RES/total.txt"
+  for i in 1 2 3 4 5; do
+    adb shell am force-stop "$PKG"; sleep 2; adb logcat -c
+    r=$(adb shell am start -W -n "$PKG/.MainActivity" | grep -oE 'TotalTime: [0-9]+' | grep -oE '[0-9]+')
+    for _ in $(seq 30); do adb logcat -d -v epoch >"$RES/lc.txt"; grep -q '\[perf\] today-ready' "$RES/lc.txt" && break; sleep 1; done
+    s=$(start_ms "$RES/lc.txt"); t=$(mark "$RES/lc.txt" today-ready)
+    [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/cold.txt"; [ -n "$r" ] && echo "$r" >>"$RES/total.txt"
+    log "cold start $i: Today ready $([ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) || echo '?') ms, Android TotalTime ${r:-?} ms"
+  done
+  log "PERF cold start (avg of 5): Today ready $(avg <"$RES/cold.txt") ms, Android TotalTime $(avg <"$RES/total.txt") ms"
+  adb shell am force-stop "$PKG"; sleep 2
+  pss_after_start() { adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 12; pss "Today after a cold start"; }
+  pss_after_start
+  # 2. Opening a workout x3 (each a fresh start with the big history): tap -> screen, tap -> first video frame.
+  : >"$RES/open.txt"; : >"$RES/frame.txt"
+  for i in 1 2 3; do
+    adb logcat -c
+    run_flows perf perf/open || ok=1
+    adb logcat -d -v epoch >"$RES/lc.txt"
+    s=$(mark "$RES/lc.txt" tap-start); t=$(mark "$RES/lc.txt" workout-ready "$s"); d=$(mark "$RES/lc.txt" video-frame "$s")
+    [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/open.txt"
+    [ -n "$s" ] && [ -n "$d" ] && echo $((d - s)) >>"$RES/frame.txt"
+    log "open workout $i: screen $([ -n "$t" ] && echo $((t - s)) || echo '?') ms, first video frame $([ -n "$d" ] && echo $((d - s)) || echo 'none') ms"
+  done
+  log "PERF open workout (avg of 3): screen $(avg <"$RES/open.txt") ms, first video frame $(avg <"$RES/frame.txt") ms"
+  sleep 5; pss "workout, page 1"
+  # 3. Every page with Next, then back with Previous: page change -> its video's first frame.
+  adb logcat -c
+  run_flows perf perf/pages || ok=1
+  pss "workout, after Next through all 7 pages"
+  run_flows perf perf/back || ok=1
+  pss "workout, after Previous back to page 1"
+  adb logcat -d -v epoch >"$RES/lc.txt"
+  grep -oE '\[perf\] (page-[0-9]+|video-frame) [0-9]+' "$RES/lc.txt" | awk '
+    $2 ~ /^page-/ {p=$2; t=$3; next}
+    $2=="video-frame" && p!="" {print p, $3-t; p=""}' >"$RES/pages.txt"
+  log "page change -> video frame (ms): $(tr '\n' ' ' <"$RES/pages.txt")"
+  log "PERF page change -> video frame (avg of $(wc -l <"$RES/pages.txt") with video): $(awk '{print $2}' "$RES/pages.txt" | avg) ms"
+  log "video players created: $(grep -c 'ExoPlayerImpl: Init' "$RES/lc.txt"), released: $(grep -c 'ExoPlayerImpl: Release' "$RES/lc.txt")"
+  # 4. Progress with ~900 days of history x3 (fresh process each time): tap -> screen ready.
+  : >"$RES/prog.txt"
+  for i in 1 2 3; do
+    adb shell am force-stop "$PKG"; sleep 2; adb logcat -c
+    run_flows perf perf/progress || ok=1
+    adb logcat -d -v epoch >"$RES/lc.txt"
+    s=$(mark "$RES/lc.txt" tap-progress); t=$(mark "$RES/lc.txt" progress-ready "$s")
+    [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/prog.txt"
+    log "open Progress $i: $([ -n "$t" ] && echo $((t - s)) || echo '?') ms"
+  done
+  log "PERF open Progress with ~900 days of history (avg of 3): $(avg <"$RES/prog.txt") ms"
+  sleep 5; pss "Progress with ~900 days of history"
+  return $ok
+}

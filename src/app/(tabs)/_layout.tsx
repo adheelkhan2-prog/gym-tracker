@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Icon, type IconName } from '../../components/icons';
 import { Press } from '../../components/ui';
 import { color, font, motion, radius, size, space, themed, touch } from '../../theme';
+import { perfMark } from '../../perf';
 
 const TABS: Record<string, { title: string; icon: IconName }> = {
   index: { title: 'Today', icon: 'barbell' },
@@ -50,6 +51,7 @@ function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
               <Press
                 key={route.key}
                 onPress={() => {
+                  if (!on) perfMark(`tap-${route.name}`);
                   if (!on) navigateToTab(route.key);
                 }}
                 accessibilityRole="tab"

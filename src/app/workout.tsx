@@ -26,6 +26,7 @@ import { bestBefore, dayById, hasLoggedSets, kgOf, prMetric, todayKey, useStore,
 import { color, fmtClock, font, motion, radius, size, space, themed, touch, type } from '../theme';
 import { setText, slotStatuses, swapSlot, titleOf, type SlotStatus } from '../workout';
 import { bigJump, weeklyTarget } from '../weekly';
+import { perfMark } from '../perf';
 
 type Missing = {
   slot: string;
@@ -69,6 +70,7 @@ export default function WorkoutScreen() {
   const [swapFor, setSwapFor] = useState<SlotStatus | null>(null);
   const [navH, setNavH] = useState(88);
   const finishing = useRef(false);
+  useEffect(() => perfMark('workout-ready'), []);
   useEffect(() => {
     restCarry.endsAt = restEnd;
     restCarry.total = restTotal;
@@ -79,6 +81,7 @@ export default function WorkoutScreen() {
   const goTo = (i: number) => {
     if (i < 0 || i >= count || i === at) return;
     haptic.tap();
+    perfMark(`page-${i}`);
     setDir(i > at ? 1 : -1);
     setPage(i);
   };

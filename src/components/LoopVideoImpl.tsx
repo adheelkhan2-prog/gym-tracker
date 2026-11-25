@@ -2,6 +2,7 @@ import { useEvent, useEventListener } from 'expo';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { perfMark } from '../perf';
 
 /** Seek the native player (kept outside the component: the player is an imperative handle). */
 function seek(p: VideoPlayer, seconds: number) {
@@ -66,6 +67,7 @@ export function LoopVideo({
         allowsPictureInPicture={false}
         // A TextureView clips to the card's rounded corners and moves with it (a SurfaceView doesn't).
         surfaceType="textureView"
+        onFirstFrameRender={() => perfMark('video-frame')}
       />
     </View>
   );

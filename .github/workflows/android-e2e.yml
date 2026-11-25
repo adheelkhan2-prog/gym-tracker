@@ -9,7 +9,7 @@ name: Android emulator test session
 # .maestro/session.txt (no new job, the running emulator picks them up).
 on:
   push:
-    branches: [round-6, round-7]
+    branches: [round-6, round-7, under-the-hood]
 
 permissions:
   contents: write

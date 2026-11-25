@@ -1,0 +1,10 @@
+# Speed check: fresh launch (the perf build seeds a big history), open today's workout, let the
+# first video play, stay on the workout (memory is read next).
+appId: com.gymtracker.app
+---
+- runFlow: ../../lib/begin-workout.yaml
+- extendedWaitUntil:
+    visible: "Exercise 1 of .*"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000

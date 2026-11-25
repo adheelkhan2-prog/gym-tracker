@@ -1,0 +1,13 @@
+# Speed check: open the app (history kept), go to Progress, wait for it to settle.
+appId: com.gymtracker.app
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 60000
+- tapOn:
+    id: "tab-progress"
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../../lib/no-errors.yaml

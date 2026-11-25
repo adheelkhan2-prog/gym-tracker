@@ -1,0 +1,16 @@
+# Speed check: from page 1 of the open workout, go through every exercise with Next (4 s each, so
+# each video gets time to start), staying on the workout (memory is read next).
+appId: com.gymtracker.app
+---
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          id: "next-exercise"
+      - waitForAnimationToEnd:
+          timeout: 4000
+      # A plain 3 s wait (this text never appears).
+      - extendedWaitUntil:
+          visible: "zz-perf-wait"
+          timeout: 3000
+          optional: true

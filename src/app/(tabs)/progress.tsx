@@ -1,5 +1,5 @@
 import { router, useIsFocused } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { BodyModel, type PaintMap } from '../../components/body/BodyModel';
@@ -18,6 +18,7 @@ import { bottomClearance, color, font, heat, leading, motion, radius, size, spac
 import { pctChange, volumeOn } from '../../totals';
 import { exerciseFor, visiblePlans } from '../../workout';
 import { WEEKDAY_SHORT } from '../../data/program';
+import { perfMark } from '../../perf';
 
 type Metric = 'top' | 'e1rm';
 
@@ -81,6 +82,7 @@ export default function ProgressScreen() {
   const withData = EXERCISE_LIST.map((e) => e.id).filter((x) => histories[x].length > 0);
   const [query, setQuery] = useState('');
   const [day, setDay] = useState<string | null>(null);
+  useEffect(() => perfMark('progress-ready'), []);
   const q = query.trim().toLowerCase();
   // Search: anything in your history or your plan.
   const found = q ? [...new Set([...withData, ...inPlan])].filter((x) => EXERCISES[x].name.toLowerCase().includes(q)) : [];

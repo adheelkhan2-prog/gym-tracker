@@ -4,6 +4,7 @@ import { EXERCISES, type LogKind } from './data/exercises';
 import type { MuscleId } from './data/muscles';
 import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
 import { PROGRAMS, type Program } from './data/programs';
+import { PERF, bigHistory } from './perf';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
@@ -114,6 +115,8 @@ export async function loadState(): Promise<State | null> {
     if (raw) return applyPending(migrate(JSON.parse(raw), false));
     raw = await AsyncStorage.getItem(OLD_KEY);
     if (raw) return migrate(JSON.parse(raw), true);
+    // Speed-check builds only (never set in normal builds): start with a big history.
+    if (PERF) return bigHistory(DEFAULT_STATE);
     return null;
   } catch {
     if (raw) await AsyncStorage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw).catch(() => {});
