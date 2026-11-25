@@ -201,9 +201,9 @@ export default function CompleteScreen() {
         {/* Hero: the body you just trained */}
         <View style={{ marginTop: space.sm }}>
           {show3d ? (
-            <BodyModel paint={paint} pulses={pulses} height={380} framing="torso" intro tint={color.accent} snapshotRef={snapshotRef} describe={describe} showHint={false} />
+            <BodyModel paint={paint} pulses={pulses} height={420} framing="full" intro tint={color.accent} snapshotRef={snapshotRef} describe={describe} showHint={false} />
           ) : (
-            <View style={{ height: 380 }} />
+            <View style={{ height: 420 }} />
           )}
         </View>
         {lit > 0 && (

@@ -181,7 +181,7 @@ export default function ExerciseScreen() {
           ) : (
             <View style={{ marginTop: space.md }}>
               <Glass r={radius.xl} style={{ overflow: 'hidden' }}>
-                <BodyModel paint={paint} height={320} tint={color.accent} describe={(m) => `${MUSCLE_LABEL[m]}${ex.primary.includes(m) ? ' · primary' : ex.secondary.includes(m) ? ' · secondary' : ''}`} />
+                <BodyModel paint={paint} height={420} tint={color.accent} describe={(m) => `${MUSCLE_LABEL[m]}${ex.primary.includes(m) ? ' · primary' : ex.secondary.includes(m) ? ' · secondary' : ''}`} />
               </Glass>
               <MuscleLegend ex={ex} />
             </View>
