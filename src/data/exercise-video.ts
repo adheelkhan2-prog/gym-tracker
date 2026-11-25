@@ -45,4 +45,5 @@ export const EXERCISE_VIDEO: Record<string, BundledVideo> = {
   smith_squat: { source: require('../../assets/exercises-video/smith_squat.mp4'), credit: "Goulart via wger.de, CC BY-SA 4.0 (trimmed)" },
   standing_leg_curl: { source: require('../../assets/exercises-video/standing_leg_curl.mp4'), credit: "Goulart via wger.de, CC BY-SA 4.0 (trimmed)" },
   triceps_dips: { source: require('../../assets/exercises-video/triceps_dips.mp4'), credit: "Goulart via wger.de, CC BY-SA 4.0 (trimmed)" },
+  wide_pulldown: { source: require('../../assets/exercises-video/wide_pulldown.mp4'), credit: "blackmarketmusic via Pixabay, Pixabay Content License (trimmed)" },
 };

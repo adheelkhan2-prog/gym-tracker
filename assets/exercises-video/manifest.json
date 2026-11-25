@@ -376,5 +376,14 @@
   "author": "Goulart",
   "licence": "CC BY-SA 4.0",
   "changes": "Trimmed to a 2.1 s loop (9.0-11.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "wide_pulldown": {
+  "file": "wide_pulldown.mp4",
+  "credit": "blackmarketmusic via Pixabay, Pixabay Content License (trimmed)",
+  "source": "https://pixabay.com/videos/id-135162/",
+  "original": "https://pixabay.com/videos/id-135162/ (2560x1440 rendition)",
+  "author": "blackmarketmusic (Pixabay)",
+  "licence": "Pixabay Content License",
+  "changes": "Trimmed to a 3.5 s loop (6.0-9.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 2560x1440 and frame rate."
  }
 }

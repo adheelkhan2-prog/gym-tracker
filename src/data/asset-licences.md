@@ -35,20 +35,24 @@ free-exercise-db (Unlicense) and the OFL fonts need no in-app credit; they are l
 
 ## Exercise videos (real people)
 
-42 exercises have a short looping video of a real person. There are no clay video loops.
+43 exercises have a short looping video of a real person. There are no clay video loops.
 
 - **wger** (wger.de, the open exercise database): 36 clips, all **CC BY-SA 4.0** by the wger
   contributor **Goulart**. As adaptations they are shared under CC BY-SA 4.0 (the same licence).
 - **Mixkit** (mixkit.co): 6 clips under the **Mixkit Stock Video Free License** (commercial and
   non-commercial use, may be copied, modified and distributed; attribution not required but given).
   Only clips marked "Free" were used; clips under Mixkit's personal-use "Restricted" licence were left out.
+- **Pixabay** (pixabay.com): 1 clip under the **Pixabay Content License**
+  (https://pixabay.com/service/license-summary/): free to use and modify, including in apps, without
+  attribution (given anyway); it may not be sold or redistributed on its own as a stock file, which a
+  clip built into this app is not.
 
 Every clip was chosen one by one (right exercise and equipment, clear view, good form), trimmed to a
-3–6 s loop, cross-faded at the loop point, muted and re-encoded at the original 1920x1080 resolution
-and frame rate. Credited in Settings → Credits and under each exercise's video. No videos from
-YouTube, TikTok, Instagram or other gym apps are used. Exercises without a video show the clay still
-images (or the free-exercise-db photo). Videos you import stay in the app's storage on your phone
-only; they are never bundled or uploaded.
+3–6 s loop, cross-faded at the loop point, muted and re-encoded at the original resolution and frame
+rate (1920x1080; the Pixabay clip 2560x1440). Credited in Settings → Credits and under each exercise's
+video. No videos from YouTube, TikTok, Instagram or other gym apps are used. Exercises without a video
+show the clay still images (or the free-exercise-db photo). Videos you import stay in the app's storage
+on your phone only; they are never bundled or uploaded.
 
 | Exercise | File | Source | Author | Licence | Changes |
 | --- | --- | --- | --- | --- | --- |
@@ -94,4 +98,5 @@ only; they are never bundled or uploaded.
 | Smith Machine Squat | `assets/exercises-video/smith_squat.mp4` | https://wger.de/en/exercise/341/view/ (original file: https://wger.de/media/exercise-video/341/0cbfeace-dda9-4166-8424-f51358e88a4f.MOV) | Goulart | CC BY-SA 4.0 | Trimmed to a 3.0 s loop (5.8-9.2 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate. |
 | Standing Leg Curl | `assets/exercises-video/standing_leg_curl.mp4` | https://wger.de/en/exercise/367/view/ (original file: https://wger.de/media/exercise-video/367/6c24960c-20ab-4ef9-90f8-cf53e630ccec.MOV) | Goulart | CC BY-SA 4.0 | Trimmed to a 3.1 s loop (15.2-18.7 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate. |
 | Triceps Dip | `assets/exercises-video/triceps_dips.mp4` | https://wger.de/en/exercise/194/view/ (original file: https://wger.de/media/exercise-video/194/7a6987aa-138d-41e4-8842-5c3e3d970bd9.MOV) | Goulart | CC BY-SA 4.0 | Trimmed to a 4.1 s loop (11.0-15.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate. |
+| Wide-Grip Pulldown | `assets/exercises-video/wide_pulldown.mp4` | https://pixabay.com/videos/id-135162/ (original file: https://pixabay.com/videos/id-135162/ (2560x1440 rendition)) | blackmarketmusic (Pixabay) | Pixabay Content License | Trimmed to a 3.5 s loop (6.0-9.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 2560x1440 and frame rate. |
 
