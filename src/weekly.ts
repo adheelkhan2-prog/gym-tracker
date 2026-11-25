@@ -51,9 +51,8 @@ export function bestIn(state: State, exerciseId: string, dates: string[]): Best 
   let best: Best | null = null;
   for (const date of dates) {
     for (const s of doneSets(state.logs[date]?.[exerciseId], kind)) {
-      // Compare like with like: pin sets in pin mode, otherwise only sets with a known kg (an old
-      // pin-only set has none and is skipped).
-      if (loaded(kind) && (pins ? s.load?.pin === undefined : setKg(s, machine) === null)) continue;
+      // Compare like with like: pin sets in pin mode, kg sets otherwise.
+      if (loaded(kind) && (s.load?.pin !== undefined) !== pins) continue;
       const sc = scoreOf(s, kind, machine, pins);
       if (!best || sc.score > best.score) best = { date, set: s, ...sc };
     }

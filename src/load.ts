@@ -47,15 +47,17 @@ export const round1 = (n: number) => {
 export const fmtKg = (kg: number, u: Unit) => `${round1(fromKg(kg, u))} ${u}`;
 
 /**
- * Which load types make sense for an exercise. The first one is the default. Machine-pin logging
- * was removed: weighted lifts log kg (or lb) only. Old pin sets stay in history as they were.
+ * Which load types make sense for an exercise. The first one is the default: machines and cables
+ * log by pin (switchable to kg), everything else by weight. Pins stay pins: there's no kg-per-plate
+ * setting, so a pin is compared only with other pins.
  */
 export function loadTypesFor(id: string): LoadType[] {
   const ex = EXERCISES[id];
   if (!ex) return ['weight'];
   if (ex.kind === 'reps') return ['bodyweight'];
   if (ex.kind === 'time') return ['timed'];
-  return ['weight'];
+  if (ex.kind === 'weight_time') return ['weight'];
+  return ex.equipment === 'machine' || ex.equipment === 'cable' ? ['stack', 'weight'] : ['weight'];
 }
 
 export const defaultLoadType = (id: string) => loadTypesFor(id)[0];

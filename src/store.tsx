@@ -173,7 +173,8 @@ export function migrate(raw: unknown, fromOld: boolean): State {
     suppReminders: migrateReminders(r as Partial<State> & LegacyFields, merged.supplements),
     // Saves from before the light theme keep the dark look until the theme is changed in Settings.
     theme: r.theme === 'light' || r.theme === 'dark' || r.theme === 'system' ? r.theme : 'dark',
-    // Barbell-plate and colour-plate logging were removed: those exercises go back to kg/lb.
+    // Barbell-plate and colour-plate logging were removed: those exercises go back to kg/lb (machine
+    // pins stay).
     loadTypes: Object.fromEntries(Object.entries(r.loadTypes ?? {}).filter(([id, t]) => loadTypesFor(id).includes(t))),
   };
 }

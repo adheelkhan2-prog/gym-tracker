@@ -18,9 +18,9 @@ import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
 import { pickOption, restFor } from '../data/program';
 import { swapsFor } from '../data/swaps';
 import { haptic } from '../feedback';
-import { fmtKg, fromKg, round1 } from '../load';
+import { fmtKg, fromKg, loadTypeOf, loadTypesFor, round1, type LoadType } from '../load';
 import { restCarry } from '../restCarry';
-import { missingFor, suggestSet, weightIn } from '../sets';
+import { missingFor, stepOf, suggestSet, weightIn } from '../sets';
 import { bestBefore, dayById, hasLoggedSets, kgOf, prMetric, todayKey, useStore, type SetEntry, type State } from '../store';
 import { color, fmtClock, font, motion, radius, size, space, themed, touch, type } from '../theme';
 import { setText, slotStatuses, swapSlot, titleOf, type SlotStatus } from '../workout';
@@ -364,6 +364,9 @@ function ExerciseCard({
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
   const secs = kind === 'time' || kind === 'weight_time';
   const unit = state.unit;
+  // Machines and cables log by pin (or kg, switchable); everything else by weight.
+  const lt = loadTypeOf(id, state.loadTypes);
+  const stack = weighted && lt === 'stack';
   const log = state.logs[date]?.[id];
   const rows: SetEntry[] = log?.sets ?? [];
   const carried = log?.carried ?? 0;
@@ -389,7 +392,7 @@ function ExerciseCard({
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
     const loggedBefore = rows.slice(0, i).some((x) => x.done);
-    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit);
+    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit, lt);
     return suggestSet(state, id, plan, date, i).set;
   };
   const setDraft = (i: number, v: SetEntry) => {
@@ -436,7 +439,7 @@ function ExerciseCard({
       return;
     }
     const value = valueOf(i);
-    const miss = missingFor(value, id, 'weight');
+    const miss = missingFor(value, id, lt);
     if (miss.message) {
       // Nothing silent: say what's missing, mark the empty box amber, small warning buzz.
       haptic.warn();
@@ -520,8 +523,37 @@ function ExerciseCard({
 
       <View style={s.setsHead}>
         <Text style={[type.label, { width: 34 }]}>Set</Text>
-        {weighted && <Text style={[type.label, { flex: 1 }]}>{unit}</Text>}
-        <Text style={[type.label, { flex: 1 }]}>{secs ? 'Sec' : 'Reps'}</Text>
+        {weighted && (
+          <View style={s.headCell}>
+            {loadTypesFor(id).length > 1 ? (
+              // Log by: a small Pin | kg switch, remembered per exercise.
+              <View style={s.lb} accessibilityRole="radiogroup" accessibilityLabel={`Log ${ex.name} by`}>
+                {(['stack', 'weight'] as LoadType[]).map((t) => (
+                  <Press
+                    key={t}
+                    onPress={() => {
+                      if (lt === t) return;
+                      haptic.tap();
+                      update((st2) => ({ ...st2, loadTypes: { ...st2.loadTypes, [id]: t } }));
+                      setDrafts(() => ({}));
+                    }}
+                    style={[s.lbItem, lt === t && s.lbOn]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: lt === t }}
+                    accessibilityLabel={t === 'stack' ? 'Machine pin' : `Weight in ${unit}`}
+                    testID={`logby-${t === 'stack' ? 'pin' : 'kg'}-${n}`}
+                    scaleTo={1}
+                  >
+                    <Text style={[s.lbText, lt === t && s.lbTextOn]}>{t === 'stack' ? 'Pin' : unit}</Text>
+                  </Press>
+                ))}
+              </View>
+            ) : (
+              <Text style={type.label}>{unit}</Text>
+            )}
+          </View>
+        )}
+        <Text style={[type.label, s.headCell]}>{secs ? 'Sec' : 'Reps'}</Text>
         <View style={{ width: touch.primary }} />
       </View>
       {Array.from({ length: count }, (_, i) => (
@@ -534,6 +566,8 @@ function ExerciseCard({
           logged={!!rows[i]?.done}
           weighted={weighted}
           secs={secs}
+          stack={stack}
+          dumbbell={ex.equipment === 'dumbbell'}
           unit={unit}
           warn={missing?.i === i ? missing : null}
           onChange={(v) => setDraft(i, v)}
@@ -579,12 +613,15 @@ function ExerciseCard({
 }
 
 /** This week's target as a set to log. */
-function fromTarget(t: NonNullable<ReturnType<typeof weeklyTarget>>, kind: string, unit: State['unit']): SetEntry {
+function fromTarget(t: NonNullable<ReturnType<typeof weeklyTarget>>, kind: string, unit: State['unit'], lt: LoadType): SetEntry {
   const reps = String(t.reps);
   if (kind === 'reps' || kind === 'time') return { weight: '', reps, done: false };
+  if (lt === 'stack') return t.pin !== undefined ? { weight: '', u: 'kg', reps, load: { t: 'stack', pin: t.pin }, done: false } : { weight: '', reps, done: false };
   if (t.kg === null) return { weight: '', reps, u: unit, done: false };
   return { weight: round1(fromKg(t.kg, unit)), u: unit, reps, done: false };
 }
+
+const tidy = (n: number) => String(Math.round(n * 100) / 100);
 
 // ---------- One set row ----------
 
@@ -596,6 +633,8 @@ function SetRow({
   logged,
   weighted,
   secs,
+  stack,
+  dumbbell,
   unit,
   warn,
   onChange,
@@ -612,6 +651,9 @@ function SetRow({
   logged: boolean;
   weighted: boolean;
   secs: boolean;
+  /** Logged by machine pin (else by weight). */
+  stack: boolean;
+  dumbbell: boolean;
   unit: State['unit'];
   warn: Missing | null;
   onChange: (v: SetEntry) => void;
@@ -622,38 +664,80 @@ function SetRow({
   onConfirm: () => void;
   onFix: () => void;
 }) {
-  const w = weighted && value.weight !== '' ? weightIn(value, unit) : null;
+  // The newest value, so a held − / + keeps counting from where the last repeat left off.
+  const cur = useRef(value);
+  useEffect(() => {
+    cur.current = value;
+  }, [value]);
+  const set = (v: SetEntry) => {
+    cur.current = v;
+    onChange(v);
+  };
+  const w = weighted && !stack && value.weight !== '' ? weightIn(value, unit) : null;
   // Typed in your unit: show exactly what was typed (so "62." stays while you type 62.5). Only a
-  // set stored in the other unit is converted for display. An old pin-only set shows its pin.
-  const shownWeight = w === null ? (value.load?.pin !== undefined ? `Pin ${value.load.pin}` : '') : !value.u || value.u === unit ? value.weight : round1(w);
+  // set stored in the other unit is converted for display.
+  const shownWeight = stack ? (value.load?.pin !== undefined ? String(value.load.pin) : '') : w === null ? '' : !value.u || value.u === unit ? value.weight : round1(w);
+  const stepLoad = (dir: 1 | -1) => {
+    const v = cur.current;
+    if (stack) {
+      const pin = v.load?.pin;
+      const next = pin === undefined ? 1 : Math.max(1, pin + dir);
+      set({ ...v, weight: '', u: 'kg', load: { t: 'stack', pin: next } });
+      return;
+    }
+    const now = v.weight === '' ? null : (weightIn(v, unit) ?? 0);
+    const base = now ?? 0;
+    const next = Math.max(0, base + dir * stepOf('weight', unit, dumbbell, base, dir));
+    set({ ...v, weight: tidy(next), u: unit, load: undefined });
+  };
+  const stepReps = (dir: 1 | -1) => {
+    const v = cur.current;
+    const now = v.reps === '' ? 0 : Number(v.reps) || 0;
+    set({ ...v, reps: String(Math.max(0, now + dir * stepOf(secs ? 'secs' : 'reps', unit, dumbbell, now, dir))) });
+  };
   return (
     <View>
       <View style={[s.row, logged && s.rowDone]}>
         <Text style={s.setNo}>{label}</Text>
         {weighted && (
+          <Stepper
+            onStep={stepLoad}
+            disabled={logged}
+            name={`${stack ? 'pin' : `weight in ${unit}`} for set ${label} of ${exName}`}
+            testID={`weight-${slotN}-${i}`}
+            warn={!!(warn?.load || check)}
+          >
+            <NumBox
+              value={shownWeight}
+              editable={!logged}
+              onChangeText={(t) => {
+                if (stack) {
+                  const pin = parseInt(t.replace(/[^0-9]/g, ''), 10);
+                  set(Number.isFinite(pin) ? { ...cur.current, weight: '', u: 'kg', load: { t: 'stack', pin } } : { ...cur.current, weight: '', load: undefined });
+                } else set({ ...cur.current, weight: t.replace(/[^0-9.,]/g, '').replace(',', '.'), u: unit, load: undefined });
+              }}
+              placeholder="—"
+              placeholderTextColor={color.subtle}
+              keyboardType={stack ? 'number-pad' : 'decimal-pad'}
+              style={s.num}
+              accessibilityLabel={`Set ${label} ${stack ? 'pin' : `weight in ${unit}`} for ${exName}`}
+              testID={`weight-${slotN}-${i}`}
+            />
+          </Stepper>
+        )}
+        <Stepper onStep={stepReps} disabled={logged} name={`${secs ? 'seconds' : 'reps'} for set ${label} of ${exName}`} testID={`reps-${slotN}-${i}`} warn={!!warn?.reps}>
           <NumBox
-            value={shownWeight}
+            value={value.reps}
             editable={!logged}
-            onChangeText={(t) => onChange({ ...value, weight: t.replace(/[^0-9.,]/g, '').replace(',', '.'), u: unit, load: undefined })}
+            onChangeText={(t) => set({ ...cur.current, reps: t.replace(/[^0-9]/g, '') })}
             placeholder="—"
             placeholderTextColor={color.subtle}
-            keyboardType="decimal-pad"
-            style={[s.input, (warn?.load || check) && s.inputWarn]}
-            accessibilityLabel={`Set ${label} weight in ${unit} for ${exName}`}
-            testID={`weight-${slotN}-${i}`}
+            keyboardType="number-pad"
+            style={s.num}
+            accessibilityLabel={`Set ${label} ${secs ? 'seconds' : 'reps'} for ${exName}`}
+            testID={`reps-${slotN}-${i}`}
           />
-        )}
-        <NumBox
-          value={value.reps}
-          editable={!logged}
-          onChangeText={(t) => onChange({ ...value, reps: t.replace(/[^0-9]/g, '') })}
-          placeholder="—"
-          placeholderTextColor={color.subtle}
-          keyboardType="number-pad"
-          style={[s.input, warn?.reps && s.inputWarn]}
-          accessibilityLabel={`Set ${label} ${secs ? 'seconds' : 'reps'} for ${exName}`}
-          testID={`reps-${slotN}-${i}`}
-        />
+        </Stepper>
         <Press
           onPress={onLog}
           style={[s.check, logged && s.checkDone]}
@@ -682,6 +766,55 @@ function SetRow({
         </View>
       )}
     </View>
+  );
+}
+
+/**
+ * − [number] +. Tap − / + to step; press and hold to repeat quickly with a light haptic tick. The
+ * number in the middle can still be tapped to type.
+ */
+function Stepper({ onStep, disabled, name, testID, warn, children }: { onStep: (dir: 1 | -1) => void; disabled: boolean; name: string; testID: string; warn: boolean; children: React.ReactNode }) {
+  return (
+    <View style={[s.stepBox, warn && s.inputWarn, disabled && s.stepBoxDone]}>
+      {!disabled && <HoldButton dir={-1} onStep={onStep} label={`Less ${name}`} testID={`${testID}-minus`} />}
+      <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
+      {!disabled && <HoldButton dir={1} onStep={onStep} label={`More ${name}`} testID={`${testID}-plus`} />}
+    </View>
+  );
+}
+
+function HoldButton({ dir, onStep, label, testID }: { dir: 1 | -1; onStep: (dir: 1 | -1) => void; label: string; testID: string }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stop = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => stop, []);
+  const repeat = (delay: number) => {
+    timer.current = setTimeout(() => {
+      haptic.tap();
+      onStep(dir);
+      repeat(Math.max(60, delay * 0.85));
+    }, delay);
+  };
+  return (
+    <Pressable
+      onPressIn={() => {
+        haptic.tap();
+        onStep(dir);
+        stop();
+        // Held: after a short pause, repeat, getting a little faster.
+        timer.current = setTimeout(() => repeat(110), 380);
+      }}
+      onPressOut={stop}
+      style={({ pressed }) => [s.stepBtn, pressed && s.stepBtnOn]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      testID={testID}
+    >
+      <Icon name={dir > 0 ? 'plus' : 'minus'} size={16} color={color.text} />
+    </Pressable>
   );
 }
 
@@ -730,6 +863,10 @@ function NumBox({
         placeholder={value || placeholder}
         placeholderTextColor={placeholderTextColor}
         keyboardType={keyboardType}
+        // The phone's default (teal) cursor and handle looked like a stray "+": use the accent.
+        cursorColor={color.accent}
+        selectionColor={color.accentGlow}
+        selectionHandleColor={color.accent}
         style={style}
         accessibilityLabel={accessibilityLabel}
         testID={testID}
@@ -835,6 +972,27 @@ const s = themed(() =>
       color: color.text,
     },
     targetStrong: { fontFamily: font.bodyBlack, color: color.accentText },
+    headCell: { flex: 1, alignItems: 'center' },
+    lb: { flexDirection: 'row', borderRadius: radius.pill, backgroundColor: color.surface2, padding: 2, borderWidth: 1, borderColor: color.glassBorder },
+    lbItem: { minHeight: 28, minWidth: 40, paddingHorizontal: space.sm, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+    lbOn: { backgroundColor: color.accent },
+    lbText: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.muted, letterSpacing: 0.3 },
+    lbTextOn: { color: color.onAccent },
+    stepBox: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: touch.min,
+      borderRadius: radius.md,
+      backgroundColor: color.surface2,
+      borderWidth: 1,
+      borderColor: 'transparent',
+      overflow: 'hidden',
+    },
+    stepBoxDone: { justifyContent: 'center' },
+    stepBtn: { width: 34, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+    stepBtnOn: { backgroundColor: color.glassPressed },
+    num: { minHeight: touch.min, color: color.text, textAlign: 'center', fontFamily: font.display, fontSize: size.h3, paddingHorizontal: 0 },
     setsHead: {
       flexDirection: 'row',
       alignItems: 'center',

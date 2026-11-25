@@ -83,3 +83,21 @@ describe('editing and deleting a logged set', () => {
     expect(editSet(s, 'db_shoulder_press', { date: '2026-11-21', i: 0 }, null)).toBe(s);
   });
 });
+
+describe('tap-only − / + steps', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { stepOf } = require('../sets') as typeof import('../sets');
+  test('pin 1, reps 1, seconds 5', () => {
+    expect(stepOf('pin', 'kg', false, 7, 1)).toBe(1);
+    expect(stepOf('reps', 'kg', false, 10, -1)).toBe(1);
+    expect(stepOf('secs', 'kg', false, 30, 1)).toBe(5);
+  });
+  test('kg 2.5, but 1 for dumbbells under 10 kg; lb 5 / 2', () => {
+    expect(stepOf('weight', 'kg', false, 60, 1)).toBe(2.5);
+    expect(stepOf('weight', 'kg', true, 8, 1)).toBe(1);
+    expect(stepOf('weight', 'kg', true, 10, -1)).toBe(1);
+    expect(stepOf('weight', 'kg', true, 10, 1)).toBe(2.5);
+    expect(stepOf('weight', 'lb', false, 135, 1)).toBe(5);
+    expect(stepOf('weight', 'lb', true, 15, 1)).toBe(2);
+  });
+});

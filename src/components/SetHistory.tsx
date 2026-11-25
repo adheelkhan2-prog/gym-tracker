@@ -1,5 +1,6 @@
-// Every set you've logged for one exercise, newest session first, each one editable (weight, reps
-// or seconds) or deletable. Fixes typos like 222 kg for 22 kg after the fact.
+// Logged sets you can fix after the fact: each one editable (pin or weight, reps or seconds) or
+// deletable. SetLine is one set; SetHistory lists every session of one exercise (newest first); the
+// workout calendar uses SetLine for every exercise of one day.
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { EXERCISES } from '../data/exercises';
@@ -11,117 +12,124 @@ import { setText } from '../workout';
 import { Glass } from './glass';
 import { Button, IconButton } from './ui';
 
-type Ref = { date: string; i: number };
-
-export function SetHistory({ id }: { id: string }) {
+/** One logged set: "2  60 kg × 8", with edit and delete. `trophy` marks a PR set. */
+export function SetLine({ id, date, i, set, trophy }: { id: string; date: string; i: number; set: SetEntry; trophy?: boolean }) {
   const { state, update } = useStore();
   const ex = EXERCISES[id];
-  const kind = ex.kind;
+  const kind = ex?.kind ?? 'weight_reps';
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
   const secs = kind === 'time' || kind === 'weight_time';
+  const pin = set.load?.pin !== undefined && kgOf(set) === null;
   const unit = state.unit;
+  const [edit, setEdit] = useState<{ w: string; r: string } | null>(null);
+  const [del, setDel] = useState(false);
+  const label = `set ${i + 1} on ${formatDate(date)}`;
+
+  const save = () => {
+    if (!edit) return;
+    const r = num(edit.r);
+    const w = num(edit.w);
+    if (!r || r <= 0 || (weighted && (w === null || w < 0))) return;
+    const reps = String(Math.round(r));
+    const next: SetEntry = !weighted
+      ? { ...set, reps, done: true }
+      : pin
+        ? { weight: '', u: 'kg', reps, load: { t: 'stack', pin: Math.max(1, Math.round(w!)) }, done: true }
+        : { weight: String(w), u: unit, reps, done: true };
+    haptic.setDone();
+    update((s) => editSet(s, id, { date, i }, next));
+    setEdit(null);
+  };
+
+  if (edit)
+    return (
+      <View style={s.editRow}>
+        {weighted && (
+          <TextInput
+            value={edit.w}
+            onChangeText={(t) => setEdit((e) => e && { ...e, w: t.replace(pin ? /[^0-9]/g : /[^0-9.,]/g, '').replace(',', '.') })}
+            keyboardType={pin ? 'number-pad' : 'decimal-pad'}
+            style={s.input}
+            accessibilityLabel={pin ? 'Pin' : `Weight in ${unit}`}
+            cursorColor={color.accent}
+            autoFocus
+          />
+        )}
+        {weighted && <Text style={type.small}>{pin ? 'pin ×' : `${unit} ×`}</Text>}
+        <TextInput
+          value={edit.r}
+          onChangeText={(t) => setEdit((e) => e && { ...e, r: t.replace(/[^0-9]/g, '') })}
+          keyboardType="number-pad"
+          style={s.input}
+          accessibilityLabel={secs ? 'Seconds' : 'Reps'}
+          cursorColor={color.accent}
+          autoFocus={!weighted}
+        />
+        <Text style={type.small}>{secs ? 's' : 'reps'}</Text>
+        <View style={{ flex: 1 }} />
+        <Button size="sm" variant="ghost" label="Cancel" onPress={() => setEdit(null)} />
+        <Button size="sm" label="Save" onPress={save} testID={`set-save-${id}-${date}-${i}`} />
+      </View>
+    );
+  if (del)
+    return (
+      <View style={s.row}>
+        <Text style={[type.small, { flex: 1 }]}>
+          Delete set {i + 1} ({setText(set, kind, unit)})?
+        </Text>
+        <Button size="sm" variant="ghost" label="Keep" onPress={() => setDel(false)} />
+        <Button
+          size="sm"
+          variant="destructive"
+          label="Delete"
+          onPress={() => {
+            haptic.tap();
+            update((s2) => editSet(s2, id, { date, i }, null));
+            setDel(false);
+          }}
+          testID={`set-delete-yes-${id}-${date}-${i}`}
+        />
+      </View>
+    );
+  return (
+    <View style={s.row}>
+      <Text style={s.setNo}>{i + 1}</Text>
+      <Text style={[type.body, { flex: 1 }]} numberOfLines={1}>
+        {setText(set, kind, unit)}
+        {trophy ? '  🏆' : ''}
+      </Text>
+      <IconButton
+        icon="edit"
+        label={`Edit ${label}`}
+        onPress={() => {
+          // Shown in your unit (a set logged in the other unit is converted); a pin stays a pin.
+          const kg = kgOf(set);
+          const w = pin ? String(set.load!.pin) : kg === null ? '' : !set.u || set.u === unit ? set.weight : round1(fromKg(kg, unit));
+          setEdit({ w, r: set.reps });
+        }}
+      />
+      <IconButton icon="trash" label={`Delete ${label}`} onPress={() => setDel(true)} />
+    </View>
+  );
+}
+
+/** Every logged set of one exercise, newest session first. */
+export function SetHistory({ id }: { id: string }) {
+  const { state } = useStore();
   const [all, setAll] = useState(false);
-  const [editing, setEditing] = useState<(Ref & { w: string; r: string }) | null>(null);
-  const [deleting, setDeleting] = useState<Ref | null>(null);
   const dates = Object.keys(state.logs)
     .filter((d) => state.logs[d][id]?.sets.some((x) => x.done))
     .sort()
     .reverse();
   if (!dates.length) return null;
   const shown = all ? dates : dates.slice(0, 5);
-  const same = (a: Ref | null, d: string, i: number) => !!a && a.date === d && a.i === i;
-
-  const save = () => {
-    if (!editing) return;
-    const r = num(editing.r);
-    const w = num(editing.w);
-    if (!r || r <= 0 || (weighted && (w === null || w < 0))) return;
-    const prev = state.logs[editing.date][id].sets[editing.i];
-    const next: SetEntry = weighted
-      ? { weight: String(w), u: unit, reps: String(Math.round(r)), done: true }
-      : { ...prev, reps: String(Math.round(r)), done: true };
-    haptic.setDone();
-    update((s) => editSet(s, id, editing, next));
-    setEditing(null);
-  };
-
   return (
     <Glass r={radius.xl} style={s.card} testID="set-history">
       <Text style={type.label}>Your sets</Text>
       {shown.map((d) => (
         <View key={d} style={s.day}>
           <Text style={s.date}>{formatDate(d)}</Text>
-          {state.logs[d][id].sets.map((st, i) =>
-            !st.done ? null : same(editing, d, i) ? (
-              <View key={i} style={s.editRow}>
-                {weighted && (
-                  <TextInput
-                    value={editing!.w}
-                    onChangeText={(t) => setEditing((e) => e && { ...e, w: t.replace(/[^0-9.,]/g, '').replace(',', '.') })}
-                    keyboardType="decimal-pad"
-                    style={s.input}
-                    accessibilityLabel={`Weight in ${unit}`}
-                    autoFocus
-                  />
-                )}
-                {weighted && <Text style={type.small}>{unit} ×</Text>}
-                <TextInput
-                  value={editing!.r}
-                  onChangeText={(t) => setEditing((e) => e && { ...e, r: t.replace(/[^0-9]/g, '') })}
-                  keyboardType="number-pad"
-                  style={s.input}
-                  accessibilityLabel={secs ? 'Seconds' : 'Reps'}
-                  autoFocus={!weighted}
-                />
-                <Text style={type.small}>{secs ? 's' : 'reps'}</Text>
-                <View style={{ flex: 1 }} />
-                <Button size="sm" variant="ghost" label="Cancel" onPress={() => setEditing(null)} />
-                <Button size="sm" label="Save" onPress={save} testID={`set-save-${d}-${i}`} />
-              </View>
-            ) : same(deleting, d, i) ? (
-              <View key={i} style={s.row}>
-                <Text style={[type.small, { flex: 1 }]}>Delete set {i + 1} ({setText(st, kind, unit)})?</Text>
-                <Button size="sm" variant="ghost" label="Keep" onPress={() => setDeleting(null)} />
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  label="Delete"
-                  onPress={() => {
-                    haptic.tap();
-                    update((s2) => editSet(s2, id, { date: d, i }, null));
-                    setDeleting(null);
-                  }}
-                  testID={`set-delete-yes-${d}-${i}`}
-                />
-              </View>
-            ) : (
-              <View key={i} style={s.row}>
-                <Text style={s.setNo}>{i + 1}</Text>
-                <Text style={[type.body, { flex: 1 }]} numberOfLines={1}>
-                  {setText(st, kind, unit)}
-                </Text>
-                <IconButton
-                  icon="edit"
-                  label={`Edit set ${i + 1} on ${formatDate(d)}`}
-                  onPress={() => {
-                    setDeleting(null);
-                    // Shown in your unit (a set logged in the other unit is converted).
-                    const kg = kgOf(st);
-                    const inUnit = kg === null ? '' : !st.u || st.u === unit ? st.weight : round1(fromKg(kg, unit));
-                    setEditing({ date: d, i, w: inUnit, r: st.reps });
-                  }}
-                />
-                <IconButton
-                  icon="trash"
-                  label={`Delete set ${i + 1} on ${formatDate(d)}`}
-                  onPress={() => {
-                    setEditing(null);
-                    setDeleting({ date: d, i });
-                  }}
-                />
-              </View>
-            ),
-          )}
+          {state.logs[d][id].sets.map((st, i) => (st.done ? <SetLine key={i} id={id} date={d} i={i} set={st} /> : null))}
         </View>
       ))}
       {dates.length > 5 && <Button variant="ghost" size="sm" label={all ? 'Show fewer' : `Show all ${dates.length} sessions`} onPress={() => setAll((v) => !v)} />}

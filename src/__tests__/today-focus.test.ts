@@ -68,13 +68,14 @@ describe('focus mode: one-tap prefill', () => {
     expect(r).toMatchObject({ reason: 'today', set: { weight: '65', reps: '9' } });
   });
 
-  test('machine pins are gone: after old pin-only sets the weight starts empty (kg only), reps carry over', () => {
+  test('machine pin: same pin, or one pin up after topping the range', () => {
     const p = { slot: 'tue-1', options: ['lat_pulldown'], sets: 3, target: '10-12' };
-    const pinLog = { '2026-11-17': { lat_pulldown: { sets: ['12', '11', '10'].map((r) => ({ weight: '', reps: r, done: true, u: 'kg' as const, load: { t: 'stack' as const, pin: 6 } })) } } };
-    const r = suggestSet({ ...base, loadTypes: { lat_pulldown: 'stack' as const }, logs: pinLog }, 'lat_pulldown', p, D, 0).set;
-    expect(r.load).toBeUndefined();
-    expect(r.weight).toBe('');
-    expect(r.reps).toBe('12');
+    const pinLog = (reps: string[]) => ({ '2026-11-17': { lat_pulldown: { sets: reps.map((r) => ({ weight: '', reps: r, done: true, u: 'kg' as const, load: { t: 'stack' as const, pin: 6 } })) } } });
+    const st = { ...base, loadTypes: { lat_pulldown: 'stack' as const } };
+    expect(suggestSet({ ...st, logs: pinLog(['12', '11', '10']) }, 'lat_pulldown', p, D, 0).set.load).toEqual({ t: 'stack', pin: 6 });
+    expect(suggestSet({ ...st, logs: pinLog(['12', '12', '12']) }, 'lat_pulldown', p, D, 0).set.load).toEqual({ t: 'stack', pin: 7 });
+    // With kg per plate set up, the pin also carries its kg.
+    expect(suggestSet({ ...st, machines: { lat_pulldown: { perPlate: 7 } }, logs: pinLog(['12', '11', '10']) }, 'lat_pulldown', p, D, 0).set.weight).toBe('42');
   });
 
   test('helpers', () => {

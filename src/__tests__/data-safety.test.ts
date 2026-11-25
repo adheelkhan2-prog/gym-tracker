@@ -143,14 +143,14 @@ describe('update keeps saved data', () => {
     expect(finishedOn(s, '2026-11-20')).toBe(true);
   });
 
-  test('round-7 update: old "skipped" flags no longer count a day as trained; machine-pin load types go back to kg', () => {
+  test('round-7 update: old "skipped" flags no longer count a day as trained; machine-pin choices are kept', () => {
     const saved = richState();
     saved.logs['2026-11-21'] = { flat_bench: { sets: [], skipped: true } };
     const s = migrate(JSON.parse(JSON.stringify({ ...saved, loadTypes: { lat_pulldown: 'stack', flat_bench: 'weight' } })), false);
     expect(trainingStreak(s, '2026-11-21')).toBe(3);
     expect(s.logs['2026-11-21'].flat_bench.skipped).toBeUndefined();
-    expect(s.loadTypes).toEqual({ flat_bench: 'weight' });
-    // The old pin sets themselves stay as they were.
+    expect(s.loadTypes).toEqual({ lat_pulldown: 'stack', flat_bench: 'weight' });
+    // The pin sets themselves stay as they were.
     expect(s.logs['2026-11-18'].lat_pulldown).toEqual(saved.logs['2026-11-18'].lat_pulldown);
   });
 

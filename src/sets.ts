@@ -113,3 +113,13 @@ export function readyToLog(set: SetEntry, exerciseId: string) {
 /** Done sets for an exercise today. */
 export const doneToday = (state: State, exerciseId: string, date: string) =>
   doneSets(state.logs[date]?.[exerciseId], EXERCISES[exerciseId].kind).length;
+
+/** − / + step: pin 1; kg 2.5 (1 for dumbbells under 10 kg); lb 5 (2 under 22 lb); reps 1; seconds 5. */
+export function stepOf(what: 'pin' | 'weight' | 'reps' | 'secs', unit: Unit, dumbbell: boolean, v: number, dir: 1 | -1) {
+  if (what === 'pin' || what === 'reps') return 1;
+  if (what === 'secs') return 5;
+  const light = unit === 'kg' ? 10 : 22;
+  const small = dumbbell && (v < light || (dir < 0 && v <= light));
+  return unit === 'kg' ? (small ? 1 : 2.5) : small ? 2 : 5;
+}
+
