@@ -1,3 +1,3 @@
-r7-1
+r7-2
 quick
-nav start log scroll page swap finish
+log calendar page
