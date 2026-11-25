@@ -16,7 +16,7 @@ import { useStore, type OwnVideo } from '../store';
 import { color, font, radius, size, space, themed, type } from '../theme';
 import { Icon } from './icons';
 import { LoopVideo } from './LoopVideo';
-import { VideoSheetScope } from './videoPool';
+import { VideoSheetScope } from './videoPoolCore';
 import { Sheet } from './Sheet';
 import { Button, Press } from './ui';
 

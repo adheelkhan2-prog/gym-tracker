@@ -1,5 +1,5 @@
 /** The workout's video players: only the current video and the next one, nothing else kept. */
-import { plan } from '../components/videoPool';
+import { plan } from '../components/videoPoolCore';
 import { EXERCISE_VIDEO } from '../data/exercise-video';
 import { howToImages } from '../data/how-to';
 

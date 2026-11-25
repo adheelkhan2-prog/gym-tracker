@@ -4,7 +4,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { logCrash } from '../crash';
 import { perfMark } from '../perf';
-import { LOCAL_BUFFER, VideoHoldContext, VideoPoolContext, type VideoPool } from './videoPool';
+import { LOCAL_BUFFER, VideoHoldContext, VideoPoolContext, type VideoPool } from './videoPoolCore';
 
 /** Players that have drawn a frame into some view (a new view on one may not report a first frame). */
 const drawn = new WeakSet<object>();

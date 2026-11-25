@@ -1,7 +1,7 @@
 import { createVideoPlayer, type VideoPlayer, type VideoSource } from 'expo-video';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { logCrash } from '../crash';
-import { LOCAL_BUFFER, plan, sameSource, type HeldPlayers, type Src } from './videoPool';
+import { LOCAL_BUFFER, plan, sameSource, type HeldPlayers, type Src } from './videoPoolCore';
 
 type Held = { src: Src; player: VideoPlayer };
 
