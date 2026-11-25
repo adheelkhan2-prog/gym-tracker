@@ -4,7 +4,23 @@
  * without kg per plate), bodyweight reps, timed holds, unfinished sets and an exercise this version
  * doesn't know.
  */
-import { DEFAULT_STATE, allHistories, doneSets, exerciseHistory, kgOf, kindOf, prMetric, prSetsOn, type SetEntry, type State } from '../store';
+import {
+  DEFAULT_STATE,
+  allHistories,
+  doneSets,
+  est1RM,
+  exerciseHistory,
+  kgOf,
+  kindOf,
+  num,
+  prMetric,
+  prSetsOn,
+  setKg,
+  type HistoryPoint,
+  type SetEntry,
+  type State,
+} from '../store';
+import type { MachineSetup } from '../load';
 import { dayPRs } from '../calendar';
 import { bestIn, bestScoreBefore, stalledLifts, weeklyPRs } from '../weekly';
 
@@ -88,7 +104,11 @@ describe('one-pass history indexes match the old full scans', () => {
     });
     test(`lift histories (history ${run + 1})`, () => {
       const all = allHistories(state.logs, IDS, state.machines);
-      for (const id of IDS) expect(all[id]).toEqual(exerciseHistory(state.logs, id, state.machines[id]));
+      for (const id of IDS) {
+        const old = oldExerciseHistory(state.logs, id, state.machines[id]);
+        expect(all[id]).toEqual(old);
+        expect(exerciseHistory(state.logs, id, state.machines[id])).toEqual(old);
+      }
     });
     test(`best before a date and the weekly views (history ${run + 1})`, () => {
       for (const id of IDS)
@@ -109,3 +129,34 @@ describe('one-pass history indexes match the old full scans', () => {
     expect(prSetsOn(state.logs, d)).toEqual(before);
   });
 });
+
+/** The old per-exercise history scan (before the one-pass index), kept here to compare against. */
+function oldExerciseHistory(logs: State['logs'], exerciseId: string, machine?: MachineSetup): HistoryPoint[] {
+  const kind = kindOf(exerciseId);
+  const kgFor = (s: SetEntry) => setKg(s, machine);
+  const metric = (s: SetEntry) => (kind === 'weight_reps' || kind === 'weight_time' ? (kgFor(s) ?? 0) : num(s.reps)!);
+  return Object.keys(logs)
+    .sort()
+    .flatMap((date) => {
+      const sets = doneSets(logs[date][exerciseId], kind);
+      if (!sets.length) return [];
+      let top = sets[0];
+      let e1rm = 0;
+      let volume = 0;
+      let seconds = 0;
+      let pin = 0;
+      for (const s of sets) {
+        const w = kgFor(s) ?? 0;
+        const r = num(s.reps)!;
+        if (kind === 'weight_time' || kind === 'time') seconds += r;
+        else volume += kind === 'reps' ? r : w * r;
+        const better = metric(s) > metric(top) || (metric(s) === metric(top) && r > num(top.reps)!);
+        if (better) top = s;
+        if (kind === 'weight_reps') e1rm = Math.max(e1rm, est1RM(w, r));
+        if (s.load?.pin !== undefined && kgFor(s) === null) pin = Math.max(pin, s.load.pin);
+      }
+      const point: HistoryPoint = { date, top: metric(top), topReps: num(top.reps)!, e1rm, volume, seconds };
+      if (point.top === 0 && pin > 0) point.pin = pin;
+      return [point];
+    });
+}

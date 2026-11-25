@@ -17,6 +17,7 @@ class Players {
     return () => void this.listeners.delete(l);
   };
   snapshot = () => this.snap;
+  holds = (player: VideoPlayer) => this.held.some((h) => h.player === player);
   private emit() {
     this.snap = [...this.held];
     this.listeners.forEach((l) => l());
@@ -24,24 +25,33 @@ class Players {
   private make(src: Src) {
     // A player that can't be made (e.g. no free decoder on the phone) is simply not pooled: that
     // page's video then gets its own player, or its still shows. Never fatal.
+    let player: VideoPlayer | null = null;
     try {
-      const player = createVideoPlayer(src as VideoSource);
+      player = createVideoPlayer(src as VideoSource);
+      const made = player;
       player.loop = true;
       player.muted = true;
       player.bufferOptions = LOCAL_BUFFER;
       // Most load / decoder failures come later, as an error status: that video then leaves the pool
       // too (its page shows its still, or its own player), and its player is released off screen.
       player.addListener('statusChange', ({ status }) => {
-        if (status !== 'error' || !this.held.some((h) => h.player === player)) return;
+        if (status !== 'error' || !this.held.some((h) => h.player === made)) return;
         this.failed.push(src);
-        this.held = this.held.filter((h) => h.player !== player);
+        this.held = this.held.filter((h) => h.player !== made);
         // Freed a moment later, once its page has moved off it (or at the next page change, or on leaving).
-        this.retired.push(player);
+        this.retired.push(made);
         this.emit();
         setTimeout(() => this.freeRetired(), 1000);
       });
       this.held.push({ src, player });
     } catch (e) {
+      // Made but not set up: it's never handed out, so free it now.
+      if (player && !this.held.some((h) => h.player === player))
+        try {
+          player.release();
+        } catch {
+          // Already gone.
+        }
       this.failed.push(src);
       logCrash('error', e, 'video player could not be made');
     }
@@ -143,7 +153,12 @@ export function VideoPoolHost({ current, next, onPool }: { current: Src; next: S
   const value: HeldPlayers = useMemo(
     () => ({
       failed: (src) => players.failed.some((f) => sameSource(f, src)),
-      playerFor: (src) => held.find((h) => sameSource(h.src, src))?.player ?? null,
+      // Checked live too: a player released a moment ago (before this snapshot reached the page) is
+      // never handed out.
+      playerFor: (src) => {
+        const p = held.find((h) => sameSource(h.src, src))?.player;
+        return p && players.holds(p) ? p : null;
+      },
     }),
     [held, players],
   );
