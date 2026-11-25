@@ -77,7 +77,7 @@ describe('old barbell-plate and colour-plate sets become plain kg', () => {
     expect(s.logs['2026-11-09'].flat_bench.sets[0]).toEqual({ weight: '80', reps: '5', done: true, u: 'kg' });
     expect(prCountsByDate(s.logs)).toEqual(before);
     expect(exerciseHistory(s.logs, 'flat_bench').map((p) => p.top)).toEqual([60, 80]);
-    expect(s.loadTypes).toEqual({ lat_pulldown: 'stack' });
+    expect(s.loadTypes).toEqual({});
     expect('gym' in s).toBe(false);
   });
 });
@@ -133,8 +133,11 @@ describe('PRs, charts and volume use the right numbers', () => {
 });
 
 describe('load type choices', () => {
-  test('each kind of equipment offers the right load types', () => {
-    expect(loadTypesFor('lat_pulldown')).toEqual(['stack', 'weight']);
+  test('each kind of exercise logs the right thing: kg for every lift (no machine pins), reps, or seconds', () => {
+    expect(loadTypesFor('lat_pulldown')).toEqual(['weight']);
+    expect(loadTypesFor('seated_cable_row')).toEqual(['weight']);
+    expect(loadTypesFor('plank')).toEqual(['timed']);
+    expect(loadTypesFor('farmers_walk')).toEqual(['weight']);
     expect(loadTypesFor('flat_bench')).toEqual(['weight']);
     expect(loadTypesFor('ez_curl')).toEqual(['weight']);
     expect(loadTypesFor('lateral_raise')).toEqual(['weight']);
@@ -144,6 +147,7 @@ describe('load type choices', () => {
   test("a saved load type that doesn't fit the exercise falls back to the default", () => {
     expect(loadTypeOf('lateral_raise', { lateral_raise: 'stack' })).toBe('weight');
     expect(loadTypeOf('lat_pulldown', { lat_pulldown: 'weight' })).toBe('weight');
+    expect(loadTypeOf('lat_pulldown', { lat_pulldown: 'stack' })).toBe('weight');
   });
 });
 

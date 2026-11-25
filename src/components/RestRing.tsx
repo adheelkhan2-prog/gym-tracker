@@ -36,6 +36,8 @@ type Props = {
   onDone: () => void;
   /** Start as the slim bar (a rest carried over from the previous exercise). */
   startMini?: boolean;
+  /** Extra space under the slim bar (e.g. above the workout's Previous / Next buttons). */
+  above?: number;
 };
 
 /**
@@ -51,7 +53,7 @@ const SOUND = require('../../assets/sounds/rest-done.wav');
 const audio = safeRequire('expo-audio', () => require('expo-audio') as typeof import('expo-audio'));
 const useRestSound: () => Sound = audio ? () => audio.useAudioPlayer(SOUND) as unknown as Sound : () => null;
 
-export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, onAdd, onSkip, onDone, startMini = false }: Props) {
+export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, onAdd, onSkip, onDone, startMini = false, above = 0 }: Props) {
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -116,7 +118,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
 
   if (mini) {
     return (
-      <Animated.View entering={reduce ? undefined : FadeIn.duration(160)} style={[s.bar, { bottom: insets.bottom + space.md }]}>
+      <Animated.View entering={reduce ? undefined : FadeIn.duration(160)} style={[s.bar, { bottom: insets.bottom + space.md + above }]}>
         <Press onPress={() => setMini(false)} style={s.barMain} accessibilityRole="button" accessibilityLabel={`Rest, ${left} seconds left. Open timer`} glow={tint}>
           <Svg width={56} height={56} viewBox="0 0 56 56">
             <Circle cx={28} cy={28} r={RM} stroke={color.surface3} strokeWidth={3} fill="none" />

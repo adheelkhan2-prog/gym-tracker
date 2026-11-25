@@ -245,3 +245,19 @@ export function chartValue(b: Best, kind: LogKind, unit: Unit) {
   if (b.pin !== undefined || b.kg === null) return b.pin ?? 0;
   return Math.round(fromKg(kind === 'weight_reps' ? est1RM(b.kg, b.reps) : b.kg, unit) * 10) / 10;
 }
+
+/**
+ * A weight that's far above what you usually lift on this exercise: more than 1.5× (and 20 kg over)
+ * your heaviest logged set, or, the first time, more than any sane amount for the equipment. Used to
+ * ask "is that right?" before logging (a slipped digit turned 22 kg into 222 kg).
+ */
+export function bigJump(state: State, exerciseId: string, kg: number): boolean {
+  if (!(kg > 0)) return false;
+  const kind = kindOf(exerciseId);
+  const machine = state.machines[exerciseId];
+  let heaviest = 0;
+  for (const day of Object.values(state.logs)) for (const s of doneSets(day[exerciseId], kind)) heaviest = Math.max(heaviest, setKg(s, machine) ?? 0);
+  if (heaviest > 0) return kg > Math.max(heaviest * 1.5, heaviest + 20);
+  const eq = EXERCISES[exerciseId]?.equipment;
+  return kg > (eq === 'dumbbell' ? 80 : 250);
+}

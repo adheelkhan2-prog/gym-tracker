@@ -9,7 +9,6 @@ import { tipsFor } from '../data/tips';
 import { useStore, type OwnVideo } from '../store';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
-import { round1, type MachineSetup } from '../load';
 import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
@@ -289,49 +288,6 @@ export function NumberField({
   );
 }
 
-export function MachineSheet({
-  name,
-  setup,
-  onSave,
-  onClose,
-}: {
-  name: string;
-  setup: MachineSetup;
-  onSave: (m: MachineSetup) => void;
-  onClose: () => void;
-}) {
-  const [m, setM] = useState<MachineSetup>(setup);
-  const preview = m.perPlate ? (m.start ?? m.perPlate) + 6 * m.perPlate : null;
-  return (
-    <Sheet
-      title="Machine settings"
-      subtitle={`${name}. Saved for this exercise only.`}
-      onClose={onClose}
-      testID="machine-sheet"
-      footer={<View style={{ marginTop: space.sm }}><Button label="Save" icon="check" onPress={() => onSave(m)} /></View>}
-    >
-      <View style={{ gap: space.lg }}>
-        <View style={s.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.h3}>kg per plate</Text>
-            <Text style={type.small}>Printed on the stack. Leave empty to log pins only.</Text>
-          </View>
-          <NumberField value={m.perPlate} onChange={(n) => setM((v) => ({ ...v, perPlate: n }))} label="Kilograms per stack plate" placeholder="7" />
-        </View>
-        <View style={s.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.h3}>Pin 1 weight</Text>
-            <Text style={type.small}>The top plate’s weight, if different.</Text>
-          </View>
-          <NumberField value={m.start} onChange={(n) => setM((v) => ({ ...v, start: n }))} label="Starting weight in kg" placeholder={m.perPlate ? String(m.perPlate) : '7'} />
-        </View>
-        {preview !== null && <Text style={type.small}>Example: pin 7 ≈ {round1(preview)} kg</Text>}
-      </View>
-    </Sheet>
-  );
-}
-
-/** Muscle legend for the Muscles tab. */
 export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
   return (
     <View style={s.legend}>

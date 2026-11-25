@@ -1,27 +1,30 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
-import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ExerciseMedia, HowToSteps, MachineSheet, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
+import { ExerciseMedia, HowToSteps, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
 import { OwnVideoButtons } from '../components/ImportVideo';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
 import { Burst, Flash } from '../components/motion';
 import { RestTimer } from '../components/RestRing';
-import { Badge, Button, Chip, IconButton, Press } from '../components/ui';
+import { Sheet } from '../components/Sheet';
+import { Badge, Button, IconButton, Press } from '../components/ui';
 import { crumb, logCrash } from '../crash';
 import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
 import { pickOption, restFor } from '../data/program';
 import { swapsFor } from '../data/swaps';
 import { haptic } from '../feedback';
-import { fmtKg, fromKg, loadTypeOf, loadTypesFor, round1, weightFromLoad } from '../load';
+import { fmtKg, fromKg, round1 } from '../load';
 import { restCarry } from '../restCarry';
 import { missingFor, suggestSet, weightIn } from '../sets';
-import { bestBefore, dayById, prMetric, todayKey, useStore, type SetEntry, type State } from '../store';
+import { bestBefore, dayById, hasLoggedSets, kgOf, prMetric, todayKey, useStore, type SetEntry, type State } from '../store';
 import { color, fmtClock, font, motion, radius, size, space, themed, touch, type } from '../theme';
 import { setText, slotStatuses, swapSlot, titleOf, type SlotStatus } from '../workout';
-import { weeklyTarget } from '../weekly';
+import { bigJump, weeklyTarget } from '../weekly';
 
 type Missing = {
   slot: string;
@@ -32,10 +35,12 @@ type Missing = {
 };
 
 /**
- * The workout: every exercise of the day in one scrolling list. Each card shows the video (or the
- * images), this week's progressive-overload target, the set rows (pre-filled from last time, one tap
- * to log) and the how-to notes, collapsible, under it. Rest timer, swap, PR moment and Log-set
- * validation work as before. The session is saved before the finish screen opens.
+ * The workout, one exercise per page: its video (or images), this week's target, the set rows
+ * (pre-filled, one tap to log) and the how-to notes, collapsible, underneath. "Next exercise" at the
+ * bottom (crimson once every set is logged) and "Previous"; swiping left/right does the same. The
+ * bar at the top ("Exercise 2 of 7") opens the full list to jump around. The last page has "Finish
+ * workout". Rest timer, swap, PR moment and Log-set validation work on every page. The session is
+ * saved before the finish screen opens, and only when sets were logged.
  */
 export default function WorkoutScreen() {
   const params = useLocalSearchParams<{ day?: string }>();
@@ -48,24 +53,60 @@ export default function WorkoutScreen() {
   const statuses = day ? slotStatuses(state, day, date) : [];
   const total = statuses.reduce((a, x) => a + x.plan.sets, 0);
   const done = statuses.reduce((a, x) => a + Math.min(x.done, x.plan.sets), 0);
-  const allDone = statuses.length > 0 && statuses.every((x) => x.complete);
 
+  // Open on the first exercise that still has sets to do.
+  const [page, setPage] = useState(() => Math.max(0, statuses.findIndex((x) => !x.complete)));
+  const [dir, setDir] = useState<1 | -1>(1);
+  const [listOpen, setListOpen] = useState(false);
+  // Typed-but-not-logged values per exercise survive moving between pages.
+  const [drafts, setDrafts] = useState<Record<string, Record<number, SetEntry>>>({});
   const [restEnd, setRestEnd] = useState<number | null>(() => (restCarry.endsAt && restCarry.endsAt > Date.now() ? restCarry.endsAt : null));
-  const [playing, setPlaying] = useState(0);
-  const [viewH, setViewH] = useState(600);
-  const cardY = useRef<({ y: number; h: number } | undefined)[]>([]);
   const [restTotal, setRestTotal] = useState(restCarry.total);
   const [restNext, setRestNext] = useState('');
   const [pr, setPr] = useState<string | null>(null);
   const [flash, setFlash] = useState(0);
   const [swapFor, setSwapFor] = useState<SlotStatus | null>(null);
+  const [navH, setNavH] = useState(88);
   const finishing = useRef(false);
   useEffect(() => {
     restCarry.endsAt = restEnd;
     restCarry.total = restTotal;
   }, [restEnd, restTotal]);
 
-  if (!day) {
+  const count = statuses.length;
+  const at = Math.min(page, Math.max(0, count - 1));
+  const goTo = (i: number) => {
+    if (i < 0 || i >= count || i === at) return;
+    haptic.tap();
+    setDir(i > at ? 1 : -1);
+    setPage(i);
+  };
+
+  // Swipe left / right between exercises. Only a clearly sideways drag counts: anything vertical
+  // fails this gesture at once, so the page scrolls even when the swipe starts on a set box.
+  const dragX = useSharedValue(0);
+  const swipeTo = (d: number) => goTo(at + d);
+  const pan = usePanGesture({
+    activeOffsetX: [-24, 24],
+    failOffsetY: [-12, 12],
+    onUpdate: (e) => {
+      'worklet';
+      dragX.set(e.translationX * 0.35);
+    },
+    onDeactivate: (e) => {
+      'worklet';
+      dragX.set(withSpring(0, motion.spring));
+      const go = e.translationX < -70 || e.velocityX < -700 ? 1 : e.translationX > 70 || e.velocityX > 700 ? -1 : 0;
+      if (go) scheduleOnRN(swipeTo, go);
+    },
+    onFinalize: () => {
+      'worklet';
+      dragX.set(withSpring(0, motion.spring));
+    },
+  });
+  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }] }));
+
+  if (!day || !count) {
     return (
       <Backdrop>
         <View style={[s.empty, { paddingTop: insets.top + space.x4 }]}>
@@ -76,7 +117,7 @@ export default function WorkoutScreen() {
     );
   }
 
-  /** A set was logged on a card: rest, PR moment. */
+  /** A set was logged on a page: rest, PR moment. */
   const onLogged = (info: { pr: string | null; rest: number; next: string; dayDone: boolean }) => {
     if (info.pr) {
       haptic.thump();
@@ -95,14 +136,20 @@ export default function WorkoutScreen() {
   };
 
   // Save the finished session to disk first; only then open the celebration, so a crash there can
-  // never lose the workout. Guarded against double taps.
+  // never lose the workout. With no set logged there is nothing to finish: it just closes (a day
+  // is never marked Done with 0 sets). Guarded against double taps.
   const finish = async () => {
     if (finishing.current) return;
+    if (!hasLoggedSets(state.logs, date)) {
+      crumb('close workout: no sets logged');
+      router.back();
+      return;
+    }
     finishing.current = true;
     haptic.pr();
     crumb('finish workout');
     // eslint-disable-next-line react-hooks/purity -- runs in the tap handler, not during render
-    const at = Date.now();
+    const atMs = Date.now();
     await commit((st) => ({
       ...st,
       sessions: {
@@ -110,13 +157,18 @@ export default function WorkoutScreen() {
         [date]: {
           ...st.sessions[date],
           dayId: st.sessions[date]?.dayId ?? day.id,
-          finishedAt: at,
+          finishedAt: atMs,
         },
       },
     })).catch((e) => logCrash('error', e, 'saving finished workout'));
     setRestEnd(null);
     router.replace({ pathname: '/complete', params: { date } });
   };
+
+  const st = statuses[at];
+  const last = at === count - 1;
+  const draftKey = `${st.plan.slot}-${st.exerciseId}`;
+  const anyLogged = done > 0;
 
   return (
     <Backdrop>
@@ -131,61 +183,61 @@ export default function WorkoutScreen() {
           </Text>
         </View>
       </View>
-      <View style={s.track}>
-        <View style={[s.trackFill, { width: `${total ? (done / total) * 100 : 0}%` }]} />
-      </View>
+      {/* Exercise k of n: tap to see the whole list and jump. */}
+      <Press onPress={() => setListOpen(true)} style={s.stepper} accessibilityRole="button" accessibilityLabel={`Exercise ${at + 1} of ${count}. Open the exercise list`} testID="exercise-list" scaleTo={1}>
+        <View style={s.stepRow}>
+          <Text style={s.stepText}>
+            Exercise {at + 1} of {count}
+          </Text>
+          <Icon name="chevronDown" size={14} color={color.muted} />
+        </View>
+        <View style={s.segs}>
+          {statuses.map((x, i) => (
+            <View key={x.plan.slot} style={[s.seg, x.complete && s.segDone, i === at && s.segOn]} />
+          ))}
+        </View>
+      </Press>
 
-      <ScrollView
-        contentContainerStyle={{
-          padding: space.lg,
-          paddingBottom: insets.bottom + (restEnd ? 200 : 120),
-          gap: space.lg,
-        }}
-        keyboardShouldPersistTaps="handled"
-        scrollEventThrottle={100}
-        onLayout={(e) => setViewH(e.nativeEvent.layout.height)}
-        onScroll={(e) => {
-          // Only the card in the middle of the screen plays its video.
-          const mid = e.nativeEvent.contentOffset.y + viewH / 2;
-          const i = cardY.current.findIndex((c) => c && mid >= c.y && mid < c.y + c.h);
-          if (i >= 0 && i !== playing) setPlaying(i);
-        }}
-      >
-        {statuses.map((st, k) => (
-          <View
-            key={`${st.plan.slot}-${st.exerciseId}`}
-            onLayout={(e) =>
-              (cardY.current[k] = {
-                y: e.nativeEvent.layout.y,
-                h: e.nativeEvent.layout.height,
-              })
-            }
-          >
-            <ExerciseCard
-              // Keyed by the exercise too: a swap starts the card fresh (no typed values carried over).
-              key={`${st.plan.slot}-${st.exerciseId}`}
-              n={k}
-              st={st}
-              state={state}
-              date={date}
-              dayId={day.id}
-              statuses={statuses}
-              update={update}
-              onLogged={onLogged}
-              onSwap={() => setSwapFor(st)}
-              active={k === playing}
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[{ flex: 1 }, dragStyle]}>
+          <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: navH + (restEnd ? 96 : space.lg) }} keyboardShouldPersistTaps="handled">
+              <ExerciseCard
+                n={at}
+                st={st}
+                state={state}
+                date={date}
+                dayId={day.id}
+                statuses={statuses}
+                update={update}
+                onLogged={onLogged}
+                onSwap={() => setSwapFor(st)}
+                drafts={drafts[draftKey] ?? {}}
+                setDrafts={(fn) => setDrafts((d) => ({ ...d, [draftKey]: fn(d[draftKey] ?? {}) }))}
+              />
+            </ScrollView>
+          </Animated.View>
+        </Animated.View>
+      </GestureDetector>
+
+      {/* Previous / Next (Finish on the last page), in thumb reach. */}
+      <View style={[s.nav, { paddingBottom: insets.bottom + space.md }]} onLayout={(e) => setNavH(e.nativeEvent.layout.height)}>
+        <Button variant="ghost" icon="back" label="Previous" disabled={at === 0} onPress={() => goTo(at - 1)} testID="prev-exercise" />
+        <View style={{ flex: 1 }}>
+          {last ? (
+            <Button
+              size="lg"
+              variant={statuses.every((x) => x.complete) ? 'solid' : 'default'}
+              label={anyLogged ? 'Finish workout' : 'Close workout'}
+              iconRight="flag"
+              onPress={finish}
+              testID="finish-workout"
             />
-          </View>
-        ))}
-        <Button
-          size="lg"
-          variant={allDone ? 'solid' : 'outline'}
-          label={allDone ? 'Finish workout' : `Finish workout · ${done} of ${total} sets`}
-          iconRight="flag"
-          onPress={finish}
-          testID="finish-workout"
-        />
-      </ScrollView>
+          ) : (
+            <Button size="lg" variant={st.complete ? 'solid' : 'default'} label="Next exercise" iconRight="arrowRight" onPress={() => goTo(at + 1)} testID="next-exercise" />
+          )}
+        </View>
+      </View>
 
       {restEnd && (
         <RestTimer
@@ -195,6 +247,7 @@ export default function WorkoutScreen() {
           nextLabel={restNext || 'Next set'}
           skipLabel="Skip"
           sound={state.restSound}
+          above={navH - insets.bottom}
           onAdd={() => {
             setRestEnd((e) => (e ?? Date.now()) + 15000);
             setRestTotal((t) => t + 15);
@@ -217,6 +270,37 @@ export default function WorkoutScreen() {
             New PR · {pr}
           </Text>
         </Animated.View>
+      )}
+
+      {listOpen && (
+        <Sheet title="Exercises" subtitle={`${done} of ${total} sets done`} onClose={() => setListOpen(false)} testID="exercise-list-sheet">
+          <View style={{ gap: space.xs }}>
+            {statuses.map((x, i) => (
+              <Press
+                key={x.plan.slot}
+                onPress={() => {
+                  setListOpen(false);
+                  goTo(i);
+                }}
+                style={[s.listRow, i === at && s.listRowOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: i === at }}
+                accessibilityLabel={`${EXERCISES[x.exerciseId].name}, ${Math.min(x.done, x.plan.sets)} of ${x.plan.sets} sets`}
+                testID={`jump-${i}`}
+              >
+                <View style={[s.listState, x.complete && s.listStateDone]}>
+                  {x.complete ? <Icon name="check" size={14} color={color.onAccent} /> : <Text style={s.listIdx}>{i + 1}</Text>}
+                </View>
+                <Text style={[type.h3, { flex: 1 }]} numberOfLines={1}>
+                  {EXERCISES[x.exerciseId].name}
+                </Text>
+                <Text style={s.listCount}>
+                  {Math.min(x.done, x.plan.sets)}/{x.plan.sets}
+                </Text>
+              </Press>
+            ))}
+          </View>
+        </Sheet>
       )}
 
       {swapFor && (
@@ -258,7 +342,8 @@ function ExerciseCard({
   update,
   onLogged,
   onSwap,
-  active,
+  drafts,
+  setDrafts,
 }: {
   n: number;
   st: SlotStatus;
@@ -269,7 +354,8 @@ function ExerciseCard({
   update: (fn: (s: State) => State) => void;
   onLogged: (info: { pr: string | null; rest: number; next: string; dayDone: boolean }) => void;
   onSwap: () => void;
-  active: boolean;
+  drafts: Record<number, SetEntry>;
+  setDrafts: (fn: (d: Record<number, SetEntry>) => Record<number, SetEntry>) => void;
 }) {
   const id = st.exerciseId;
   const plan = st.plan;
@@ -278,16 +364,14 @@ function ExerciseCard({
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
   const secs = kind === 'time' || kind === 'weight_time';
   const unit = state.unit;
-  const lt = loadTypeOf(id, state.loadTypes);
-  const machine = state.machines[id];
   const log = state.logs[date]?.[id];
   const rows: SetEntry[] = log?.sets ?? [];
   const carried = log?.carried ?? 0;
-  const [drafts, setDrafts] = useState<Record<number, SetEntry>>({});
   const [extra, setExtra] = useState(0);
   const [missing, setMissing] = useState<Missing | null>(null);
   const [notes, setNotes] = useState(false);
-  const [machineOpen, setMachineOpen] = useState(false);
+  // "That's a big jump": the set waiting for a yes before it's logged.
+  const [check, setCheck] = useState<{ i: number; text: string } | null>(null);
   const target = weeklyTarget(state, id, plan, date);
   const planned = pickOption(plan, state.variants);
   const canSwap = swapsFor(planned).some((x) => x.id !== id) || id !== planned;
@@ -305,12 +389,13 @@ function ExerciseCard({
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
     const loggedBefore = rows.slice(0, i).some((x) => x.done);
-    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit, machine, lt);
+    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit);
     return suggestSet(state, id, plan, date, i).set;
   };
   const setDraft = (i: number, v: SetEntry) => {
     setDrafts((d) => ({ ...d, [i]: v }));
     if (missing?.i === i) setMissing(null);
+    if (check?.i === i) setCheck(null);
   };
 
   const write = (sets: SetEntry[]) =>
@@ -335,7 +420,7 @@ function ExerciseCard({
           },
     }));
 
-  const log1 = (i: number) => {
+  const log1 = (i: number, confirmed = false) => {
     // Let go of the keyboard first: a focused box that turns read-only on logging would otherwise
     // hand focus (and the keyboard) to the next set's box, and swallow the next tap.
     TextInput.State.currentlyFocusedInput()?.blur();
@@ -351,7 +436,7 @@ function ExerciseCard({
       return;
     }
     const value = valueOf(i);
-    const miss = missingFor(value, id, lt);
+    const miss = missingFor(value, id, 'weight');
     if (miss.message) {
       // Nothing silent: say what's missing, mark the empty box amber, small warning buzz.
       haptic.warn();
@@ -360,6 +445,15 @@ function ExerciseCard({
       return;
     }
     setMissing(null);
+    // A weight far above your usual (e.g. 222 kg for a 22 kg dumbbell): ask before logging.
+    const kgNow = weighted ? kgOf(value) : null;
+    if (!confirmed && kgNow !== null && bigJump(state, id, kgNow)) {
+      haptic.warn();
+      crumb(`big jump check: ${id} ${kgNow} kg`);
+      setCheck({ i, text: fmtKg(kgNow, unit) });
+      return;
+    }
+    setCheck(null);
     const entry: SetEntry = { ...value, done: true };
     const sets = [...rows];
     while (sets.length < i) sets.push({ weight: '', reps: '', done: false });
@@ -394,7 +488,7 @@ function ExerciseCard({
 
   return (
     <Glass r={radius.xl} style={s.card} testID={`exercise-${n}`}>
-      <ExerciseMedia exerciseId={id} height={230} active={active} />
+      <ExerciseMedia exerciseId={id} height={230} />
       <View style={s.cardHead}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={type.h2} numberOfLines={2}>
@@ -414,46 +508,6 @@ function ExerciseCard({
 
       <OwnVideoButtons exerciseId={id} />
 
-      {/* Machine and cable lifts: log by pin or by weight; kg per plate turns pins into kg. */}
-      {weighted && loadTypesFor(id).length > 1 && (
-        <View style={s.loadRow}>
-          <Text style={type.label}>Log by</Text>
-          {loadTypesFor(id).map((t) => (
-            <Chip
-              key={t}
-              label={t === 'stack' ? 'Machine pin' : `Weight (${unit})`}
-              active={lt === t}
-              onPress={() =>
-                update((st2) => ({
-                  ...st2,
-                  loadTypes: { ...st2.loadTypes, [id]: t },
-                }))
-              }
-            />
-          ))}
-          {lt === 'stack' && (
-            <Press onPress={() => setMachineOpen(true)} style={s.gear} accessibilityRole="button" accessibilityLabel={`Machine settings for ${ex.name}`}>
-              <Icon name="sliders" size={14} color={color.muted} />
-              <Text style={s.gearText}>{machine?.perPlate ? `${round1(machine.perPlate)} kg / plate` : 'Set kg per plate'}</Text>
-            </Press>
-          )}
-        </View>
-      )}
-      {machineOpen && (
-        <MachineSheet
-          name={ex.name}
-          setup={machine ?? {}}
-          onClose={() => setMachineOpen(false)}
-          onSave={(m) => {
-            update((st2) => ({
-              ...st2,
-              machines: { ...st2.machines, [id]: m },
-            }));
-            setMachineOpen(false);
-          }}
-        />
-      )}
-
       {target && (
         <View style={s.target} testID={`target-${n}`}>
           <Icon name="flame" size={16} color={color.accent} />
@@ -466,7 +520,7 @@ function ExerciseCard({
 
       <View style={s.setsHead}>
         <Text style={[type.label, { width: 34 }]}>Set</Text>
-        {weighted && <Text style={[type.label, { flex: 1 }]}>{lt === 'stack' ? 'Pin' : unit}</Text>}
+        {weighted && <Text style={[type.label, { flex: 1 }]}>{unit}</Text>}
         <Text style={[type.label, { flex: 1 }]}>{secs ? 'Sec' : 'Reps'}</Text>
         <View style={{ width: touch.primary }} />
       </View>
@@ -479,13 +533,15 @@ function ExerciseCard({
           value={valueOf(i)}
           logged={!!rows[i]?.done}
           weighted={weighted}
-          stack={lt === 'stack'}
+          secs={secs}
           unit={unit}
           warn={missing?.i === i ? missing : null}
           onChange={(v) => setDraft(i, v)}
           onLog={() => log1(i)}
-          machine={machine}
           exName={ex.name}
+          check={check?.i === i ? check.text : null}
+          onConfirm={() => log1(i, true)}
+          onFix={() => setCheck(null)}
         />
       ))}
       <Press onPress={() => setExtra((x) => x + 1)} style={s.addSet} accessibilityRole="button" accessibilityLabel={`Add a set to ${ex.name}`}>
@@ -501,7 +557,6 @@ function ExerciseCard({
         accessibilityLabel={`How to, muscles and tips for ${ex.name}`}
         testID={`notes-${n}`}
       >
-        <Icon name="info" size={18} color={color.muted} />
         <Text style={[type.h3, { flex: 1 }]}>How to, muscles & tips</Text>
         <Icon name={notes ? 'chevronUp' : 'chevronDown'} size={18} color={color.muted} />
       </Press>
@@ -524,17 +579,9 @@ function ExerciseCard({
 }
 
 /** This week's target as a set to log. */
-function fromTarget(t: NonNullable<ReturnType<typeof weeklyTarget>>, kind: string, unit: State['unit'], machine: State['machines'][string] | undefined, lt: string): SetEntry {
+function fromTarget(t: NonNullable<ReturnType<typeof weeklyTarget>>, kind: string, unit: State['unit']): SetEntry {
   const reps = String(t.reps);
   if (kind === 'reps' || kind === 'time') return { weight: '', reps, done: false };
-  if (lt === 'stack')
-    return t.pin !== undefined
-      ? {
-          ...weightFromLoad({ t: 'stack', pin: t.pin }, machine),
-          reps,
-          done: false,
-        }
-      : { weight: '', reps, done: false };
   if (t.kg === null) return { weight: '', reps, u: unit, done: false };
   return { weight: round1(fromKg(t.kg, unit)), u: unit, reps, done: false };
 }
@@ -548,13 +595,15 @@ function SetRow({
   value,
   logged,
   weighted,
-  stack,
+  secs,
   unit,
   warn,
   onChange,
   onLog,
-  machine,
   exName,
+  check,
+  onConfirm,
+  onFix,
 }: {
   i: number;
   slotN: number;
@@ -562,18 +611,21 @@ function SetRow({
   value: SetEntry;
   logged: boolean;
   weighted: boolean;
-  stack: boolean;
+  secs: boolean;
   unit: State['unit'];
   warn: Missing | null;
   onChange: (v: SetEntry) => void;
   onLog: () => void;
-  machine: State['machines'][string] | undefined;
   exName: string;
+  /** Set when this set's weight looks like a typo ("222 kg"): ask before logging. */
+  check: string | null;
+  onConfirm: () => void;
+  onFix: () => void;
 }) {
   const w = weighted && value.weight !== '' ? weightIn(value, unit) : null;
   // Typed in your unit: show exactly what was typed (so "62." stays while you type 62.5). Only a
-  // set stored in the other unit is converted for display.
-  const shownWeight = stack ? (value.load?.pin !== undefined ? String(value.load.pin) : '') : w === null ? '' : !value.u || value.u === unit ? value.weight : round1(w);
+  // set stored in the other unit is converted for display. An old pin-only set shows its pin.
+  const shownWeight = w === null ? (value.load?.pin !== undefined ? `Pin ${value.load.pin}` : '') : !value.u || value.u === unit ? value.weight : round1(w);
   return (
     <View>
       <View style={[s.row, logged && s.rowDone]}>
@@ -582,25 +634,12 @@ function SetRow({
           <NumBox
             value={shownWeight}
             editable={!logged}
-            onChangeText={(t) => {
-              const clean = t.replace(/[^0-9.,]/g, '').replace(',', '.');
-              if (stack) {
-                const pin = parseInt(clean, 10);
-                onChange(
-                  Number.isFinite(pin)
-                    ? {
-                        ...value,
-                        ...weightFromLoad({ t: 'stack', pin }, machine),
-                      }
-                    : { ...value, weight: '', load: undefined },
-                );
-              } else onChange({ ...value, weight: clean, u: unit, load: undefined });
-            }}
-            placeholder={stack ? 'Pin ?' : '—'}
+            onChangeText={(t) => onChange({ ...value, weight: t.replace(/[^0-9.,]/g, '').replace(',', '.'), u: unit, load: undefined })}
+            placeholder="—"
             placeholderTextColor={color.subtle}
-            keyboardType={stack ? 'number-pad' : 'decimal-pad'}
-            style={[s.input, warn?.load && s.inputWarn]}
-            accessibilityLabel={`Set ${label} ${stack ? 'pin' : `weight in ${unit}`} for ${exName}`}
+            keyboardType="decimal-pad"
+            style={[s.input, (warn?.load || check) && s.inputWarn]}
+            accessibilityLabel={`Set ${label} weight in ${unit} for ${exName}`}
             testID={`weight-${slotN}-${i}`}
           />
         )}
@@ -612,7 +651,7 @@ function SetRow({
           placeholderTextColor={color.subtle}
           keyboardType="number-pad"
           style={[s.input, warn?.reps && s.inputWarn]}
-          accessibilityLabel={`Set ${label} reps for ${exName}`}
+          accessibilityLabel={`Set ${label} ${secs ? 'seconds' : 'reps'} for ${exName}`}
           testID={`reps-${slotN}-${i}`}
         />
         <Press
@@ -630,6 +669,16 @@ function SetRow({
         <View style={s.missing} accessibilityLiveRegion="polite">
           <Icon name="alert" size={14} color={color.warn} />
           <Text style={s.missingText}>{warn.message}</Text>
+        </View>
+      )}
+      {check && (
+        <View style={s.jump} accessibilityLiveRegion="polite" testID={`big-jump-${slotN}-${i}`}>
+          <View style={s.jumpHead}>
+            <Icon name="alert" size={16} color={color.warn} />
+            <Text style={s.jumpText}>That’s a big jump, is {check} right?</Text>
+          </View>
+          <Button size="sm" variant="ghost" label="Fix it" onPress={onFix} />
+          <Button size="sm" variant="outline" label="Yes, log it" onPress={onConfirm} testID={`big-jump-yes-${slotN}-${i}`} />
         </View>
       )}
     </View>
@@ -663,18 +712,24 @@ function NumBox({
   testID: string;
 }) {
   const [editing, setEditing] = useState(false);
+  // While editing, the field starts empty with the old value as its placeholder, so what you type
+  // replaces it. (Selecting the old text on focus isn't reliable on Android: the cursor could land
+  // after it and "2" typed over "22" became "222".) Leaving without typing keeps the old value.
+  const [text, setText] = useState('');
   if (editing && editable) {
     return (
       <TextInput
         autoFocus
-        value={value}
-        onChangeText={onChangeText}
+        value={text}
+        onChangeText={(t) => {
+          setText(t);
+          onChangeText(t);
+        }}
         onBlur={() => setEditing(false)}
         onSubmitEditing={() => setEditing(false)}
-        placeholder={placeholder}
+        placeholder={value || placeholder}
         placeholderTextColor={placeholderTextColor}
         keyboardType={keyboardType}
-        selectTextOnFocus
         style={style}
         accessibilityLabel={accessibilityLabel}
         testID={testID}
@@ -684,12 +739,19 @@ function NumBox({
   const flat = StyleSheet.flatten(style) as TextStyle;
   return (
     <Pressable
-      onPress={editable ? () => setEditing(true) : undefined}
+      onPress={
+        editable
+          ? () => {
+              setText('');
+              setEditing(true);
+            }
+          : undefined
+      }
       disabled={!editable}
       style={[style as StyleProp<ViewStyle>, s.box]}
       accessibilityRole={editable ? 'button' : 'text'}
       accessibilityLabel={`${accessibilityLabel}: ${value || 'empty'}`}
-      accessibilityHint={editable ? 'Double tap to type a number' : undefined}
+      accessibilityHint={editable ? 'Double tap to type a new number' : undefined}
       testID={testID}
     >
       <Text style={[s.boxText, { fontFamily: flat.fontFamily, fontSize: flat.fontSize }, !value && { color: placeholderTextColor }]} numberOfLines={1}>
@@ -710,35 +772,51 @@ const s = themed(() =>
       paddingBottom: space.sm,
     },
     title: { ...type.title },
-    track: {
-      height: 3,
-      marginHorizontal: space.lg,
-      borderRadius: 2,
-      backgroundColor: color.inkTrack,
-      overflow: 'hidden',
-    },
-    trackFill: { height: '100%', backgroundColor: color.accent },
     card: { padding: space.lg, gap: space.md },
     cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-    loadRow: {
+    stepper: { marginHorizontal: space.lg, paddingVertical: space.xs, gap: 6 },
+    stepRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    stepText: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted, letterSpacing: 0.3 },
+    segs: { flexDirection: 'row', gap: 4 },
+    seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: color.surface3 },
+    segDone: { backgroundColor: color.accentEdge },
+    segOn: { backgroundColor: color.accent },
+    nav: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.sm,
+      paddingHorizontal: space.lg,
+      paddingTop: space.md,
+      backgroundColor: color.bg,
+      borderTopWidth: 1,
+      borderTopColor: color.line,
+    },
+    listRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 56, paddingHorizontal: space.md, borderRadius: radius.lg },
+    listRowOn: { backgroundColor: color.accentDim, borderWidth: 1, borderColor: color.accentEdge },
+    listState: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: color.glassBorder, alignItems: 'center', justifyContent: 'center' },
+    listStateDone: { backgroundColor: color.accent, borderColor: color.accent },
+    listIdx: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
+    listCount: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle, fontVariant: ['tabular-nums'] },
+    jump: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: space.sm,
+      gap: space.xs,
+      marginLeft: 34 + space.sm,
+      marginTop: space.xs,
+      padding: space.sm,
+      borderRadius: radius.md,
+      backgroundColor: color.warnDim,
+      borderWidth: 1,
+      borderColor: color.warnEdge,
     },
-    gear: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      minHeight: touch.min,
-      paddingHorizontal: space.sm,
-    },
-    gearText: {
-      fontFamily: font.bodySemi,
-      fontSize: size.small,
-      color: color.muted,
-    },
+    jumpHead: { flexBasis: '100%', flexDirection: 'row', alignItems: 'center', gap: space.xs },
+    jumpText: { flex: 1, fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
     target: {
       flexDirection: 'row',
       gap: space.sm,

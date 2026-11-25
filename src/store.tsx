@@ -487,6 +487,21 @@ export function exerciseHistory(logs: State['logs'], exerciseId: string, machine
     });
 }
 
+/** Replace or remove set `i` of `id` on `date`. Removing the last set removes the exercise from that day. */
+export function editSet(state: State, id: string, { date, i }: { date: string; i: number }, next: SetEntry | null): State {
+  const day = state.logs[date];
+  const log = day?.[id];
+  if (!log || !log.sets[i]) return state;
+  const sets = next ? log.sets.map((x, j) => (j === i ? next : x)) : log.sets.filter((_, j) => j !== i);
+  const nextDay = { ...day };
+  if (sets.some((x) => x.done)) nextDay[id] = { ...log, sets };
+  else delete nextDay[id];
+  const logs = { ...state.logs };
+  if (Object.keys(nextDay).length) logs[date] = nextDay;
+  else delete logs[date];
+  return { ...state, logs };
+}
+
 // ---------- Days, streaks, badges ----------
 
 /** At least one finished set (with its numbers) was logged on `date`. */

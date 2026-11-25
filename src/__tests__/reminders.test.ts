@@ -1,6 +1,7 @@
 /**
- * Creatine / protein reminders: morning reminder, the "Not yet" option, 1 PM and 7 PM follow-ups,
- * nothing once marked taken, restarts, midnight, and the Android 13+ permission flow.
+ * Per-supplement reminders: each supplement's own morning reminder, follow-ups and last call, the
+ * "Not yet" option, Taken stopping only that supplement, restarts, midnight, and the Android 13+
+ * permission flow.
  */
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -34,78 +35,85 @@ jest.mock('expo-notifications', () => {
 
 const N = Notifications as unknown as typeof Notifications & { __scheduled: { identifier: string; content: { body: string } }[] };
 
-const base: State = { ...DEFAULT_STATE, supplements: ['Creatine', 'Protein'], remindersOn: true, reminderTimes: ['08:00', '13:00', '19:00'], taken: {} };
+const R = { on: true, morning: '08:00', followUps: ['13:00'], lastCall: '19:00' };
+const base: State = { ...DEFAULT_STATE, supplements: ['Creatine', 'Protein'], suppReminders: { Creatine: R, Protein: R }, taken: {} };
 const at = (y: number, m: number, d: number, hh: number, mm = 0) => new Date(y, m - 1, d, hh, mm);
 const ids = (now: Date, s = base) => planReminders(s, now).map((r) => r.id);
-const today = (now: Date, s = base) => planReminders(s, now).filter((r) => r.date === '2026-11-23');
+const today = (now: Date, s = base, supp?: string) => planReminders(s, now).filter((r) => r.date === '2026-11-23' && (!supp || r.supp === supp));
 
 describe('schedule', () => {
-  test('before 8 AM: morning reminder plus the 1 PM and 7 PM follow-ups today', () => {
-    const r = today(at(2026, 11, 23, 7));
+  test('each supplement gets its own morning reminder, follow-up and last call', () => {
+    const r = today(at(2026, 11, 23, 7), base, 'Creatine');
     expect(r.map((x) => [x.when.getHours(), x.title])).toEqual([
-      [8, 'Morning stack'],
-      [13, 'Still need your supplements'],
-      [19, 'Still need your supplements'],
+      [8, 'Time for your creatine'],
+      [13, 'Still need your creatine?'],
+      [19, 'Last call: creatine'],
     ]);
-    expect(r[0].body).toBe('Time for your creatine + protein.');
-    expect(r[1].body).toBe("You haven't marked your creatine + protein as taken today.");
+    expect(today(at(2026, 11, 23, 7), base, 'Protein').map((x) => x.title)[0]).toBe('Time for your protein');
+  });
+
+  test('each supplement keeps its own times', () => {
+    const s = { ...base, suppReminders: { ...base.suppReminders, Protein: { on: true, morning: '07:15', followUps: ['10:00', '15:30'], lastCall: null } } };
+    expect(today(at(2026, 11, 23, 6), s, 'Protein').map((x) => [x.when.getHours(), x.when.getMinutes()])).toEqual([
+      [7, 15],
+      [10, 0],
+      [15, 30],
+    ]);
+    expect(today(at(2026, 11, 23, 6), s, 'Creatine').map((x) => x.when.getHours())).toEqual([8, 13, 19]);
   });
 
   test('after the morning reminder: only the follow-ups still to come', () => {
-    expect(today(at(2026, 11, 23, 10)).map((x) => x.when.getHours())).toEqual([13, 19]);
-    expect(today(at(2026, 11, 23, 15)).map((x) => x.when.getHours())).toEqual([19]);
+    expect(today(at(2026, 11, 23, 10), base, 'Creatine').map((x) => x.when.getHours())).toEqual([13, 19]);
+    expect(today(at(2026, 11, 23, 15), base, 'Creatine').map((x) => x.when.getHours())).toEqual([19]);
     expect(today(at(2026, 11, 23, 19, 30))).toHaveLength(0);
   });
 
-  test('no reminders for a day once everything is marked taken', () => {
-    const s = { ...base, taken: { '2026-11-23': { Creatine: true, Protein: true } } };
-    expect(today(at(2026, 11, 23, 9), s)).toHaveLength(0);
-    // ...but the next days are still scheduled.
-    expect(ids(at(2026, 11, 23, 9), s)).toContain('supp-2026-11-24-0');
-  });
-
-  test('half taken: follow-ups name only what is missing', () => {
+  test('marking one taken stops only its own reminders that day', () => {
     const s = { ...base, taken: { '2026-11-23': { Creatine: true } } };
-    expect(today(at(2026, 11, 23, 9), s).map((x) => x.body)).toEqual([
-      "You haven't marked your protein as taken today.",
-      "You haven't marked your protein as taken today.",
-    ]);
+    expect(today(at(2026, 11, 23, 9), s, 'Creatine')).toHaveLength(0);
+    expect(today(at(2026, 11, 23, 9), s, 'Protein').map((x) => x.when.getHours())).toEqual([13, 19]);
+    // ...and the next days are still scheduled.
+    expect(planReminders(s, at(2026, 11, 23, 9)).some((r) => r.supp === 'Creatine' && r.date === '2026-11-24')).toBe(true);
   });
 
-  test('reminders off, or no supplements: nothing scheduled', () => {
-    expect(planReminders({ ...base, remindersOn: false }, at(2026, 11, 23, 7))).toEqual([]);
+  test('a supplement with reminders off, or no supplements: nothing scheduled for it', () => {
+    const off = { ...base, suppReminders: { ...base.suppReminders, Protein: { ...R, on: false } } };
+    expect(planReminders(off, at(2026, 11, 23, 7)).every((r) => r.supp === 'Creatine')).toBe(true);
     expect(planReminders({ ...base, supplements: [] }, at(2026, 11, 23, 7))).toEqual([]);
   });
 
-  test('across midnight: late evening schedules tomorrow from the morning; just after midnight, the new day', () => {
-    const late = planReminders(base, at(2026, 11, 23, 23, 59));
-    expect(late[0]).toMatchObject({ id: 'supp-2026-11-24-0', date: '2026-11-24' });
-    expect(late[0].when).toEqual(at(2026, 11, 24, 8));
-    const early = planReminders(base, at(2026, 11, 24, 0, 30));
-    expect(early.slice(0, 3).map((x) => x.id)).toEqual(['supp-2026-11-24-0', 'supp-2026-11-24-1', 'supp-2026-11-24-2']);
-    // Month and year boundaries too.
-    expect(planReminders(base, at(2026, 12, 31, 20))[0].id).toBe('supp-2027-01-01-0');
+  test('a supplement added without saved reminders gets the default times', () => {
+    const s = { ...base, supplements: ['Creatine', 'Protein', 'Fish oil'] };
+    expect(today(at(2026, 11, 23, 7), s, 'Fish oil').map((x) => x.title)).toEqual(['Time for your fish oil', 'Still need your fish oil?', 'Last call: fish oil']);
   });
 
-  test('10 days ahead, with stable ids, so rebuilding after a restart replaces rather than duplicates', () => {
+  test('across midnight: late evening schedules tomorrow from the morning; month and year boundaries too', () => {
+    const late = planReminders(base, at(2026, 11, 23, 23, 59));
+    expect(late[0]).toMatchObject({ date: '2026-11-24' });
+    expect(late[0].when).toEqual(at(2026, 11, 24, 8));
+    expect(planReminders(base, at(2026, 12, 31, 20))[0].date).toBe('2027-01-01');
+  });
+
+  test('10 days ahead, with stable unique ids, so rebuilding after a restart replaces rather than duplicates', () => {
     const now = at(2026, 11, 23, 7);
     const a = ids(now);
-    expect(new Set(a.map((x) => x.slice(5, 15))).size).toBe(10);
+    expect(new Set(planReminders(base, now).map((x) => x.date)).size).toBe(10);
     expect(new Set(a).size).toBe(a.length);
     expect(ids(now)).toEqual(a);
   });
 });
 
 describe('taking action on a reminder', () => {
-  test('"Taken" marks every supplement for that day; "Not yet" and a plain tap change nothing', () => {
-    const marked = applyReminderAction(base, '2026-11-23', 'taken');
-    expect(marked.taken['2026-11-23']).toEqual({ Creatine: true, Protein: true });
-    expect(applyReminderAction(base, '2026-11-23', 'later')).toBe(base);
-    expect(applyReminderAction(base, '2026-11-23', 'open')).toBe(base);
-    // After "Taken", that day's follow-ups are gone from the plan.
-    expect(today(at(2026, 11, 23, 9), marked)).toHaveLength(0);
-    // After "Not yet", the 1 PM and 7 PM follow-ups stay.
-    expect(today(at(2026, 11, 23, 9), applyReminderAction(base, '2026-11-23', 'later'))).toHaveLength(2);
+  test('"Taken" marks that supplement only; "Not yet" and a plain tap change nothing', () => {
+    const marked = applyReminderAction(base, '2026-11-23', 'taken', 'Creatine');
+    expect(marked.taken['2026-11-23']).toEqual({ Creatine: true });
+    expect(applyReminderAction(base, '2026-11-23', 'later', 'Creatine')).toBe(base);
+    expect(applyReminderAction(base, '2026-11-23', 'open', 'Creatine')).toBe(base);
+    // After "Taken", creatine's follow-ups are gone; protein's stay.
+    expect(today(at(2026, 11, 23, 9), marked, 'Creatine')).toHaveLength(0);
+    expect(today(at(2026, 11, 23, 9), marked, 'Protein')).toHaveLength(2);
+    // An older notification without a supplement still marks them all.
+    expect(applyReminderAction(base, '2026-11-23', 'taken').taken['2026-11-23']).toEqual({ Creatine: true, Protein: true });
   });
 
   test('both buttons are registered on the notification', async () => {
@@ -133,8 +141,8 @@ describe('syncing with the phone', () => {
     const a = syncReminders({ ...base, taken: { '2026-11-23': { Creatine: true } } });
     const b = syncReminders({ ...base, taken: { '2026-11-23': { Creatine: true, Protein: true } } });
     await Promise.all([a, b]);
-    expect(N.__scheduled.filter((n) => n.identifier.startsWith('supp-2026-11-23'))).toEqual([]);
-    expect(N.__scheduled.some((n) => n.identifier.startsWith('supp-2026-11-24'))).toBe(true);
+    expect(N.__scheduled.filter((n) => n.identifier.includes('-2026-11-23-'))).toEqual([]);
+    expect(N.__scheduled.some((n) => n.identifier.includes('-2026-11-24-'))).toBe(true);
   });
 });
 

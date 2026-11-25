@@ -8,6 +8,7 @@ import { Backdrop, Glass } from '../../components/glass';
 import { Icon, type IconName } from '../../components/icons';
 import { LineChart } from '../../components/LineChart';
 import { OwnVideoButtons } from '../../components/ImportVideo';
+import { SetHistory } from '../../components/SetHistory';
 import { Button, IconButton, Press, StatusBarShade } from '../../components/ui';
 import { crumb } from '../../crash';
 import { EQUIPMENT_LABEL, EXERCISES } from '../../data/exercises';
@@ -117,10 +118,16 @@ export default function ExerciseScreen() {
               <Text style={s.big}>{target.text}</Text>
               <Text style={type.small}>
                 {target.reason === 'first'
-                  ? 'First time: pick a weight you can lift for the reps with good form.'
+                  ? kind === 'weight_time'
+                    ? 'First time: pick a weight you can hold for the time with good form.'
+                    : kind === 'time'
+                      ? 'First time: hold it with good form for the time.'
+                      : 'First time: pick a weight you can lift for the reps with good form.'
                   : target.reason === 'weight'
                     ? `You hit the top of the range, so add the smallest step (${target.lastText}).`
-                    : `Add a rep before adding weight (${target.lastText}).`}
+                    : kind === 'weight_time'
+                      ? `Add 5 seconds before adding weight (${target.lastText}).`
+                      : `Add a rep before adding weight (${target.lastText}).`}
               </Text>
             </Glass>
           )}
@@ -152,6 +159,7 @@ export default function ExerciseScreen() {
             )}
             {kind === 'weight_reps' && points.length > 0 && <Text style={s.credit}>Estimated one-rep max of each week’s best set (Epley).</Text>}
           </Glass>
+          <SetHistory id={id} />
         </View>
 
         {/* How to / Muscles */}

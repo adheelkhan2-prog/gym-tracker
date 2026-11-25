@@ -1,6 +1,6 @@
 /** Weekly PRs, stalled lifts, progressive-overload targets and the weekly chart series. */
 import { DEFAULT_STATE, type SetEntry, type State } from '../store';
-import { compareWeeks, stalledLifts, weekBoard, weekStart, weeklyPRs, weeklySeries, weeklyTarget } from '../weekly';
+import { bigJump, compareWeeks, stalledLifts, weekBoard, weekStart, weeklyPRs, weeklySeries, weeklyTarget } from '../weekly';
 
 const TODAY = '2026-11-25'; // a Wednesday; this week starts Monday 23 Nov
 const kg = (w: number, r: number): SetEntry => ({ weight: String(w), reps: String(r), done: true, u: 'kg' });
@@ -46,14 +46,12 @@ describe('this week vs last week', () => {
     const s = st({ '2026-11-24': { flat_bench: { sets: [kg(60, 8)] }, lat_pulldown: { sets: [kg(50, 10)] } }, '2026-11-10': { cable_fly: { sets: [kg(10, 12)] } } }, { loadTypes: { lat_pulldown: 'weight' } });
     expect(weekBoard(s, TODAY).map((r) => r.exerciseId).sort()).toEqual(['flat_bench', 'lat_pulldown']);
   });
-  test('kg sets and pin sets of one machine are never compared with each other', () => {
+  test('machine pins are gone: old pin-only sets are ignored, kg sets compare as usual', () => {
     const pinSet = (p: number, r: number): SetEntry => ({ weight: '', reps: String(r), done: true, load: { t: 'stack', pin: p } });
-    const logs = { '2026-10-27': { seated_cable_row: { sets: [kg(60, 10)] } }, '2026-11-17': { seated_cable_row: { sets: [pinSet(5, 10)] } }, '2026-11-24': { seated_cable_row: { sets: [pinSet(5, 11)] } } };
-    // Pin mode (machine default): only pin sets count; the old kg set is not a "PR" to beat or to lose to.
+    const logs = { '2026-11-17': { seated_cable_row: { sets: [kg(60, 10), pinSet(9, 10)] } }, '2026-11-24': { seated_cable_row: { sets: [kg(60, 11), pinSet(5, 15)] } } };
     expect(compareWeeks(st(logs), 'seated_cable_row', TODAY)).toMatchObject({ trend: 'up', change: '+1 rep' });
-    expect(weeklyPRs(st(logs), TODAY).map((p) => p.exerciseId)).toEqual(['seated_cable_row']);
-    // kg mode: only the kg set exists, nothing this week.
-    expect(compareWeeks(st(logs, { loadTypes: { seated_cable_row: 'weight' } }), 'seated_cable_row', TODAY).thisWeek).toBeNull();
+    // A saved "pin" load type from an older version is ignored.
+    expect(compareWeeks(st(logs, { loadTypes: { seated_cable_row: 'stack' } }), 'seated_cable_row', TODAY)).toMatchObject({ trend: 'up', change: '+1 rep' });
   });
 });
 
@@ -116,15 +114,32 @@ describe('target this week (progressive overload)', () => {
     const s = st({ '2026-11-17': { flat_bench: { sets: [{ weight: '135', reps: '8', done: true, u: 'lb' }] } } }, { unit: 'lb' });
     expect(weeklyTarget(s, 'flat_bench', plan, TODAY)!.text).toBe('140 lb × 6');
   });
-  test('machine pin: one pin up at the top of the range', () => {
+  test('an old pin-only set gives no target weight; a pin set with kg counts as kg', () => {
     const p = { slot: 'tue-1', options: ['lat_pulldown'], sets: 3, target: '10-12' };
     const s = st({ '2026-11-17': { lat_pulldown: { sets: [{ weight: '', reps: '12', done: true, load: { t: 'stack', pin: 6 } }] } } });
-    expect(weeklyTarget(s, 'lat_pulldown', p, TODAY)).toMatchObject({ pin: 7, reps: 10, text: 'Pin 7 × 10' });
+    expect(weeklyTarget(s, 'lat_pulldown', p, TODAY)).toMatchObject({ reason: 'first' });
+    const k = st({ '2026-11-17': { lat_pulldown: { sets: [{ weight: '42', u: 'kg', reps: '12', done: true, load: { t: 'stack', pin: 6 } }] } } });
+    expect(weeklyTarget(k, 'lat_pulldown', p, TODAY)).toMatchObject({ kg: 45, reps: 10, text: '45 kg × 10' });
   });
-  test('machine pin with kg per plate set up: the target stays a pin (one pin up), never a hidden kg', () => {
-    const p = { slot: 'tue-1', options: ['lat_pulldown'], sets: 3, target: '10-12' };
-    const s = st({ '2026-11-17': { lat_pulldown: { sets: [{ weight: '42', u: 'kg', reps: '12', done: true, load: { t: 'stack', pin: 6 } }] } } }, { machines: { lat_pulldown: { perPlate: 7 } } });
-    expect(weeklyTarget(s, 'lat_pulldown', p, TODAY)).toMatchObject({ pin: 7, kg: null, reps: 10, text: 'Pin 7 × 10' });
+  test('timed carries: seconds, never reps; +5 s up to the top, then more weight', () => {
+    const p = { slot: 'wed-8', options: ['farmers_walk'], sets: 3, target: '30-40' };
+    expect(weeklyTarget(st({}), 'farmers_walk', p, TODAY)).toMatchObject({ reason: 'first', text: '30–40 s with good form' });
+    const s = st({ '2026-11-17': { farmers_walk: { sets: [kg(24, 30)] } } });
+    expect(weeklyTarget(s, 'farmers_walk', p, TODAY)).toMatchObject({ kg: 24, reps: 35, text: '24 kg × 35 s' });
+    const top = st({ '2026-11-17': { farmers_walk: { sets: [kg(24, 40)] } } });
+    expect(weeklyTarget(top, 'farmers_walk', p, TODAY)).toMatchObject({ kg: 27.5, reps: 30, text: '27.5 kg × 30 s' });
+    const plank = { slot: 'x', options: ['plank'], sets: 2, target: '30-60' };
+    expect(weeklyTarget(st({}), 'plank', plank, TODAY)!.text).toBe('30–60 s with good form');
+  });
+  test('a big jump over your usual weight is caught (222 kg for a 22 kg dumbbell press)', () => {
+    const s = st({ '2026-11-17': { db_shoulder_press: { sets: [kg(22, 10), kg(22, 9)] } } });
+    expect(bigJump(s, 'db_shoulder_press', 222)).toBe(true);
+    expect(bigJump(s, 'db_shoulder_press', 24)).toBe(false);
+    expect(bigJump(s, 'db_shoulder_press', 40)).toBe(false);
+    // First time: only an implausible weight for the equipment.
+    expect(bigJump(st({}), 'db_shoulder_press', 222)).toBe(true);
+    expect(bigJump(st({}), 'db_shoulder_press', 30)).toBe(false);
+    expect(bigJump(st({}), 'flat_bench', 140)).toBe(false);
   });
   test('no set last week: uses the most recent week; never done: a first-time hint', () => {
     const s = st({ '2026-11-03': { flat_bench: { sets: [kg(60, 6)] } } });
