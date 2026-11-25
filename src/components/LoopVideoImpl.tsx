@@ -4,7 +4,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { logCrash } from '../crash';
 import { perfMark } from '../perf';
-import { LOCAL_BUFFER, VideoPoolContext, type VideoPool } from './videoPool';
+import { LOCAL_BUFFER, VideoHoldContext, VideoPoolContext, type VideoPool } from './videoPool';
 
 /** Players that have drawn a frame into some view (a new view on one may not report a first frame). */
 const drawn = new WeakSet<object>();
@@ -45,9 +45,10 @@ export function LoopVideo(props: Props) {
   const { source, start = 0, end } = props;
   const segment = end !== undefined && end > start;
   const pool = useContext(VideoPoolContext);
-  if (pool && !segment && pool.manages(source)) return <PooledVideo {...props} pool={pool} />;
+  const hold = useContext(VideoHoldContext);
+  if (pool && !segment && pool.manages(source)) return <PooledVideo {...props} paused={props.paused || hold} pool={pool} />;
   // In a workout, your own clip pauses too while another screen or sheet is on top.
-  return <OwnVideo {...props} paused={props.paused || !!pool?.hold} />;
+  return <OwnVideo {...props} paused={props.paused || hold} />;
 }
 
 function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
@@ -57,7 +58,7 @@ function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
   const live = useCallback(() => pool.playerFor(source) === player, [pool, source, player]);
   // The player is being made (opening the workout, or going back): the still shows meanwhile.
   if (!player) return <Poster poster={props.poster} />;
-  return <PlayerVideo key={keyOf(player)} {...props} paused={props.paused || !!pool.hold} player={player} pooled live={live} />;
+  return <PlayerVideo key={keyOf(player)} {...props} player={player} pooled live={live} />;
 }
 
 function OwnVideo(props: Props) {
@@ -147,7 +148,7 @@ function PlayerVideo({
   const settled = isPlaying && (!!pooled || drawn.has(player));
   useEffect(() => {
     if (!settled || shown) return;
-    // Only once the video is really moving (its clock has advanced), or after a while at the latest.
+    // Only once the video is really moving (its clock has advanced).
     const since = Date.now();
     const from = player.currentTime; // (a kept player may resume part-way through)
     const t = setInterval(() => {
@@ -157,7 +158,8 @@ function PlayerVideo({
       } catch {
         // Released: the page is leaving.
       }
-      if (moving || Date.now() - since > 2500) setShown(true);
+      // (Not moving after a while: it goes only if this player has drawn frames before; else the still stays.)
+      if (moving || (Date.now() - since > 2500 && drawn.has(player))) setShown(true);
     }, 150);
     return () => clearInterval(t);
   }, [settled, shown, player]);

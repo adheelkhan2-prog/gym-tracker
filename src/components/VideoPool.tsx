@@ -3,7 +3,7 @@
 // uses its own player, or shows its still), and the workout page itself is never remounted.
 import React, { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { lazySafe } from '../safe';
-import { sameSource, VideoPoolContext, type HeldPlayers, type Src, type VideoPool } from './videoPool';
+import { sameSource, VideoHoldContext, VideoPoolContext, type HeldPlayers, type Src, type VideoPool } from './videoPool';
 import type { VideoPoolHost as Impl } from './VideoPoolImpl';
 
 type HostProps = ComponentProps<typeof Impl>;
@@ -30,17 +30,18 @@ export function VideoPoolProvider({ current, next, hold, children }: { current: 
       held === 'off'
         ? null
         : {
-            hold,
             manages: (src) => sameSource(src, current) || sameSource(src, next),
             playerFor: (src) => held?.playerFor(src) ?? null,
           },
-    [held, current, next, hold],
+    [held, current, next],
   );
   // The host comes AFTER the page: on leaving the workout the page lets go of its players first,
   // then the host releases them.
   return (
     <>
-      <VideoPoolContext.Provider value={pool}>{children}</VideoPoolContext.Provider>
+      <VideoHoldContext.Provider value={!!hold}>
+        <VideoPoolContext.Provider value={pool}>{children}</VideoPoolContext.Provider>
+      </VideoHoldContext.Provider>
       <Host current={current} next={next} onPool={setHeld} />
     </>
   );
