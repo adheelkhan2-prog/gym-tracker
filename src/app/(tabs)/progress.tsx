@@ -15,7 +15,8 @@ import { fromKg, round1 } from '../../load';
 import { activeProgram, addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { bottomClearance, color, font, heat, leading, motion, radius, size, space, themed, type } from '../../theme';
 import { pctChange, volumeOn } from '../../totals';
-import { exerciseFor, titleOf, visiblePlans } from '../../workout';
+import { exerciseFor, visiblePlans } from '../../workout';
+import { WEEKDAY_SHORT } from '../../data/program';
 
 type Metric = 'top' | 'e1rm';
 
@@ -66,6 +67,11 @@ export default function ProgressScreen() {
     .filter((d) => d.exercises.length)
     .map((d) => ({ day: d, ids: [...new Set(visiblePlans(state, d).map((p) => exerciseFor(state, p)))] }));
   const inPlan = new Set(planDays.flatMap((d) => d.ids));
+  // "Mon · Chest, Biceps & Shoulders" for weekday plans; the day's own name for rotations.
+  const dayLabel = (d: (typeof planDays)[number]['day']) => {
+    const wd = state.week.findIndex((x) => x === d.id);
+    return wd >= 0 && !program.rotation ? `${WEEKDAY_SHORT[wd]} · ${d.name}` : d.name;
+  };
   const withData = EXERCISE_LIST.map((e) => e.id).filter((x) => histories[x].length > 0);
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
@@ -277,7 +283,7 @@ export default function ProgressScreen() {
         <>
           {planDays.map(({ day, ids }) => (
             <View key={day.id} style={{ marginTop: space.lg }}>
-              <Text style={[type.label, { marginBottom: space.sm }]}>{titleOf(day)}</Text>
+              <Text style={[type.label, { marginBottom: space.sm }]}>{dayLabel(day)}</Text>
               <Glass r={radius.xl} style={s.liftCard}>
                 {ids.map(liftRow)}
               </Glass>

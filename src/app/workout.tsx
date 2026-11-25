@@ -423,7 +423,7 @@ function ExerciseCard({
   const log1 = (i: number, confirmed = false) => {
     // Let go of the keyboard first: a focused box that turns read-only on logging would otherwise
     // hand focus (and the keyboard) to the next set's box, and swallow the next tap.
-    TextInput.State.currentlyFocusedInput()?.blur();
+    TextInput.State?.currentlyFocusedInput?.()?.blur?.();
     Keyboard.dismiss();
     const cur = rows[i];
     if (cur?.done) {
