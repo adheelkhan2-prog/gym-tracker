@@ -448,8 +448,9 @@ function prIndex(logs: State['logs']) {
   let index = prCache.get(logs);
   if (index) return index;
   index = new Map();
-  const best: Record<string, number> = {};
-  const bestPin: Record<string, number> = {};
+  // No prototype: an unknown logged id such as "constructor" is just another key.
+  const best: Record<string, number> = Object.create(null);
+  const bestPin: Record<string, number> = Object.create(null);
   for (const date of Object.keys(logs).sort()) {
     const day = new Map<string, DayRecord>();
     const tops: [string, number, number][] = [];
@@ -484,7 +485,7 @@ export function prSetsOn(logs: State['logs'], date: string) {
 
 /** PRs per date in one chronological pass (running best per exercise). */
 export function prCountsByDate(logs: State['logs']) {
-  const best: Record<string, number> = {};
+  const best: Record<string, number> = Object.create(null);
   const out: Record<string, number> = {};
   for (const date of Object.keys(logs).sort()) {
     let n = 0;

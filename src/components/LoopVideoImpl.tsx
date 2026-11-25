@@ -2,6 +2,7 @@ import { useEvent, useEventListener } from 'expo';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
 import { useContext, useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { logCrash } from '../crash';
 import { perfMark } from '../perf';
 import { LOCAL_BUFFER, VideoPoolContext, type VideoPool } from './videoPool';
 
@@ -89,10 +90,11 @@ function PlayerVideo({
     try {
       if (paused) player.pause();
       else player.play();
-    } catch {
-      // The pool let go of this player a moment before the page did: nothing to play.
+    } catch (e) {
+      // A pooled player the pool has just let go of has nothing to play; anything else is logged.
+      if (!pooled) logCrash('error', e, 'video play/pause');
     }
-  }, [paused, player]);
+  }, [paused, player, pooled]);
   // A pooled player outlives this page when it becomes the "next" one (going back): leave it paused.
   useEffect(
     () => () => {
@@ -121,11 +123,10 @@ function PlayerVideo({
   });
   useEventListener(player, 'sourceLoad', ({ duration }) => onDuration?.(duration));
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
-  // Safety net: if a player never reports its first frame (e.g. one already shown before), the still
-  // goes once the video is playing, or loaded and paused (reduce motion), for a moment, so it can
-  // never stay stuck over the video.
-  const { status } = useEvent(player, 'statusChange', { status: player.status });
-  const settled = isPlaying || (paused && status === 'readyToPlay');
+  // Safety net: if a playing video never reports its first frame (e.g. a player already shown
+  // before), the still goes after a moment, so it can never stay stuck over a moving video. Paused
+  // (reduce motion), the still simply stays until a frame is drawn: it IS the picture then.
+  const settled = isPlaying;
   useEffect(() => {
     if (!settled || shown) return;
     const t = setTimeout(() => setShown(true), 600);

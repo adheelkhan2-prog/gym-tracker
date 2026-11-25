@@ -59,6 +59,8 @@ class Players {
   failed: Src[] = [];
 
   sync(current: Src, next: Src) {
+    if (this.closing) clearTimeout(this.closing);
+    this.closing = null;
     this.freeRetired();
     // A video whose player couldn't be made gets another try once it's off screen and comes back.
     this.failed = this.failed.filter((f) => sameSource(f, current) || sameSource(f, next));
@@ -95,6 +97,16 @@ class Players {
     if (changed) this.emit();
   }
 
+  private closing: ReturnType<typeof setTimeout> | null = null;
+  /** Release everything in a second, unless the pool is used again before then. */
+  closeSoon() {
+    if (this.closing) clearTimeout(this.closing);
+    this.closing = setTimeout(() => {
+      this.closing = null;
+      this.releaseAll();
+    }, 1000);
+  }
+
   releaseAll() {
     this.freeRetired();
     if (this.later) clearTimeout(this.later.timer);
@@ -120,9 +132,10 @@ export function VideoPoolHost({ current, next, onPool }: { current: Src; next: S
   useEffect(() => players.sync(current, next), [players, current, next]);
   useEffect(
     () => () => {
-      // The page stops using the pool before its players go (e.g. if this host ever fails).
+      // The page stops using the pool first (e.g. if this host ever fails) and the players go a moment
+      // later, once nothing shows them. (A remount in the meantime, e.g. React's dev double-run, keeps them.)
       onPool('off');
-      players.releaseAll();
+      players.closeSoon();
     },
     [players, onPool],
   );
