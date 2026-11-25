@@ -35,15 +35,9 @@ class Players {
         if (status !== 'error' || !this.held.some((h) => h.player === player)) return;
         this.failed.push(src);
         this.held = this.held.filter((h) => h.player !== player);
+        // Freed at the next page change (or on leaving), when its page has long moved off it.
+        this.retired.push(player);
         this.emit();
-        // Freed once its page has moved off it (the page re-renders with the change above first).
-        setTimeout(() => {
-          try {
-            player.release();
-          } catch {
-            // Already gone.
-          }
-        });
       });
       this.held.push({ src, player });
     } catch (e) {
@@ -51,10 +45,21 @@ class Players {
       logCrash('error', e, 'video player could not be made');
     }
   }
+  /** Players that hit an error: no longer handed out, released at the next sync. */
+  private retired: VideoPlayer[] = [];
+  private freeRetired() {
+    for (const p of this.retired.splice(0))
+      try {
+        p.release();
+      } catch {
+        // Already gone.
+      }
+  }
   /** Videos whose player couldn't be made: they use their own player instead. */
   failed: Src[] = [];
 
   sync(current: Src, next: Src) {
+    this.freeRetired();
     // A video whose player couldn't be made gets another try once it's off screen and comes back.
     this.failed = this.failed.filter((f) => sameSource(f, current) || sameSource(f, next));
     // A video whose player failed is not retried while it's current or next (it uses its own player).
@@ -91,6 +96,7 @@ class Players {
   }
 
   releaseAll() {
+    this.freeRetired();
     if (this.later) clearTimeout(this.later.timer);
     this.later = null;
     for (const h of this.held)

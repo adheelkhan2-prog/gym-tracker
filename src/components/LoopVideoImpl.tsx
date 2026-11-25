@@ -28,7 +28,6 @@ type Props = {
   onDuration?: (seconds: number) => void;
   /** Still shown on top until the first video frame is drawn (no blank or black flash). */
   poster?: ImageSourcePropType;
-  posterContain?: boolean;
 };
 
 /**
@@ -49,7 +48,7 @@ export function LoopVideo(props: Props) {
 function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
   const player = pool.playerFor(props.source) as VideoPlayer | null;
   // The player is being made (opening the workout, or going back): the still shows meanwhile.
-  if (!player) return <Poster poster={props.poster} contain={props.posterContain} />;
+  if (!player) return <Poster poster={props.poster} />;
   return <PlayerVideo key={keyOf(player)} {...props} player={player} pooled />;
 }
 
@@ -65,8 +64,9 @@ function OwnVideo(props: Props) {
   return <PlayerVideo key={keyOf(player)} {...props} player={player} />;
 }
 
-function Poster({ poster, contain = true }: { poster?: ImageSourcePropType; contain?: boolean }) {
-  return poster ? <Image source={poster} style={StyleSheet.absoluteFill} resizeMode={contain ? 'contain' : 'cover'} /> : null;
+/** The still, fitted like the video (contain). */
+function Poster({ poster }: { poster?: ImageSourcePropType }) {
+  return poster ? <Image source={poster} style={StyleSheet.absoluteFill} resizeMode="contain" /> : null;
 }
 
 function PlayerVideo({
@@ -78,7 +78,6 @@ function PlayerVideo({
   onPlaying,
   onDuration,
   poster,
-  posterContain = true,
 }: Props & { player: VideoPlayer; pooled?: boolean }) {
   const segment = end !== undefined && end > start;
   // The still stays until this view's first frame (or the safety net below), even for a player that's
@@ -151,7 +150,7 @@ function PlayerVideo({
           setShown(true);
         }}
       />
-      {!shown && <Poster poster={poster} contain={posterContain} />}
+      {!shown && <Poster poster={poster} />}
     </View>
   );
 }

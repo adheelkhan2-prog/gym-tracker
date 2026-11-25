@@ -564,7 +564,7 @@ export function allHistories(logs: State['logs'], ids: string[], machines: State
   const out: Record<string, HistoryPoint[]> = Object.fromEntries(ids.map((id) => [id, []]));
   for (const date of Object.keys(logs).sort()) {
     for (const [id, log] of Object.entries(logs[date])) {
-      if (!out[id]) continue;
+      if (!Object.hasOwn(out, id)) continue; // (an unknown id such as "constructor" never matches)
       const p = historyPoint(date, log, kindOf(id), machines[id]);
       if (p) out[id].push(p);
     }
