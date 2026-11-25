@@ -10,7 +10,7 @@
 # reinstalls, runs the flows, and pushes the results to the e2e-results branch
 # (results.txt + fail-N.png screenshots) so they can be read while the session keeps running.
 #
-# "full" is the crash test: flows/full.yaml (every flow, once) with the network ON (the app's
+# "full" is the crash test: flows/full.yaml (every flow, 3 times) with the network ON (the app's
 # traffic counters must stay at zero), then again in airplane mode, plus a logcat crash check.
 set -uo pipefail
 PKG=com.gymtracker.app

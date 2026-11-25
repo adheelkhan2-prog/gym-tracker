@@ -29,6 +29,13 @@ class Players {
       player.loop = true;
       player.muted = true;
       player.bufferOptions = LOCAL_BUFFER;
+      // Most load / decoder failures come later, as an error status: that video then leaves the pool
+      // too (its page shows its still, or its own player), and its player is released off screen.
+      player.addListener('statusChange', ({ status }) => {
+        if (status !== 'error' || this.failed.some((f) => sameSource(f, src))) return;
+        this.failed.push(src);
+        this.emit();
+      });
       this.held.push({ src, player });
     } catch (e) {
       this.failed.push(src);

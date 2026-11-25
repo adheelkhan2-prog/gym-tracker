@@ -1,8 +1,9 @@
-# The crash test: every flow once, each from a fresh install (raise `times` for a longer soak).
+# The crash test: every flow 3 times over, each from a fresh install (repeats catch leaks, e.g. of
+# video players, that one pass would miss).
 appId: com.gymtracker.app
 ---
 - repeat:
-    times: 1
+    times: 3
     commands:
       - runFlow: nav.yaml
       - runFlow: start.yaml

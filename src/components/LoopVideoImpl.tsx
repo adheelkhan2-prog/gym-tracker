@@ -5,6 +5,15 @@ import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native'
 import { perfMark } from '../perf';
 import { LOCAL_BUFFER, VideoPoolContext, type VideoPool } from './videoPool';
 
+/** A key per player, so a new player gets a fresh view (its still, playing state and safety net). */
+const playerKeys = new WeakMap<object, number>();
+let nextKey = 1;
+function keyOf(p: VideoPlayer) {
+  let k = playerKeys.get(p);
+  if (!k) playerKeys.set(p, (k = nextKey++));
+  return k;
+}
+
 /** Seek the native player (kept outside the component: the player is an imperative handle). */
 function seek(p: VideoPlayer, seconds: number) {
   p.currentTime = seconds;
@@ -41,7 +50,7 @@ function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
   const player = pool.playerFor(props.source) as VideoPlayer | null;
   // The player is being made (opening the workout, or going back): the still shows meanwhile.
   if (!player) return <Poster poster={props.poster} contain={props.posterContain} />;
-  return <PlayerVideo {...props} player={player} pooled />;
+  return <PlayerVideo key={keyOf(player)} {...props} player={player} pooled />;
 }
 
 function OwnVideo(props: Props) {
@@ -53,7 +62,7 @@ function OwnVideo(props: Props) {
     p.timeUpdateEventInterval = segment ? 0.05 : 0;
     p.bufferOptions = LOCAL_BUFFER;
   });
-  return <PlayerVideo {...props} player={player} />;
+  return <PlayerVideo key={keyOf(player)} {...props} player={player} />;
 }
 
 function Poster({ poster, contain = true }: { poster?: ImageSourcePropType; contain?: boolean }) {
@@ -72,11 +81,10 @@ function PlayerVideo({
   posterContain = true,
 }: Props & { player: VideoPlayer; pooled?: boolean }) {
   const segment = end !== undefined && end > start;
-  // Shown for THIS player: a new source (a new player) brings its still back until its first frame.
   // A pooled player that's already playing (the same video on the next page too) is drawing frames
   // and may not report a first one again: it shows at once. A preloaded one keeps its still until then.
-  const [shownFor, setShownFor] = useState<VideoPlayer | null>(() => (pooled && player.playing ? player : null));
-  const shown = shownFor === player;
+  // (A new player always gets a new view, see keyOf, so this starts afresh for each player.)
+  const [shown, setShown] = useState(() => !!pooled && player.playing);
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   useEffect(() => {
     if (paused) player.pause();
@@ -117,9 +125,9 @@ function PlayerVideo({
   const settled = isPlaying || (paused && status === 'readyToPlay');
   useEffect(() => {
     if (!settled || shown) return;
-    const t = setTimeout(() => setShownFor(player), 600);
+    const t = setTimeout(() => setShown(true), 600);
     return () => clearTimeout(t);
-  }, [settled, shown, player]);
+  }, [settled, shown]);
   useEffect(() => {
     if (shown) perfMark('video-shown');
   }, [shown]);
@@ -136,7 +144,7 @@ function PlayerVideo({
         surfaceType="textureView"
         onFirstFrameRender={() => {
           perfMark('video-frame');
-          setShownFor(player);
+          setShown(true);
         }}
       />
       {!shown && <Poster poster={poster} contain={posterContain} />}

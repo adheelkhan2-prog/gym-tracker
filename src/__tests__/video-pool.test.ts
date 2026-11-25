@@ -1,5 +1,7 @@
 /** The workout's video players: only the current video and the next one, nothing else kept. */
 import { plan } from '../components/videoPool';
+import { EXERCISE_VIDEO } from '../data/exercise-video';
+import { howToImages } from '../data/how-to';
 
 test('opening the workout: the current video at once, the next a moment later', () => {
   expect(plan([], 1, 2)).toEqual({ release: [], createNow: 1, createLater: 2 });
@@ -18,4 +20,9 @@ test('jumping far releases both; a page with only stills holds nothing for itsel
 test('your own videos compare by file; the same video twice in a row shares one player', () => {
   expect(plan([{ uri: 'x' }], { uri: 'x' }, null)).toEqual({ release: [], createNow: null, createLater: null });
   expect(plan([], 4, 4)).toEqual({ release: [], createNow: 4, createLater: null });
+});
+
+test('every bundled video has a still to show while its player loads (no empty panel)', () => {
+  const missing = Object.keys(EXERCISE_VIDEO).filter((id) => !howToImages(id)?.start);
+  expect(missing).toEqual([]);
 });
