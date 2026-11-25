@@ -3,7 +3,7 @@ name: Android emulator test session
 # One emulator, kept running for up to ~5 h. It builds the real release APK once, boots an Android
 # emulator, then serves test requests from .maestro/session.txt on the branch (see
 # .maestro/session.sh): run only the flows asked for, rebuild only when app code changed, and push
-# results to the e2e-results branch. "full" is the crash test: every flow 10 times, network on
+# results to the e2e-results branch. "full" is the crash test: every flow 3 times, network on
 # (zero app traffic), then airplane mode.
 # Started by a push whose commit message contains [e2e-session]; later requests only edit
 # .maestro/session.txt (no new job, the running emulator picks them up).

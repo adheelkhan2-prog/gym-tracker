@@ -1,6 +1,6 @@
 import { useEvent, useEventListener } from 'expo';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { logCrash } from '../crash';
 import { perfMark } from '../perf';
@@ -93,15 +93,20 @@ function PlayerVideo({
   // new view (see keyOf), so this starts afresh for each player.
   const [shown, setShown] = useState(false);
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
+  // (Read through a ref: the check changes with every pool update, play/pause only with `paused`.)
+  const liveRef = useRef(live);
+  useEffect(() => {
+    liveRef.current = live;
+  }, [live]);
   useEffect(() => {
     try {
       if (paused) player.pause();
       else player.play();
     } catch (e) {
       // A pooled player the pool has just let go of has nothing to play; anything else is logged.
-      if (!live || live()) logCrash('error', e, 'video play/pause');
+      if (!liveRef.current || liveRef.current()) logCrash('error', e, 'video play/pause');
     }
-  }, [paused, player, live]);
+  }, [paused, player]);
   // A pooled player outlives this page when it becomes the "next" one (going back): leave it paused.
   useEffect(
     () => () => {
