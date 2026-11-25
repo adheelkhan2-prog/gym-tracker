@@ -13,7 +13,7 @@ import { Chip, IconButton, Press, Screen, SectionTitle } from '../../components/
 import { EXERCISES, EXERCISE_LIST } from '../../data/exercises';
 import { MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, loadTypeOf, round1 } from '../../load';
-import { activeProgram, addDays, exerciseHistory, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
+import { activeProgram, addDays, allHistories, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { bottomClearance, color, font, heat, leading, motion, radius, size, space, themed, type } from '../../theme';
 import { pctChange, volumeOn } from '../../totals';
 import { exerciseFor, visiblePlans } from '../../workout';
@@ -21,6 +21,8 @@ import { WEEKDAY_SHORT } from '../../data/program';
 import { perfMark } from '../../perf';
 
 type Metric = 'top' | 'e1rm';
+
+const EXERCISE_IDS = EXERCISE_LIST.map((e) => e.id);
 
 const heatColor = (n: number) => {
   let c: string | null = null;
@@ -69,7 +71,7 @@ export default function ProgressScreen() {
 
   // ----- Lifts -----
   // Every exercise has its own history, so swaps chart separately from the original.
-  const histories = useMemo(() => Object.fromEntries(EXERCISE_LIST.map((e) => [e.id, exerciseHistory(state.logs, e.id, state.machines[e.id])])), [state.logs, state.machines]);
+  const histories = useMemo(() => allHistories(state.logs, EXERCISE_IDS, state.machines), [state.logs, state.machines]);
   const program = activeProgram(state);
   // Your current plan, grouped by day (the exercise you actually do in each slot, after swaps).
   const planDays = program.days.filter((d) => d.exercises.length).map((d) => ({ day: d, ids: [...new Set(visiblePlans(state, d).map((p) => exerciseFor(state, p)))] }));

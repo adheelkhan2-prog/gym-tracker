@@ -430,16 +430,54 @@ export function bestBefore(logs: State['logs'], exerciseId: string, beforeDate: 
   return best;
 }
 
+/** Highest pin among the pin-only sets of a log (0 if none). */
+export const topPinOf = (log: ExerciseLog | undefined) =>
+  Math.max(0, ...(log?.sets ?? []).filter((x) => x.done && x.load?.pin !== undefined && kgOf(x) === null).map((x) => x.load!.pin!));
+
+export type DayRecord = { kind: 'metric' | 'pin'; value: number };
+
+/**
+ * Every day's PRs, worked out in ONE chronological pass over the history (a running best per
+ * exercise) and kept until the logs change (logs are never edited in place, so the object itself is
+ * the cache key). Kg (or reps / seconds) records beat everything logged before that day; an
+ * exercise's first day is a baseline, not a record. Machine-pin records compare pins only with pins.
+ */
+const prCache = new WeakMap<State['logs'], Map<string, Map<string, DayRecord>>>();
+function prIndex(logs: State['logs']) {
+  let index = prCache.get(logs);
+  if (index) return index;
+  index = new Map();
+  const best: Record<string, number> = {};
+  const bestPin: Record<string, number> = {};
+  for (const date of Object.keys(logs).sort()) {
+    const day = new Map<string, DayRecord>();
+    const tops: [string, number, number][] = [];
+    for (const [id, log] of Object.entries(logs[date])) {
+      const kind = kindOf(id);
+      const top = Math.max(0, ...doneSets(log, kind).map((x) => prMetric(x, kind)));
+      const pin = topPinOf(log);
+      if ((best[id] ?? 0) > 0 && top > best[id]) day.set(id, { kind: 'metric', value: top });
+      else if (pin && (bestPin[id] ?? 0) > 0 && pin > bestPin[id]) day.set(id, { kind: 'pin', value: pin });
+      tops.push([id, top, pin]);
+    }
+    for (const [id, top, pin] of tops) {
+      best[id] = Math.max(best[id] ?? 0, top);
+      bestPin[id] = Math.max(bestPin[id] ?? 0, pin);
+    }
+    if (day.size) index.set(date, day);
+  }
+  prCache.set(logs, index);
+  return index;
+}
+
+const NO_RECORDS: ReadonlyMap<string, DayRecord> = new Map();
+/** PRs on a day (kg / reps / seconds records and machine-pin records), exercise -> record. */
+export const dayRecords = (logs: State['logs'], date: string): ReadonlyMap<string, DayRecord> => prIndex(logs).get(date) ?? NO_RECORDS;
+
 /** Sets on `date` that beat everything logged before that date. */
 export function prSetsOn(logs: State['logs'], date: string) {
   const out: { exerciseId: string; value: number }[] = [];
-  for (const [id, log] of Object.entries(logs[date] ?? {})) {
-    const kind = kindOf(id);
-    const best = bestBefore(logs, id, date);
-    if (best <= 0) continue; // first time is a baseline, not a record
-    const top = Math.max(0, ...doneSets(log, kind).map((s) => prMetric(s, kind)));
-    if (top > best) out.push({ exerciseId: id, value: top });
-  }
+  for (const [exerciseId, r] of dayRecords(logs, date)) if (r.kind === 'metric') out.push({ exerciseId, value: r.value });
   return out;
 }
 
@@ -478,34 +516,59 @@ export type HistoryPoint = {
  * One point per day. `machine` (the exercise's current stack setup) turns old pin-only sets into kg,
  * so logging pins first and adding kg per plate later still charts one continuous line.
  */
+/** One chart point: an exercise's done sets on one day (null when none). */
+function historyPoint(date: string, log: ExerciseLog | undefined, kind: LogKind, machine?: MachineSetup): HistoryPoint | null {
+  const sets = doneSets(log, kind);
+  if (!sets.length) return null;
+  const loadedKind = kind === 'weight_reps' || kind === 'weight_time';
+  // Each set's numbers are parsed once.
+  let topM = -Infinity;
+  let topR = 0;
+  let e1rm = 0;
+  let volume = 0;
+  let seconds = 0;
+  let pin = 0;
+  for (const s of sets) {
+    const kg = setKg(s, machine);
+    const w = kg ?? 0;
+    const r = num(s.reps)!;
+    const m = loadedKind ? w : r;
+    if (kind === 'weight_time' || kind === 'time') seconds += r;
+    else volume += kind === 'reps' ? r : w * r;
+    // The top set: the highest metric, then the most reps.
+    if (m > topM || (m === topM && r > topR)) {
+      topM = m;
+      topR = r;
+    }
+    if (kind === 'weight_reps') e1rm = Math.max(e1rm, est1RM(w, r));
+    if (s.load?.pin !== undefined && kg === null) pin = Math.max(pin, s.load.pin);
+  }
+  const point: HistoryPoint = { date, top: topM, topReps: topR, e1rm, volume, seconds };
+  if (point.top === 0 && pin > 0) point.pin = pin;
+  return point;
+}
+
 export function exerciseHistory(logs: State['logs'], exerciseId: string, machine?: MachineSetup): HistoryPoint[] {
   const kind = kindOf(exerciseId);
-  const kgFor = (s: SetEntry) => setKg(s, machine);
-  const metric = (s: SetEntry) => (kind === 'weight_reps' || kind === 'weight_time' ? (kgFor(s) ?? 0) : num(s.reps)!);
   return Object.keys(logs)
     .sort()
     .flatMap((date) => {
-      const sets = doneSets(logs[date][exerciseId], kind);
-      if (!sets.length) return [];
-      let top = sets[0];
-      let e1rm = 0;
-      let volume = 0;
-      let seconds = 0;
-      let pin = 0;
-      for (const s of sets) {
-        const w = kgFor(s) ?? 0;
-        const r = num(s.reps)!;
-        if (kind === 'weight_time' || kind === 'time') seconds += r;
-        else volume += kind === 'reps' ? r : w * r;
-        const better = metric(s) > metric(top) || (metric(s) === metric(top) && r > num(top.reps)!);
-        if (better) top = s;
-        if (kind === 'weight_reps') e1rm = Math.max(e1rm, est1RM(w, r));
-        if (s.load?.pin !== undefined && kgFor(s) === null) pin = Math.max(pin, s.load.pin);
-      }
-      const point: HistoryPoint = { date, top: metric(top), topReps: num(top.reps)!, e1rm, volume, seconds };
-      if (point.top === 0 && pin > 0) point.pin = pin;
-      return [point];
+      const p = historyPoint(date, logs[date][exerciseId], kind, machine);
+      return p ? [p] : [];
     });
+}
+
+/** exerciseHistory for every given exercise, in ONE pass over the history (oldest day first). */
+export function allHistories(logs: State['logs'], ids: string[], machines: State['machines'] = {}): Record<string, HistoryPoint[]> {
+  const out: Record<string, HistoryPoint[]> = Object.fromEntries(ids.map((id) => [id, []]));
+  for (const date of Object.keys(logs).sort()) {
+    for (const [id, log] of Object.entries(logs[date])) {
+      if (!out[id]) continue;
+      const p = historyPoint(date, log, kindOf(id), machines[id]);
+      if (p) out[id].push(p);
+    }
+  }
+  return out;
 }
 
 /** Replace or remove set `i` of `id` on `date`. Removing the last set removes the exercise from that day. */

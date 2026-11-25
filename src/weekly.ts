@@ -111,10 +111,44 @@ export function weekBoard(state: State, today = todayKey()) {
     .sort((a, b) => (b.thisWeek!.date > a.thisWeek!.date ? 1 : b.thisWeek!.date < a.thisWeek!.date ? -1 : a.exerciseId.localeCompare(b.exerciseId)));
 }
 
+/**
+ * Per exercise: the days it was done (oldest first) and the running best score up to each, built in
+ * one pass and kept until the logs (or that lift's pin mode / machine setup) change.
+ */
+const bestsCache = new WeakMap<State['logs'], Map<string, { dates: string[]; best: number[] }>>();
+function runningBests(state: State, exerciseId: string) {
+  let byId = bestsCache.get(state.logs);
+  if (!byId) bestsCache.set(state.logs, (byId = new Map()));
+  const key = `${exerciseId}|${pinMode(state, exerciseId)}|${JSON.stringify(state.machines[exerciseId] ?? null)}`;
+  let r = byId.get(key);
+  if (!r) {
+    r = { dates: [], best: [] };
+    let run = 0;
+    for (const d of Object.keys(state.logs).sort()) {
+      if (!state.logs[d][exerciseId]) continue;
+      const b = bestIn(state, exerciseId, [d]);
+      if (!b) continue;
+      run = Math.max(run, b.score);
+      r.dates.push(d);
+      r.best.push(run);
+    }
+    byId.set(key, r);
+  }
+  return r;
+}
+
 /** All-time best score before a date. */
-function bestScoreBefore(state: State, exerciseId: string, beforeDate: string) {
-  const dates = Object.keys(state.logs).filter((d) => d < beforeDate);
-  return bestIn(state, exerciseId, dates)?.score ?? 0;
+export function bestScoreBefore(state: State, exerciseId: string, beforeDate: string) {
+  const { dates, best } = runningBests(state, exerciseId);
+  // Binary search: how many of the days come before `beforeDate`.
+  let lo = 0;
+  let hi = dates.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (dates[mid] < beforeDate) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo ? best[lo - 1] : 0;
 }
 
 export type WeeklyPR = { exerciseId: string; best: Best; previous: number };
