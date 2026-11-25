@@ -1,6 +1,6 @@
 import { useEvent, useEventListener } from 'expo';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { logCrash } from '../crash';
 import { perfMark } from '../perf';
@@ -47,10 +47,13 @@ export function LoopVideo(props: Props) {
 }
 
 function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {
-  const player = pool.playerFor(props.source) as VideoPlayer | null;
+  const { source } = props;
+  const player = pool.playerFor(source) as VideoPlayer | null;
+  // Still the pool's? (A play error on a player the pool has just let go of is expected; others are logged.)
+  const live = useCallback(() => pool.playerFor(source) === player, [pool, source, player]);
   // The player is being made (opening the workout, or going back): the still shows meanwhile.
   if (!player) return <Poster poster={props.poster} />;
-  return <PlayerVideo key={keyOf(player)} {...props} player={player} pooled />;
+  return <PlayerVideo key={keyOf(player)} {...props} player={player} pooled live={live} />;
 }
 
 function OwnVideo(props: Props) {
@@ -79,7 +82,8 @@ function PlayerVideo({
   onPlaying,
   onDuration,
   poster,
-}: Props & { player: VideoPlayer; pooled?: boolean }) {
+  live,
+}: Props & { player: VideoPlayer; pooled?: boolean; live?: () => boolean }) {
   const segment = end !== undefined && end > start;
   // The still stays until this view's first frame (or the safety net below), even for a player that's
   // already playing elsewhere: a still for a moment, never a black panel. A new player always gets a
@@ -92,9 +96,9 @@ function PlayerVideo({
       else player.play();
     } catch (e) {
       // A pooled player the pool has just let go of has nothing to play; anything else is logged.
-      if (!pooled) logCrash('error', e, 'video play/pause');
+      if (!live || live()) logCrash('error', e, 'video play/pause');
     }
-  }, [paused, player, pooled]);
+  }, [paused, player, live]);
   // A pooled player outlives this page when it becomes the "next" one (going back): leave it paused.
   useEffect(
     () => () => {
@@ -124,12 +128,14 @@ function PlayerVideo({
   useEventListener(player, 'sourceLoad', ({ duration }) => onDuration?.(duration));
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
   // Safety net: if a playing video never reports its first frame (e.g. a player already shown
-  // before), the still goes after a moment, so it can never stay stuck over a moving video. Paused
-  // (reduce motion), the still simply stays until a frame is drawn: it IS the picture then.
-  const settled = isPlaying;
+  // before), the still goes after a while (long enough for a slow phone's first frame), so it can
+  // never stay stuck over a moving video. Paused (reduce motion), a pooled video's still stays until
+  // a frame is drawn (it IS the picture then); a video's own fresh player is ready once loaded.
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const settled = isPlaying || (paused && !pooled && status === 'readyToPlay');
   useEffect(() => {
     if (!settled || shown) return;
-    const t = setTimeout(() => setShown(true), 600);
+    const t = setTimeout(() => setShown(true), 1500);
     return () => clearTimeout(t);
   }, [settled, shown]);
   useEffect(() => {

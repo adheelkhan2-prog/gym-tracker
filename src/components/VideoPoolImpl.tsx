@@ -23,8 +23,8 @@ class Players {
     this.listeners.forEach((l) => l());
   }
   private make(src: Src) {
-    // A player that can't be made (e.g. no free decoder on the phone) is simply not pooled: that
-    // page's video then gets its own player, or its still shows. Never fatal.
+    // A player that can't be made (e.g. no free decoder on the phone) is never fatal: that page shows
+    // its still (no second player competing for a decoder), and it's tried again next time.
     let player: VideoPlayer | null = null;
     try {
       player = createVideoPlayer(src as VideoSource);
@@ -32,8 +32,8 @@ class Players {
       player.loop = true;
       player.muted = true;
       player.bufferOptions = LOCAL_BUFFER;
-      // Most load / decoder failures come later, as an error status: that video then leaves the pool
-      // too (its page shows its still, or its own player), and its player is released off screen.
+      // Most load / decoder failures come later, as an error status: that page then shows its still,
+      // and the player is released a moment later, once the page has let go of it.
       player.addListener('statusChange', ({ status }) => {
         if (status !== 'error' || !this.held.some((h) => h.player === made)) return;
         this.failed.push(src);
@@ -66,7 +66,7 @@ class Players {
         // Already gone.
       }
   }
-  /** Videos whose player couldn't be made: they use their own player instead. */
+  /** Videos whose player couldn't be made: their still shows until they're off screen and back. */
   failed: Src[] = [];
 
   sync(current: Src, next: Src) {
@@ -152,7 +152,6 @@ export function VideoPoolHost({ current, next, onPool }: { current: Src; next: S
   );
   const value: HeldPlayers = useMemo(
     () => ({
-      failed: (src) => players.failed.some((f) => sameSource(f, src)),
       // Checked live too: a player released a moment ago (before this snapshot reached the page) is
       // never handed out.
       playerFor: (src) => {

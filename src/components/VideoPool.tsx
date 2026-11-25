@@ -30,7 +30,7 @@ export function VideoPoolProvider({ current, next, children }: { current: Src; n
       held === 'off'
         ? null
         : {
-            manages: (src) => (sameSource(src, current) || sameSource(src, next)) && !held?.failed(src),
+            manages: (src) => sameSource(src, current) || sameSource(src, next),
             playerFor: (src) => held?.playerFor(src) ?? null,
           },
     [held, current, next],

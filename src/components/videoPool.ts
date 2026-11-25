@@ -19,15 +19,12 @@ export type PooledPlayer = unknown;
 export type VideoPool = {
   /** Is this video one the pool looks after (the current or next exercise's)? Others use their own player. */
   manages: (source: number | { uri: string }) => boolean;
-  /** Its player, or null while it's being made (the still shows meanwhile). */
+  /** Its player, or null while it's being made, or if it failed (the still shows meanwhile). */
   playerFor: (source: number | { uri: string }) => PooledPlayer | null;
 };
 export const VideoPoolContext = createContext<VideoPool | null>(null);
-/** What the pool's host reports: the players it holds, and the videos it couldn't make one for. */
-export type HeldPlayers = {
-  playerFor: VideoPool['playerFor'];
-  failed: (source: number | { uri: string }) => boolean;
-};
+/** What the pool's host reports: the players it holds. */
+export type HeldPlayers = { playerFor: VideoPool['playerFor'] };
 
 /** Same source? Bundled videos are asset numbers; your own are { uri }. */
 export const sameSource = (a: unknown, b: unknown) =>

@@ -93,6 +93,8 @@ build_variant() {
   ref=$(echo "${flows:-}" | grep -oE 'ref=[0-9a-f]+' | cut -d= -f2)
   if [ "$v" = perf ] && [ -n "$ref" ]; then
     # Exactly that commit's src/: nothing added since may stay behind (e.g. a newer route).
+    git cat-file -e "$ref^{commit}" 2>/dev/null || git fetch -q origin "$ref" 2>/dev/null ||
+      { log "FAIL: commit $ref not found"; return 1; }
     git rm -rq --cached src && rm -rf src && git checkout -q "$ref" -- src || return 1
     log "measuring the app code of $(git rev-parse --short "$ref") (src/), test scripts of $(git rev-parse --short "$want")"
     # Native config (app.json, packages) is still $want's, so the build is compared against $want.
