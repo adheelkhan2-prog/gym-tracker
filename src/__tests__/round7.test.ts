@@ -73,6 +73,11 @@ describe('editing and deleting a logged set', () => {
     const none = editSet(one, 'db_shoulder_press', { date: '2026-11-20', i: 0 }, null);
     expect(none.logs['2026-11-20']).toBeUndefined();
   });
+  test('deleting the only logged set after a mid-workout swap keeps the sets carried over', () => {
+    const s = base({ logs: { '2026-11-20': { pec_deck: { sets: [{ weight: '40', reps: '12', done: true, u: 'kg' }], carried: 2 } } } });
+    const after = editSet(s, 'pec_deck', { date: '2026-11-20', i: 0 }, null);
+    expect(after.logs['2026-11-20'].pec_deck).toEqual({ sets: [], carried: 2 });
+  });
   test('a set that no longer exists changes nothing', () => {
     const s = base({ logs });
     expect(editSet(s, 'db_shoulder_press', { date: '2026-11-21', i: 0 }, null)).toBe(s);

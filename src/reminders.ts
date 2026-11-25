@@ -24,7 +24,11 @@ export const SUPPORTED = Platform.OS !== 'web' && NOTIFY_OK;
 const CHANNEL = 'supplements';
 const CATEGORY = 'supplement';
 const PREFIX = 'supp-';
+/** Test reminders: outside PREFIX, so a schedule rebuild never cancels one before it fires. */
+const TEST_PREFIX = 'supptest-';
 const DAYS_AHEAD = 10;
+/** Stay under the phone's cap on scheduled notifications (64 on iOS; Android allows more). */
+const MAX_SCHEDULED = 60;
 export const ACTION_TAKEN = 'TAKEN';
 export const ACTION_LATER = 'NOT_YET';
 
@@ -84,32 +88,42 @@ const lower = (name: string) => name.charAt(0).toLowerCase() + name.slice(1);
  */
 export function planReminders(state: Pick<State, 'supplements' | 'taken' | 'suppReminders'>, now: Date): PlannedReminder[] {
   const out: PlannedReminder[] = [];
+  // Fewer days ahead when there are many reminders a day, so the total stays under the cap (the
+  // schedule is rebuilt every time the app opens, so the days left out are added later).
+  const perDay = state.supplements.reduce((n, name) => {
+    const r = reminderFor(state, name);
+    return n + (r.on ? 1 + r.followUps.length + (r.lastCall ? 1 : 0) : 0);
+  }, 0);
+  const days = perDay ? Math.max(2, Math.min(DAYS_AHEAD, Math.floor(MAX_SCHEDULED / perDay))) : 0;
   state.supplements.forEach((name, n) => {
     const r = reminderFor(state, name);
     if (!r.on) return;
-    const times = [r.morning, ...r.followUps, ...(r.lastCall ? [r.lastCall] : [])];
+    // In time order, so "Time for" is the first of the day and "Last call" the last, whatever
+    // order the times were set in.
+    const last = r.lastCall;
+    const times = [...new Set([r.morning, ...r.followUps, ...(last ? [last] : [])])].sort();
     const what = lower(name);
-    for (let i = 0; i < DAYS_AHEAD; i++) {
+    for (let i = 0; i < days; i++) {
       const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
       const key = todayKey(day);
       if (state.taken[key]?.[name]) continue;
       times.forEach((time, slot) => {
         const when = atTime(key, time);
         if (when <= now) return;
-        const last = !!r.lastCall && slot === times.length - 1;
+        const isLast = !!last && slot === times.length - 1 && times.length > 1;
         out.push({
           id: `${PREFIX}${slug(name)}${n}-${key}-${slot}`,
           when,
           date: key,
           slot,
           supp: name,
-          title: slot === 0 ? `Time for your ${what}` : last ? `Last call: ${what}` : `Still need your ${what}?`,
+          title: slot === 0 ? `Time for your ${what}` : isLast ? `Last call: ${what}` : `Still need your ${what}?`,
           body: slot === 0 ? `Tap Taken once you've had it.` : `You haven't marked your ${what} as taken today.`,
         });
       });
     }
   });
-  return out.sort((a, b) => a.when.getTime() - b.when.getTime());
+  return out.sort((a, b) => a.when.getTime() - b.when.getTime()).slice(0, MAX_SCHEDULED);
 }
 
 // Syncs run one at a time, and a sync that a newer one has overtaken stops before scheduling
@@ -154,7 +168,10 @@ export function syncReminders(state: State): Promise<void> {
  */
 export function applyReminderAction<S extends Pick<State, 'taken' | 'supplements'>>(state: S, date: string, action: 'taken' | 'later' | 'open', supp?: string): S {
   if (action !== 'taken') return state;
-  const names = supp && state.supplements.includes(supp) ? [supp] : state.supplements;
+  // An older notification without a supplement marks them all; one for a supplement that was
+  // renamed or removed since changes nothing.
+  if (supp !== undefined && !state.supplements.includes(supp)) return state;
+  const names = supp !== undefined ? [supp] : state.supplements;
   return { ...state, taken: { ...state.taken, [date]: { ...state.taken[date], ...Object.fromEntries(names.map((x) => [x, true])) } } };
 }
 
@@ -162,7 +179,7 @@ export function applyReminderAction<S extends Pick<State, 'taken' | 'supplements
 export async function sendTestReminder(name: string, date: string) {
   if (!SUPPORTED) return;
   await Notifications.scheduleNotificationAsync({
-    identifier: `${PREFIX}test-${slug(name)}`,
+    identifier: `${TEST_PREFIX}${slug(name)}`,
     content: {
       title: `Time for your ${lower(name)}`,
       body: 'Test reminder. Tap Taken to mark it.',
@@ -180,7 +197,8 @@ export function onReminderResponse(handler: (date: string, action: 'taken' | 'la
   const handle = (r: NotificationResponse | null) => {
     if (!r) return;
     const data = r.notification.request.content.data as { date?: string; supp?: string } | undefined;
-    if (!r.notification.request.identifier.startsWith(PREFIX) || !data?.date) return;
+    const rid = r.notification.request.identifier;
+    if (!(rid.startsWith(PREFIX) || rid.startsWith(TEST_PREFIX)) || !data?.date) return;
     const action =
       r.actionIdentifier === ACTION_TAKEN ? 'taken' : r.actionIdentifier === ACTION_LATER ? 'later' : 'open';
     Notifications.dismissNotificationAsync(r.notification.request.identifier).catch(() => {});

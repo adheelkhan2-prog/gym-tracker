@@ -51,6 +51,10 @@ export function Sheet({
   }, []);
 
   const done = () => onClose();
+  // A drag that interrupts the slide-away cancels it: the sheet stays open and can close again.
+  const reopen = () => {
+    closing.current = false;
+  };
   /** Slide away, then tell the parent (which unmounts the sheet). */
   const close = () => {
     if (closing.current) return;
@@ -59,7 +63,7 @@ export function Sheet({
     y.set(
       withTiming(height, { duration: CLOSE_MS, easing: Easing.in(Easing.quad) }, (finished) => {
         'worklet';
-        if (finished) scheduleOnRN(done);
+        scheduleOnRN(finished ? done : reopen);
       }),
     );
   };

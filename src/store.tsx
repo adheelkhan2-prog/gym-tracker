@@ -494,7 +494,9 @@ export function editSet(state: State, id: string, { date, i }: { date: string; i
   if (!log || !log.sets[i]) return state;
   const sets = next ? log.sets.map((x, j) => (j === i ? next : x)) : log.sets.filter((_, j) => j !== i);
   const nextDay = { ...day };
-  if (sets.some((x) => x.done)) nextDay[id] = { ...log, sets };
+  // The exercise leaves that day only when nothing is left: no sets at all and no sets carried
+  // over from a mid-workout swap.
+  if (sets.length || log.carried) nextDay[id] = { ...log, sets };
   else delete nextDay[id];
   const logs = { ...state.logs };
   if (Object.keys(nextDay).length) logs[date] = nextDay;

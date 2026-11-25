@@ -103,7 +103,29 @@ describe('schedule', () => {
   });
 });
 
+describe('limits and order', () => {
+  test('many reminders a day: fewer days ahead, never more than 60 scheduled', () => {
+    const big = { on: true, morning: '07:00', followUps: ['10:00', '12:00', '15:00'], lastCall: '21:00' };
+    const s = { ...base, supplements: ['A', 'B', 'C', 'D'], suppReminders: { A: big, B: big, C: big, D: big } };
+    const plan = planReminders(s, at(2026, 11, 23, 6));
+    expect(plan.length).toBeLessThanOrEqual(60);
+    expect(plan.length).toBeGreaterThan(20);
+  });
+  test('titles follow the time order, whatever order the times were set in', () => {
+    const odd = { ...base, suppReminders: { ...base.suppReminders, Creatine: { on: true, morning: '08:00', followUps: ['21:00'], lastCall: '12:00' } } };
+    expect(today(at(2026, 11, 23, 7), odd, 'Creatine').map((x) => [x.when.getHours(), x.title])).toEqual([
+      [8, 'Time for your creatine'],
+      [12, 'Still need your creatine?'],
+      [21, 'Last call: creatine'],
+    ]);
+  });
+});
+
 describe('taking action on a reminder', () => {
+  test('"Taken" on a reminder for a supplement renamed or removed since changes nothing', () => {
+    expect(applyReminderAction(base, '2026-11-23', 'taken', 'Old name')).toBe(base);
+  });
+
   test('"Taken" marks that supplement only; "Not yet" and a plain tap change nothing', () => {
     const marked = applyReminderAction(base, '2026-11-23', 'taken', 'Creatine');
     expect(marked.taken['2026-11-23']).toEqual({ Creatine: true });

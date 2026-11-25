@@ -1,6 +1,6 @@
-// A time you tap to change: the phone's own time picker on Android (a clock dial), a typed HH:MM
-// field in the web preview. Times are stored as 'HH:MM' (24 h).
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+// A time you tap to change: the phone's own time picker (a clock dial on Android, the system time
+// wheel on iOS), a typed HH:MM field in the web preview. Times are stored as 'HH:MM' (24 h).
+import RNDateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, fmtTime, font, radius, size, space, themed, touch, type } from '../theme';
@@ -19,6 +19,30 @@ const asDate = (hhmm: string) => {
 
 export function TimeField({ label, value, onChange, testID }: { label: string; value: string; onChange: (hhmm: string) => void; testID?: string }) {
   const [typed, setTyped] = useState<string | null>(null);
+  const [iosOpen, setIosOpen] = useState(false);
+  if (Platform.OS === 'ios') {
+    return (
+      <View>
+        <Press onPress={() => setIosOpen((v) => !v)} style={s.row} accessibilityRole="button" accessibilityLabel={`${label}: ${fmtTime(value)}. Tap to change`} testID={testID}>
+          <Text style={[type.small, { flex: 1 }]}>{label}</Text>
+          <View style={s.time}>
+            <Icon name="clock" size={16} color={color.muted} />
+            <Text style={s.timeText}>{fmtTime(value)}</Text>
+          </View>
+        </Press>
+        {iosOpen && (
+          <RNDateTimePicker
+            value={asDate(value)}
+            mode="time"
+            display="spinner"
+            onChange={(_, d) => {
+              if (d) onChange(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+            }}
+          />
+        )}
+      </View>
+    );
+  }
   if (Platform.OS === 'web') {
     return (
       <View style={s.row}>

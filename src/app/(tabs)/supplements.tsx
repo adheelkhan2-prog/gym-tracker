@@ -158,8 +158,12 @@ export default function SupplementsScreen() {
               onToggle={() => setOpen((o) => (o === item ? null : item))}
               onReminder={(r) => update((st) => ({ ...st, suppReminders: { ...st.suppReminders, [item]: r } }))}
               onRename={(to) => {
-                update((st) => renameSupplement(st, item, to));
-                setOpen(to.trim() || item);
+                const name = to.trim();
+                if (!name || name === item) return true;
+                if (state.supplements.includes(name)) return false;
+                update((st) => renameSupplement(st, item, name));
+                setOpen(name);
+                return true;
               }}
               onDelete={() => {
                 update((st) => removeSupplement(st, item));
@@ -212,7 +216,8 @@ function StackItem({
   open: boolean;
   onToggle: () => void;
   onReminder: (r: SuppReminder) => void;
-  onRename: (to: string) => void;
+  /** False when the name is already in the stack (nothing changes). */
+  onRename: (to: string) => boolean;
   onDelete: () => void;
   today: string;
 }) {
@@ -220,6 +225,14 @@ function StackItem({
   const streak = supplementStreakFor(state, name, today);
   const [sent, setSent] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [taken, setTaken] = useState(false);
+  const saveName = () => {
+    if (renaming === null) return;
+    if (onRename(renaming)) {
+      setRenaming(null);
+      setTaken(false);
+    } else setTaken(true);
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (patch: Partial<SuppReminder>) => onReminder({ ...r, ...patch });
   const summary = r.on ? `${fmtTime(r.morning)}${r.followUps.length ? ` + ${r.followUps.length} follow-up${r.followUps.length > 1 ? 's' : ''}` : ''}${r.lastCall ? ' + last call' : ''}` : 'Reminders off';
@@ -295,25 +308,22 @@ function StackItem({
               <TextInput
                 autoFocus
                 value={renaming}
-                onChangeText={setRenaming}
-                onSubmitEditing={() => {
-                  onRename(renaming);
-                  setRenaming(null);
+                onChangeText={(t) => {
+                  setRenaming(t);
+                  setTaken(false);
                 }}
+                onSubmitEditing={saveName}
                 style={[s.addInput, s.renameInput]}
                 accessibilityLabel={`New name for ${name}`}
                 returnKeyType="done"
               />
-              <Button
-                size="sm"
-                label="Save"
-                onPress={() => {
-                  onRename(renaming);
-                  setRenaming(null);
-                }}
-              />
+              <Button size="sm" label="Save" onPress={saveName} />
             </View>
-          ) : confirmDelete ? (
+          ) : null}
+          {renaming !== null && taken ? (
+            <Text style={[type.small, { color: color.warn }]}>{renaming.trim()} is already in your stack.</Text>
+          ) : null}
+          {renaming !== null ? null : confirmDelete ? (
             <View style={s.line}>
               <Text style={[type.small, { flex: 1 }]}>Delete {name}? Days you took it stay in the log.</Text>
               <Button size="sm" variant="ghost" label="Keep" onPress={() => setConfirmDelete(false)} />
