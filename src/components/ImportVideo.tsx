@@ -16,6 +16,7 @@ import { useStore, type OwnVideo } from '../store';
 import { color, font, radius, size, space, themed, type } from '../theme';
 import { Icon } from './icons';
 import { LoopVideo } from './LoopVideo';
+import { VideoSheetScope } from './videoPoolCore';
 import { Sheet } from './Sheet';
 import { Button, Press } from './ui';
 
@@ -131,7 +132,9 @@ function TrimSheet({ name, clip, onSave, onCancel }: { name: string; clip: OwnVi
     <Sheet title="Trim to a short loop" subtitle={`${name}. Pick where the loop starts and how long it is (up to ${MAX_LOOP} s).`} onClose={onCancel} testID="trim-sheet">
       <View style={{ gap: space.md }}>
         <View style={s.preview}>
-          <LoopVideo source={{ uri: clip.uri }} paused={false} start={t.start} end={t.end} onDuration={(d) => d > 0 && setDuration(d)} />
+          <VideoSheetScope>
+            <LoopVideo source={{ uri: clip.uri }} paused={false} start={t.start} end={t.end} onDuration={(d) => d > 0 && setDuration(d)} />
+          </VideoSheetScope>
         </View>
         <Text style={[type.small, { textAlign: 'center' }]}>
           Loop: {t.start.toFixed(1)} s → {t.end.toFixed(1)} s{known ? ` of ${duration.toFixed(1)} s` : ''}

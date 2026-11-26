@@ -1,0 +1,15 @@
+# Speed check: back through the pages with Previous (the videos seen before).
+appId: com.gymtracker.app
+---
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          id: "prev-exercise"
+      - waitForAnimationToEnd:
+          timeout: 4000
+      # A plain 3 s wait (this text never appears).
+      - extendedWaitUntil:
+          visible: "zz-perf-wait"
+          timeout: 3000
+          optional: true

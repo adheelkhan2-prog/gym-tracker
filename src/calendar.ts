@@ -8,11 +8,11 @@ import {
   dateFromKey,
   dayById,
   dayHasWork,
+  dayRecords,
   doneSets,
   finishedOn,
   kgOf,
   prMetric,
-  prSetsOn,
   todayKey,
   trainedOn,
   type SetEntry,
@@ -20,26 +20,12 @@ import {
 } from './store';
 import { volumeOn } from './totals';
 
-/** Highest pin among pin-only sets of an exercise on a day (0 if none). */
-const topPin = (sets: SetEntry[]) => Math.max(0, ...sets.filter((x) => x.done && x.load?.pin !== undefined && kgOf(x) === null).map((x) => x.load!.pin!));
-
 /**
  * PRs on a day: kg (or reps / seconds) records as in the weekly tracker, plus machine-pin records
- * (pins are compared only with pins). Exercise -> what the record is judged on.
+ * (pins are compared only with pins). Exercise -> what the record is judged on. Read from the
+ * history's PR index (built once, in one pass).
  */
-export function dayPRs(state: Pick<State, 'logs'>, date: string): Map<string, { kind: 'metric' | 'pin'; value: number }> {
-  const out = new Map<string, { kind: 'metric' | 'pin'; value: number }>();
-  for (const p of prSetsOn(state.logs, date)) out.set(p.exerciseId, { kind: 'metric', value: p.value });
-  for (const [id, l] of Object.entries(state.logs[date] ?? {})) {
-    if (out.has(id)) continue;
-    const today = topPin(l.sets);
-    if (!today) continue;
-    let before = 0;
-    for (const [d, day] of Object.entries(state.logs)) if (d < date && day[id]) before = Math.max(before, topPin(day[id].sets));
-    if (before > 0 && today > before) out.set(id, { kind: 'pin', value: today });
-  }
-  return out;
-}
+export const dayPRs = (state: Pick<State, 'logs'>, date: string) => dayRecords(state.logs, date);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 export const keyOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;

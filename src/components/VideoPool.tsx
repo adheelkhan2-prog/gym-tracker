@@ -1,0 +1,65 @@
+// The workout's video players. The pool logic is loaded fail-safe and sits BESIDE the page, not
+// around it: if expo-video can't load or the pool fails, only the pool is lost (each video then
+// uses its own player, or shows its still), and the workout page itself is never remounted.
+import React, { useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { lazySafe } from '../safe';
+import { sameSource, VideoHoldContext, VideoPoolContext, VideoSheetContext, type HeldPlayers, type Src, type VideoPool } from './videoPoolCore';
+import type { VideoPoolHost as Impl } from './VideoPoolImpl';
+
+type HostProps = ComponentProps<typeof Impl>;
+
+/** Without the pool (it failed to load or render): every video uses its own player. */
+function NoPool({ onPool }: HostProps) {
+  useEffect(() => onPool('off'), [onPool]);
+  return null;
+}
+
+const Host = lazySafe<HostProps>(
+  'VideoPool',
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on first use, guarded
+  () => require('./VideoPoolImpl').VideoPoolHost,
+  NoPool,
+);
+
+export function VideoPoolProvider({
+  current,
+  next,
+  hold,
+  onSheet,
+  children,
+}: {
+  current: Src;
+  next: Src;
+  hold?: boolean;
+  /** A sheet with its own video opened / closed inside the workout. */
+  onSheet?: (open: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const [held, setHeld] = useState<HeldPlayers | 'off' | null>(null);
+  // Which videos are pooled comes from THIS render's pages, so a page that just came on screen never
+  // makes a throwaway player of its own while the pool catches up: it shows its still for that moment.
+  const pool: VideoPool | null = useMemo(
+    () =>
+      held === 'off'
+        ? null
+        : {
+            manages: (src) => sameSource(src, current) || sameSource(src, next),
+            // Held: the pages let go of their players in the same render, before the host releases them.
+            playerFor: (src) => (hold ? null : (held?.playerFor(src) ?? null)),
+          },
+    [held, current, next, hold],
+  );
+  // The host comes AFTER the page: on leaving the workout the page lets go of its players first,
+  // then the host releases them.
+  return (
+    <>
+      <VideoSheetContext.Provider value={onSheet ?? null}>
+        <VideoHoldContext.Provider value={!!hold}>
+          <VideoPoolContext.Provider value={pool}>{children}</VideoPoolContext.Provider>
+        </VideoHoldContext.Provider>
+      </VideoSheetContext.Provider>
+      {/* Held: the pool lets go of its players (they're remade on return); the pages show their stills. */}
+      <Host current={current} next={next} hold={hold} onPool={setHeld} />
+    </>
+  );
+}

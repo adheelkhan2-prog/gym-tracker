@@ -3,14 +3,14 @@
 #
 # The emulator stays up. Every 20 s the session reads .maestro/session.txt on the branch:
 #   line 1: a request id (change it to send a new request; "stop" ends the session)
-#   line 2: quick | full
+#   line 2: quick | full | perf (speed checks: a perf build, start / workout / Progress times + memory)
 #   line 3: flows to run for "quick", e.g. "swap finish" (default: all, once)
 # For a new request it checks out the latest commit, rebuilds ONLY if app code changed (an
 # incremental Gradle build; a full prebuild only when app.json, plugins or packages changed),
 # reinstalls, runs the flows, and pushes the results to the e2e-results branch
 # (results.txt + fail-N.png screenshots) so they can be read while the session keeps running.
 #
-# "full" is the crash test: flows/full.yaml (every flow, 10 times) with the network ON (the app's
+# "full" is the crash test: flows/full.yaml (every flow, 3 times) with the network ON (the app's
 # traffic counters must stay at zero), then again in airplane mode, plus a logcat crash check.
 set -uo pipefail
 PKG=com.gymtracker.app
@@ -45,8 +45,11 @@ while [ $SECONDS -lt $END ]; do
     source .maestro/session-lib.sh
     log "request $id ($mode) at $(git rev-parse --short "$want"), session up $((SECONDS / 60)) min"
     status=OK
-    if ! build_if_needed "$want"; then
+    if ! build_variant "$want" "$([ "$mode" = perf ] && echo perf || echo normal)"; then
       status=BUILD-FAILED
+    elif [ "$mode" = perf ]; then
+      adb logcat -c
+      perf_run || status=FAILED # (it checks for crashes itself, across its log clears)
     elif [ "$mode" = full ]; then
       adb shell dumpsys package "$PKG" | grep -q "android.permission.INTERNET: granted=true" && { log "FAIL: the app holds INTERNET"; status=FAILED; }
       adb logcat -c

@@ -1,11 +1,12 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ExerciseMedia, HowToSteps, MuscleLegend, SwapSheet, Tips, mediaCredit } from '../components/ExerciseParts';
+import { ExerciseMedia, HowToSteps, MuscleLegend, SwapSheet, Tips, mediaCredit, mediaFor } from '../components/ExerciseParts';
+import { VideoPoolProvider } from '../components/VideoPool';
 import { OwnVideoButtons } from '../components/ImportVideo';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
@@ -26,6 +27,7 @@ import { bestBefore, dayById, hasLoggedSets, kgOf, prMetric, todayKey, useStore,
 import { color, fmtClock, font, motion, radius, size, space, themed, touch, type } from '../theme';
 import { setText, slotStatuses, swapSlot, titleOf, type SlotStatus } from '../workout';
 import { bigJump, weeklyTarget } from '../weekly';
+import { perfMark } from '../perf';
 
 type Missing = {
   slot: string;
@@ -67,8 +69,11 @@ export default function WorkoutScreen() {
   const [pr, setPr] = useState<string | null>(null);
   const [flash, setFlash] = useState(0);
   const [swapFor, setSwapFor] = useState<SlotStatus | null>(null);
+  const focused = useIsFocused();
+  const [videoSheet, setVideoSheet] = useState(false);
   const [navH, setNavH] = useState(88);
   const finishing = useRef(false);
+  useEffect(() => perfMark('workout-ready'), []);
   useEffect(() => {
     restCarry.endsAt = restEnd;
     restCarry.total = restTotal;
@@ -79,6 +84,7 @@ export default function WorkoutScreen() {
   const goTo = (i: number) => {
     if (i < 0 || i >= count || i === at) return;
     haptic.tap();
+    perfMark(`page-${i}`);
     setDir(i > at ? 1 : -1);
     setPage(i);
   };
@@ -168,6 +174,17 @@ export default function WorkoutScreen() {
 
   const st = statuses[at];
   const last = at === count - 1;
+  // Videos: only this exercise's and the next one's are loaded (the next is preloaded); the rest
+  // stay released. Your own clips use their own player.
+  // Behind History or the trim sheet (each plays a video of its own) the workout lets go of its
+  // players and shows its stills, so only one video decodes at a time; they're remade on return.
+  const hold = !focused || videoSheet;
+  const videoOf = (i: number) => {
+    const x = statuses[i];
+    if (!x) return null;
+    const m = mediaFor(x.exerciseId, state.userVideos);
+    return m.kind === 'video' ? (m.video as number | { uri: string }) : null;
+  };
   const draftKey = `${st.plan.slot}-${st.exerciseId}`;
   const anyLogged = done > 0;
 
@@ -199,27 +216,29 @@ export default function WorkoutScreen() {
         </View>
       </Press>
 
-      <GestureDetector gesture={pan}>
-        <Animated.View style={[{ flex: 1 }, dragStyle]}>
-          <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: navH + (restEnd ? 96 : space.lg) }} keyboardShouldPersistTaps="handled">
-              <ExerciseCard
-                n={at}
-                st={st}
-                state={state}
-                date={date}
-                dayId={day.id}
-                statuses={statuses}
-                update={update}
-                onLogged={onLogged}
-                onSwap={() => setSwapFor(st)}
-                drafts={drafts[draftKey] ?? {}}
-                setDrafts={(fn) => setDrafts((d) => ({ ...d, [draftKey]: fn(d[draftKey] ?? {}) }))}
-              />
-            </ScrollView>
+      <VideoPoolProvider current={videoOf(at)} next={videoOf(at + 1)} hold={hold} onSheet={setVideoSheet}>
+        <GestureDetector gesture={pan}>
+          <Animated.View style={[{ flex: 1 }, dragStyle]}>
+            <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>
+              <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: navH + (restEnd ? 96 : space.lg) }} keyboardShouldPersistTaps="handled">
+                <ExerciseCard
+                  n={at}
+                  st={st}
+                  state={state}
+                  date={date}
+                  dayId={day.id}
+                  statuses={statuses}
+                  update={update}
+                  onLogged={onLogged}
+                  onSwap={() => setSwapFor(st)}
+                  drafts={drafts[draftKey] ?? {}}
+                  setDrafts={(fn) => setDrafts((d) => ({ ...d, [draftKey]: fn(d[draftKey] ?? {}) }))}
+                />
+              </ScrollView>
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
-      </GestureDetector>
+        </GestureDetector>
+      </VideoPoolProvider>
 
       {/* Previous / Next (Finish on the last page), in thumb reach. */}
       <View style={[s.nav, { paddingBottom: insets.bottom + space.md }]} onLayout={(e) => setNavH(e.nativeEvent.layout.height)}>

@@ -1,4 +1,5 @@
-# The crash test: every flow, 3 times over, each from a fresh install.
+# The crash test: every flow 3 times over, each from a fresh install (repeats catch leaks, e.g. of
+# video players, that one pass would miss).
 appId: com.gymtracker.app
 ---
 - repeat:

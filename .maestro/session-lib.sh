@@ -1,16 +1,28 @@
 # Sourced by session.sh for every request (from the commit under test). Uses: RES, PKG, APK, built.
-build_if_needed() {
-  local want="$1" changed
-  changed=$(git diff --name-only "$built" "$want")
-  if echo "$changed" | grep -qE '^(app\.json|plugins/|package(-lock)?\.json|metro\.config\.js|babel\.config\.js)'; then
+# npm ci + prebuild when native config changed between two commits (returns 1 on failure).
+native_prep() {
+  if git diff --name-only "$1" "$2" | grep -qE '^(app\.json|plugins/|package(-lock)?\.json|metro\.config\.js|babel\.config\.js)'; then
     log "rebuild: native config changed -> prebuild + build"
     npm ci --no-audit --no-fund >/dev/null && npx expo prebuild --platform android --no-install >/dev/null || return 1
-  elif echo "$changed" | grep -qE '^(src/|assets/|demo/)'; then
-    log "rebuild: app code changed -> incremental build"
-  else
-    log "no app change since $(git rev-parse --short "$built"): reusing the installed build"
     return 0
   fi
+  return 2
+}
+
+build_if_needed() {
+  local want="$1" r
+  native_prep "$built" "$want"; r=$?
+  [ $r = 1 ] && return 1
+  if [ $r = 2 ]; then
+    if git diff --name-only "$built" "$want" | grep -qE '^(src/|assets/|demo/)'; then
+      log "rebuild: app code changed -> incremental build"
+    else
+      log "no app change since $(git rev-parse --short "$built"): reusing the installed build"
+      return 0
+    fi
+  fi
+  # The perf flag always matches the installed variant (a failed variant switch may have left it set).
+  if [ "$VARIANT" = perf ]; then export EXPO_PUBLIC_PERF=1; else unset EXPO_PUBLIC_PERF; fi
   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -q) >"$RES/build.log" 2>&1 || { tail -40 "$RES/build.log" | tee -a "$RES/results.txt"; return 1; }
   adb install -r "$APK" >/dev/null || return 1
   built="$want"
@@ -67,3 +79,138 @@ publish() {
   (cd "$RES" && rm -rf .git && git init -q && git checkout -q -b e2e-results && git add results.txt && { ls fail-*.png >/dev/null 2>&1 && git add fail-*.png; true; } && git -c user.name=e2e-session -c user.email=e2e@localhost commit -qm "e2e results: $1" && git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" e2e-results) || echo "publish failed"
 }
 
+
+# --- Speed checks ("perf" requests) --------------------------------------------------------------
+# The perf build is the same release build with EXPO_PUBLIC_PERF=1 inlined in the JS bundle: it logs
+# "[perf] <mark> <epoch ms>" to logcat and seeds ~900 days of history on a fresh start.
+VARIANT=${VARIANT:-normal}
+
+# Build the given variant (normal | perf) of the commit, rebuilding the JS bundle when the variant
+# changes (the flag is baked into the bundle, so the cached one can't be reused).
+build_variant() {
+  local want="$1" v="$2" ref prev="$VARIANT"
+  # Start from exactly the requested commit (an earlier "ref=" run leaves another commit's src/ behind).
+  git reset -q --hard && git clean -fdq src
+  # "perf" with "ref=<commit>" on line 3: measure that commit's app (src/) with today's test scripts.
+  ref=$(echo "${flows:-}" | grep -oE 'ref=[0-9a-f]+' | cut -d= -f2)
+  if [ "$v" = perf ] && [ -n "$ref" ]; then
+    # Exactly that commit's src/: nothing added since may stay behind (e.g. a newer route).
+    git cat-file -e "$ref^{commit}" 2>/dev/null || git fetch -q origin "$ref" 2>/dev/null ||
+      { log "FAIL: commit $ref not found"; return 1; }
+    git rm -rq --cached src && rm -rf src && git checkout -q "$ref" -- src || return 1
+    log "measuring the app code of $(git rev-parse --short "$ref") (src/), test scripts of $(git rev-parse --short "$want")"
+    # Native config (app.json, packages) is still $want's, so the build is compared against $want.
+    VARIANT=forced
+  fi
+  if [ "$v" = "$VARIANT" ]; then build_if_needed "$want"; return; fi
+  log "rebuild: $prev -> $v build$([ -n "$ref" ] && [ "$v" = perf ] && echo " (of $ref's app code)")"
+  native_prep "$built" "$want"; [ $? = 1 ] && return 1
+  rm -rf android/app/build/generated/assets android/app/build/generated/res/createBundleReleaseJsAndAssets \
+    android/app/build/intermediates/assets android/app/build/intermediates/merged_assets node_modules/.cache "${TMPDIR:-/tmp}"/metro-* 2>/dev/null
+  if [ "$v" = perf ]; then export EXPO_PUBLIC_PERF=1; else unset EXPO_PUBLIC_PERF; fi
+  (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -q) >"$RES/build.log" 2>&1 || { tail -40 "$RES/build.log" | tee -a "$RES/results.txt"; return 1; }
+  adb install -r "$APK" >/dev/null || return 1
+  built="$want"; VARIANT="$v"
+  # A build of another commit's src/ is never reused: the next request always rebuilds.
+  [ -n "$ref" ] && [ "$v" = perf ] && VARIANT=forced
+  return 0
+}
+
+# Epoch ms of the first "[perf] <name>" mark in the logcat dump $1 at or after epoch ms $2.
+mark() { awk -v n="$2" -v t="${3:-0}" '/\[perf\] / {for(i=1;i<=NF;i++) if($i=="[perf]" && $(i+1)==n && $(i+2)+0>=t+0) {print $(i+2); exit}}' "$1"; }
+# Epoch ms of the activity START line for the app in the logcat dump $1.
+start_ms() { awk -v p="$PKG" '/ActivityTaskManager: START u0/ && index($0,p) {split($1,a,"."); print a[1] substr(a[2]"000",1,3); exit}' "$1"; }
+avg() { awk '{s+=$1; n++} END {if(n) printf "%.0f", s/n; else print "n/a"}'; }
+pss() {
+  local m pid
+  # Collect garbage first (SIGUSR1 makes ART run a GC), so the Java heap shows what's really in use.
+  pid=$(adb shell pidof "$PKG" | tr -d '\r')
+  [ -n "$pid" ] && { adb shell su 0 kill -10 "$pid" 2>/dev/null || adb shell kill -10 "$pid" 2>/dev/null; }; sleep 3
+  m=$(adb shell dumpsys meminfo "$PKG")
+  local total gfx native java
+  total=$(echo "$m" | grep -m1 -oE 'TOTAL PSS: *[0-9]+' | grep -oE '[0-9]+$')
+  gfx=$(echo "$m" | grep -m1 -E '^ *Graphics:' | grep -oE '[0-9]+' | head -1)
+  native=$(echo "$m" | grep -m1 -E '^ *Native Heap:' | grep -oE '[0-9]+' | head -1)
+  java=$(echo "$m" | grep -m1 -E '^ *Java Heap:' | grep -oE '[0-9]+' | head -1)
+  if [ -z "$pid" ] || [ -z "$total" ]; then log "MEM $1: app not running"; return; fi
+  log "MEM $1: total PSS $((total / 1024)) MB (native $((native / 1024)), java $((java / 1024)), graphics $((gfx / 1024)))"
+}
+
+# Clear logcat, but first keep any crash lines from it (checked at the end of perf_run).
+CRASH_RE="FATAL EXCEPTION|AndroidRuntime: Process: $PKG|ReactNativeJS: .*(TypeError|ReferenceError|Unhandled)"
+clear_log() { adb logcat -d | grep -E "$CRASH_RE" >>"$RES/perf-crash.txt"; adb logcat -c; }
+
+perf_run() {
+  local ok=0 i t s r d vm
+  : >"$RES/perf-crash.txt"
+  adb logcat -G 16M 2>/dev/null || true  # room for every perf mark of a whole pass
+  # Seed the big history once (fresh start), then let it save.
+  adb shell pm clear "$PKG" >/dev/null
+  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 25
+  run_flows seed nav >/dev/null 2>&1 || true
+  # 1. Cold start x5: process start -> Today on screen (JS mark), and Android's own TotalTime.
+  : >"$RES/cold.txt"; : >"$RES/total.txt"
+  for i in 1 2 3 4 5; do
+    adb shell am force-stop "$PKG"; sleep 2; clear_log
+    r=$(adb shell am start -W -n "$PKG/.MainActivity" | grep -oE 'TotalTime: [0-9]+' | grep -oE '[0-9]+')
+    for _ in $(seq 30); do adb logcat -d -v epoch >"$RES/lc.txt"; grep -q '\[perf\] today-ready' "$RES/lc.txt" && break; sleep 1; done
+    s=$(start_ms "$RES/lc.txt"); t=$(mark "$RES/lc.txt" today-ready)
+    [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/cold.txt"; [ -n "$r" ] && echo "$r" >>"$RES/total.txt"
+    log "cold start $i: Today ready $([ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) || echo '?') ms, Android TotalTime ${r:-?} ms"
+  done
+  log "PERF cold start (avg of 5): Today ready $(avg <"$RES/cold.txt") ms, Android TotalTime $(avg <"$RES/total.txt") ms"
+  adb shell am force-stop "$PKG"; sleep 2
+  adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 12; pss "Today after a cold start"
+  # 2. Opening a workout x3 (each a fresh start with the big history): tap -> screen, tap -> first video frame.
+  : >"$RES/open.txt"; : >"$RES/frame.txt"
+  for i in 1 2 3; do
+    clear_log
+    run_flows perf perf/open || ok=1
+    adb logcat -d -v epoch >"$RES/lc.txt"
+    vm=video-frame; grep -q '\[perf\] video-shown' "$RES/lc.txt" && vm=video-shown
+    s=$(mark "$RES/lc.txt" tap-start); t=$(mark "$RES/lc.txt" workout-ready "$s"); d=$(mark "$RES/lc.txt" "$vm" "$s")
+    [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/open.txt"
+    [ -n "$s" ] && [ -n "$d" ] && echo $((d - s)) >>"$RES/frame.txt"
+    log "open workout $i: screen $([ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) || echo '?') ms, moving video $([ -n "$s" ] && [ -n "$d" ] && echo $((d - s)) || echo 'none') ms"
+  done
+  log "PERF open workout (avg of 3): screen $(avg <"$RES/open.txt") ms, moving video $(avg <"$RES/frame.txt") ms"
+  sleep 5; pss "workout, page 1"
+  # 3. Every page with Next, then back with Previous: page change -> its video's first frame.
+  clear_log
+  run_flows perf perf/pages || ok=1
+  adb logcat -d -v epoch >"$RES/lc-fwd.txt"; clear_log
+  pss "workout, after Next through all 7 pages"
+  run_flows perf perf/back || ok=1
+  pss "workout, after Previous back to page 1"
+  if ! adb shell pidof "$PKG" >/dev/null; then
+    log "FAIL: the app is no longer running. Android's record of why:"
+    adb shell dumpsys activity exit-info "$PKG" | grep -E "reason|description|pss|rss" | head -8 >>"$RES/results.txt"; ok=1
+  fi
+  adb logcat -d -v epoch >"$RES/lc-back.txt"
+  cat "$RES/lc-fwd.txt" "$RES/lc-back.txt" >"$RES/lc.txt"
+  # When the moving video is on screen: "video-shown" (the still gives way to it); builds without
+  # that mark show nothing before the first frame, so for them it's "video-frame".
+  vm=video-frame; grep -q '\[perf\] video-shown' "$RES/lc.txt" && vm=video-shown
+  grep -oE "\[perf\] (page-[0-9]+|$vm) [0-9]+" "$RES/lc.txt" | awk -v vm="$vm" '
+    $2 ~ /^page-/ {if (p!="") print p, "none"; p=$2; t=$3; next}
+    $2==vm && p!="" {print p, $3-t; p=""}
+    END {if (p!="") print p, "none"}' >"$RES/pages.txt"
+  log "page change -> moving video on screen, ms ($vm): $(tr '\n' ' ' <"$RES/pages.txt")"
+  log "PERF page change -> moving video (avg of $(grep -vc none "$RES/pages.txt") pages with video): $(grep -v none "$RES/pages.txt" | awk '{print $2}' | avg) ms"
+  log "video players created: $(grep -c 'ExoPlayerImpl: Init' "$RES/lc.txt"), released: $(grep -c 'ExoPlayerImpl: Release' "$RES/lc.txt")"
+  # 4. Progress with ~900 days of history x3 (fresh process each time): tap -> screen ready.
+  : >"$RES/prog.txt"
+  for i in 1 2 3; do
+    adb shell am force-stop "$PKG"; sleep 2; clear_log
+    run_flows perf perf/progress || ok=1
+    adb logcat -d -v epoch >"$RES/lc.txt"
+    s=$(mark "$RES/lc.txt" tap-progress); t=$(mark "$RES/lc.txt" progress-ready "$s")
+    [ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) >>"$RES/prog.txt"
+    log "open Progress $i: $([ -n "$s" ] && [ -n "$t" ] && echo $((t - s)) || echo '?') ms"
+  done
+  log "PERF open Progress with ~900 days of history (avg of 3): $(avg <"$RES/prog.txt") ms"
+  clear_log
+  if [ -s "$RES/perf-crash.txt" ]; then log "CRASH during the speed checks:"; head -20 "$RES/perf-crash.txt" >>"$RES/results.txt"; ok=1; fi
+  sleep 5; pss "Progress with ~900 days of history"
+  return $ok
+}

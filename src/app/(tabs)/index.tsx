@@ -34,6 +34,7 @@ import {
 } from '../../store';
 import { bottomClearance, color, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
 import { WARMUP, dayProgress, nextInRotation, subtitleOf, titleOf, todayDayId } from '../../workout';
+import { perfMark } from '../../perf';
 
 export default function TodayScreen() {
   const { state, update, commit } = useStore();
@@ -47,6 +48,7 @@ export default function TodayScreen() {
   const weekday = now.getDay();
   // A day tapped in the week strip: shown as a preview, with a clear way back to today.
   const [picked, setPicked] = useState<{ id: string; wd: number; d: string } | null>(null);
+  useEffect(() => perfMark('today-ready'), []);
   // A switch booked for "next Monday" kicks in when that day arrives.
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   const which = todayDayId(state, date, weekday, picked?.id);
@@ -66,6 +68,7 @@ export default function TodayScreen() {
   const openExercise = (exerciseId: string, slot: string) =>
     router.push({ pathname: '/exercise/[id]', params: { id: exerciseId, day: day!.id, slot } });
   const openWorkout = () => {
+    perfMark('tap-start');
     haptic.tap();
     router.push({ pathname: '/workout', params: { day: day!.id } });
   };
