@@ -155,7 +155,12 @@ function PlayerVideo({
     if (!settled || shown) return;
     // Only once the video is really moving (its clock has advanced).
     const since = Date.now();
-    const from = player.currentTime; // (a kept player may resume part-way through)
+    let from: number; // (a kept player may resume part-way through)
+    try {
+      from = player.currentTime;
+    } catch {
+      return; // Released: the page is leaving, the still stays.
+    }
     const t = setInterval(() => {
       let moving = false;
       try {
