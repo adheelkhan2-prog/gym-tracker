@@ -137,9 +137,13 @@ function PlayerVideo({
   });
   useEventListener(player, 'sourceLoad', ({ duration }) => onDuration?.(duration));
   // A pooled player may have loaded before this view existed: report its length now.
+  const onDurationRef = useRef(onDuration);
   useEffect(() => {
-    if (pooled && player.duration > 0) onDuration?.(player.duration);
-  }, [pooled, player, onDuration]);
+    onDurationRef.current = onDuration;
+  }, [onDuration]);
+  useEffect(() => {
+    if (pooled && player.duration > 0) onDurationRef.current?.(player.duration);
+  }, [pooled, player]);
   useEffect(() => onPlaying?.(isPlaying), [isPlaying, onPlaying]);
   // The still goes at this view's first frame. Safety net: a player made before its view (a pooled
   // one, or even useVideoPlayer's) may never report a first frame to it (seen on the emulator), so

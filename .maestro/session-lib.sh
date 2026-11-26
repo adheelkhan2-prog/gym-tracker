@@ -21,6 +21,8 @@ build_if_needed() {
       return 0
     fi
   fi
+  # The perf flag always matches the installed variant (a failed variant switch may have left it set).
+  if [ "$VARIANT" = perf ]; then export EXPO_PUBLIC_PERF=1; else unset EXPO_PUBLIC_PERF; fi
   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -q) >"$RES/build.log" 2>&1 || { tail -40 "$RES/build.log" | tee -a "$RES/results.txt"; return 1; }
   adb install -r "$APK" >/dev/null || return 1
   built="$want"

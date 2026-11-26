@@ -2,7 +2,30 @@
 # first video play, stay on the workout (memory is read next).
 appId: com.gymtracker.app
 ---
-- runFlow: ../../lib/begin-workout.yaml
+- runFlow: ../../lib/launch.yaml
+# Let the fresh install finish seeding and saving its history first (a plain 3 s wait: this text
+# never appears), so only opening the workout is timed, as on a phone that loads its history.
+- extendedWaitUntil:
+    visible: "zz-perf-wait"
+    timeout: 3000
+    optional: true
+- runFlow:
+    when:
+      notVisible: "Start workout"
+    commands:
+      - tapOn:
+          text: "Monday.*"
+      - tapOn: "Train .* today"
+- runFlow:
+    when:
+      visible: "Start workout"
+    commands:
+      - tapOn: "Start workout"
+- extendedWaitUntil:
+    visible:
+      id: "exercise-0"
+    timeout: 20000
+- runFlow: ../../lib/no-errors.yaml
 - extendedWaitUntil:
     visible: "Exercise 1 of .*"
     timeout: 10000
