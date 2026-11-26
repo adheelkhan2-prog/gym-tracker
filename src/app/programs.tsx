@@ -7,24 +7,24 @@ import { BodyModel } from '../components/body/BodyModel';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
 import { ORDER, SwitchSheet, programPaint } from '../components/ProgramParts';
-import { Badge, Button, IconButton, Press } from '../components/ui';
+import { Badge, Button, IconButton, Press, StatusBarShade } from '../components/ui';
 import { WEEKDAY_SHORT } from '../data/program';
-import { hasLegWork, trainingDays, type Program } from '../data/programs';
+import { trainingDays, type Program } from '../data/programs';
 import { haptic } from '../feedback';
 import { allPrograms, programById, todayKey, useStore } from '../store';
-import { color, font, leading, radius, size, space, type, touch } from '../theme';
+import { color, font, leading, radius, size, space, themed, touch, type } from '../theme';
 
 const GAP = space.md;
 
-function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, onEdit }: {
+function ProgramCard({ p, live, current, pendingFrom, width, onSwitch, onEdit, onCopy }: {
   p: Program;
   live: boolean;
   current: boolean;
   pendingFrom?: string;
-  injured: boolean;
   width: number;
   onSwitch: () => void;
   onEdit?: () => void;
+  onCopy: () => void;
 }) {
   const days = trainingDays(p.week);
   return (
@@ -42,8 +42,13 @@ function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, 
         {p.focus}
       </Text>
       <View style={s.model}>
-        {live ? <BodyModel paint={programPaint(p, injured)} height={220} interactive={false} showHint={false} /> : <View style={{ height: 220 }} />}
+        {live ? <BodyModel paint={programPaint(p)} height={220} interactive={false} showHint={false} /> : <View style={{ height: 220 }} />}
       </View>
+      {p.rotation ? (
+        <Text style={[type.small, { marginTop: space.md, color: color.text }]} numberOfLines={2}>
+          Rotating: {p.days.map((d) => d.name).join(' → ')} → again
+        </Text>
+      ) : (
       <View style={s.week}>
         {ORDER.map((wd) => {
           const d = p.days.find((x) => x.id === p.week[wd]);
@@ -57,16 +62,19 @@ function ProgramCard({ p, live, current, pendingFrom, injured, width, onSwitch, 
           );
         })}
       </View>
+      )}
       <Text style={[type.small, { marginTop: space.md }]} numberOfLines={3}>
         {p.blurb}
       </Text>
       <View style={s.cardBtns}>
-        {onEdit && (
-          <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
+          {onEdit ? (
             <Button variant="secondary" icon="edit" label="Edit" onPress={onEdit} />
-          </View>
-        )}
-        <View style={{ flex: 2 }}>
+          ) : (
+            <Button variant="secondary" icon="copy" label="Copy" accessibilityLabel={`Copy ${p.name} and edit it as your own plan`} onPress={onCopy} />
+          )}
+        </View>
+        <View style={{ flex: 1.6 }}>
           <Button
             variant={current ? 'secondary' : 'default'}
             icon={current ? 'calendar' : 'swap'}
@@ -87,8 +95,7 @@ export default function ProgramsScreen() {
   const { width } = useWindowDimensions();
   const cardW = width - space.lg * 2;
   const all = allPrograms(state);
-  const visible = all.filter((p) => !(state.injured && hasLegWork(p)));
-  const hidden = all.length - visible.length;
+  const visible = all;
   const startIdx = Math.max(0, visible.findIndex((p) => p.id === state.programId));
   const [idx, setIdx] = useState(startIdx);
   const pager = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -125,7 +132,10 @@ export default function ProgramsScreen() {
           <Text style={s.title} accessibilityRole="header">
             Programs
           </Text>
-          <Text style={type.bodyMuted}>Swipe through splits. Switching keeps every log you’ve made.</Text>
+          <Text style={type.bodyMuted}>Swipe through plans. Switching keeps every log you’ve made. Built-in plans are templates: copy one to make it yours.</Text>
+          <View style={{ marginTop: space.md }}>
+            <Button icon="plus" label="Create plan" onPress={() => router.push('/builder')} testID="create-plan" />
+          </View>
           {toast && (
             <Animated.View entering={reduce ? undefined : FadeInDown.springify()} style={s.toast}>
               <Icon name="checkCircle" size={20} color={color.accent} filled />
@@ -158,10 +168,10 @@ export default function ProgramsScreen() {
               live={i === idx}
               current={p.id === state.programId}
               pendingFrom={state.pending?.programId === p.id ? pendingFrom : undefined}
-              injured={state.injured}
               width={cardW}
               onSwitch={() => setSwitching(p)}
               onEdit={p.custom ? () => router.push({ pathname: '/builder', params: { id: p.id } }) : undefined}
+              onCopy={() => router.push({ pathname: '/builder', params: { template: p.id } })}
             />
           ))}
         </ScrollView>
@@ -183,17 +193,6 @@ export default function ProgramsScreen() {
         </View>
 
         <View style={[s.pad, { gap: space.md, marginTop: space.xl }]}>
-          {hidden > 0 && (
-            <Glass r={radius.xl} style={s.note}>
-              <Icon name="bandage" size={22} color={color.muted} />
-              <View style={{ flex: 1 }}>
-                <Text style={type.h3}>
-                  {hidden} more program{hidden === 1 ? '' : 's'} train legs or abs
-                </Text>
-                <Text style={type.small}>Hidden while injury mode is on. Turn it off in Settings when you’re cleared.</Text>
-              </View>
-            </Glass>
-          )}
           {state.pending && (
             <Glass r={radius.xl} style={s.note}>
               <Icon name="calendar" size={22} color={color.accent} />
@@ -203,10 +202,11 @@ export default function ProgramsScreen() {
               <Button size="sm" variant="ghost" label="Cancel" onPress={() => update((st) => ({ ...st, pending: null }))} />
             </Glass>
           )}
-          <Button variant="outline" icon="plus" label="Build your own split" onPress={() => router.push('/builder')} />
+          <Button variant="outline" icon="plus" label="Create a plan from scratch" onPress={() => router.push('/builder')} />
           <Text style={[type.small, { textAlign: 'center' }]}>Templates and their sources are listed in the app’s exercise-sources file.</Text>
         </View>
       </ScrollView>
+      <StatusBarShade />
       {switching && (
         <SwitchSheet
           program={switching}
@@ -217,7 +217,7 @@ export default function ProgramsScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md },
   counter: { fontFamily: font.display, fontSize: size.h2, color: color.accent, fontVariant: ['tabular-nums'], paddingRight: space.md },
   of: { fontFamily: font.bodyBold, fontSize: size.small, color: color.subtle },
@@ -240,4 +240,7 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.glassBorder },
   dotOn: { width: 20, backgroundColor: color.accent },
   note: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
-});
+}));
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../components/RouteError';

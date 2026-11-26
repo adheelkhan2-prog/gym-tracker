@@ -1,4 +1,5 @@
-// Focus mode logic: what each set is pre-filled with, so logging a set is one tap.
+// Set logic for the workout screen: what each set is pre-filled with (one tap to log), and what a set
+// still needs before it can be logged.
 import { EXERCISES } from './data/exercises';
 import { targetTop, type PlannedExercise } from './data/program';
 import { fromKg, loadTypeOf, round1, weightFromLoad, type LoadInfo, type Unit } from './load';
@@ -39,7 +40,7 @@ export type Suggestion = {
  * 3. else last session's set i, one step heavier (or one pin up) when every set last time hit
  *    the top of the range, with reps back at the bottom of the range;
  * 4. else the plan's target reps, with no weight yet (first time).
- * The load type (pin, plates, colours) and any swap are remembered elsewhere and used as is.
+ * The load type (kg/lb or machine pin) and any swap are remembered elsewhere and used as is.
  */
 export function suggestSet(state: State, exerciseId: string, plan: PlannedExercise | undefined, date: string, i: number): Suggestion {
   const ex = EXERCISES[exerciseId];
@@ -54,7 +55,7 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
   const prev = previousSession(state.logs, exerciseId, date);
   const last = prev ? (prev.sets[i] ?? prev.sets[prev.sets.length - 1]) : undefined;
 
-  const withLoad = (l: LoadInfo, reps: string): SetEntry => ({ ...weightFromLoad(l, state.gym, machine), reps, done: false });
+  const withLoad = (l: LoadInfo, reps: string): SetEntry => ({ ...weightFromLoad(l, machine), reps, done: false });
   const plain = (w: number | null, reps: string): SetEntry =>
     weighted ? { weight: w === null ? '' : round1(w), u: unit, reps, done: false } : { weight: '', reps, done: false };
 
@@ -67,6 +68,8 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
   if (before) {
     const reps = before.reps || String(top ?? '');
     if (weighted && before.load && before.load.t === lt && lt !== 'weight') return { set: withLoad(before.load, reps), reason: 'today', last };
+    // Pin mode never pre-fills a kg weight (it would be logged as a hidden kg set).
+    if (weighted && lt === 'stack') return { set: plain(null, reps), reason: 'today', last };
     return { set: plain(weighted ? weightIn(before, unit) : null, reps), reason: 'today', last };
   }
 
@@ -82,6 +85,7 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
       const l = lt === 'stack' && up && last.load.pin !== undefined ? { ...last.load, pin: last.load.pin + 1 } : last.load;
       return { set: withLoad(l, reps), reason: up && lt === 'stack' ? 'up' : 'last', last };
     }
+    if (lt === 'stack') return { set: plain(null, reps), reason: 'last', last };
     const w = weightIn(last, unit);
     return { set: plain(w === null ? null : up ? w + stepFor(unit) : w, reps), reason: up ? 'up' : 'last', last };
   }
@@ -90,13 +94,36 @@ export function suggestSet(state: State, exerciseId: string, plan: PlannedExerci
   return { set: plain(null, String(top ?? bottom ?? '')), reason: 'target' };
 }
 
-/** True when the suggestion can be logged as is (has reps, and a weight or pin when weighted). */
-export function readyToLog(set: SetEntry, exerciseId: string) {
+/** What a set still needs before it can be logged, and how to say it. */
+export function missingFor(set: SetEntry, exerciseId: string, loadType: string) {
   const kind = EXERCISES[exerciseId].kind;
   const weighted = kind === 'weight_reps' || kind === 'weight_time';
-  return !!set.reps && (!weighted || set.weight !== '' || set.load?.pin !== undefined);
+  const secs = kind === 'time' || kind === 'weight_time';
+  // Pin mode needs a pin; weight mode a weight (an old pin-only set still counts as having a load).
+  const load = weighted && (loadType === 'stack' ? set.load?.pin === undefined : set.weight === '' && set.load?.pin === undefined);
+  const reps = !(num(set.reps) && num(set.reps)! > 0);
+  const loadWord = loadType === 'stack' ? 'pin' : 'weight';
+  const repsWord = secs ? 'seconds' : 'reps';
+  const parts = [load && `your ${loadWord}`, reps && (load ? repsWord : `your ${repsWord}`)].filter(Boolean);
+  return { load, reps, message: parts.length ? `Add ${parts.join(' and ')} first` : '' };
+}
+
+/** True when the set can be logged as is (reps above zero, and a weight or pin when weighted). */
+export function readyToLog(set: SetEntry, exerciseId: string) {
+  const m = missingFor(set, exerciseId, set.load?.t ?? 'weight');
+  return !m.load && !m.reps;
 }
 
 /** Done sets for an exercise today. */
 export const doneToday = (state: State, exerciseId: string, date: string) =>
   doneSets(state.logs[date]?.[exerciseId], EXERCISES[exerciseId].kind).length;
+
+/** − / + step: pin 1; kg 2.5 (1 for dumbbells under 10 kg); lb 5 (2 under 22 lb); reps 1; seconds 5. */
+export function stepOf(what: 'pin' | 'weight' | 'reps' | 'secs', unit: Unit, dumbbell: boolean, v: number, dir: 1 | -1) {
+  if (what === 'pin' || what === 'reps') return 1;
+  if (what === 'secs') return 5;
+  const light = unit === 'kg' ? 10 : 22;
+  const small = dumbbell && (v < light || (dir < 0 && v <= light));
+  return unit === 'kg' ? (small ? 1 : 2.5) : small ? 2 : 5;
+}
+

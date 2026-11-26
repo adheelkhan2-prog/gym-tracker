@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
@@ -24,6 +24,11 @@
         "android.permission.USE_EXACT_ALARM",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
+      ],
+      "versionCode": 9,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -61,9 +66,33 @@
             "image": "./assets/splash-icon.png"
           }
         }
-      ]
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": false,
+          "microphonePermission": false,
+          "photosPermission": "Pick a video of an exercise from your phone. It stays on this phone."
+        }
+      ],
+      "./plugins/withOfflineRelease",
+      "./plugins/withKeepNativeViews",
+      "@react-native-community/datetimepicker"
     ],
     "scheme": "gymtracker",
-    "backgroundColor": "#070708"
+    "backgroundColor": "#070708",
+    "owner": "adheelkhan",
+    "extra": {
+      "eas": {
+        "projectId": "ca3fb6e0-f89e-4d37-99e2-a9db62d93725"
+      }
+    }
   }
 }

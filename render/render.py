@@ -36,6 +36,26 @@ def mirrored(dirs):
     return out
 
 
+def video_frames(spec, n):
+    """n frames looping start -> end -> start with an ease-in-out (slow at both ends, like a rep)."""
+    import math
+    s, e = spec['frames']['start'], spec['frames']['end']
+    only = os.environ.get("VIDEO_ONLY")  # debug: render just these frame numbers
+    keep = {int(x) for x in only.split(",")} if only else set(range(n))
+    # The start/end specs ride along for the props (db_axis); the pose itself is blended per bone.
+    return [(f"v{i:03d}", {**s, '_t': (1 - math.cos(2 * math.pi * i / n)) / 2}) for i in range(n) if i in keep]
+
+
+def posed_state(rig, spec, frame, hips, rest_pelvis):
+    """Pose one key frame exactly as the stills do; return (rig location, every bone's matrix_basis)."""
+    fr = dict(spec['frames'][frame])
+    fh = fr.pop('hips', None)
+    loc = (Vector(fh) if fh else hips) - rest_pelvis
+    rig.location = loc
+    pose(rig, mirrored({**spec.get('base', {}), **fr}))
+    return loc.copy(), {pb.name: pb.matrix_basis.copy() for pb in rig.pose.bones}
+
+
 def pose(rig, dirs):
     """dirs[bone] = [x, y, z] or [x, y, z, twist_degrees] (twist turns the bone about its own axis)."""
     makehuman.pose(rig, dirs, figure.aim)
@@ -171,6 +191,8 @@ def build_props(props, rig, M, db_axis=None):
         half = max(0.45 if props == 'barbell' else 0.32, (gl - gr).length / 2 + 0.12)
         plates = {'barbell': (0.225, 0.2), 'ez': (0.17, 0.14), 'ez_small': (0.1, 0.08), 'bar_only': ()}[props]
         scene.barbell('bb', (gl + gr) / 2, half, M, plates=plates)
+    elif props == 'ez_zig':
+        scene.ez_bar('ez', [(makehuman.hand_basis(rig, sd)[4], makehuman.hand_basis(rig, sd)[3]) for sd in ('L', 'R')], M)
     elif props == 'dumbbells':
         for side in ('L', 'R'):
             _, _, _, axis, centre = makehuman.hand_basis(rig, side)
@@ -277,6 +299,9 @@ def main():
     ap.add_argument('--cam', help='debug override: "x,y,z,azimuth,elevation,distance"')
     ap.add_argument('--frames', default='start,end')
     ap.add_argument('--model', default=os.path.join(HERE, 'source', 'muscles-src.glb'))
+    ap.add_argument('--video', type=int, default=0, help='render N looping frames (start -> end -> start) instead of stills')
+    ap.add_argument('--engine', choices=('cycles', 'eevee'), default='cycles')
+    ap.add_argument('--mask-only', action='store_true', help='only (re)write the body masks next to existing renders')
     args = ap.parse_args(sys.argv[sys.argv.index(__file__) + 1:] if __file__ in sys.argv else sys.argv[1:])
 
     exercises = {e['id']: e for e in json.load(open(os.path.join(HERE, 'exercises.json')))}
@@ -297,7 +322,7 @@ def main():
         figure_coll.objects.link(body)
         for r in rims:
             r.light_linking.receiver_collection = figure_coll
-        scene.settings(args.size, args.samples)
+        scene.settings(args.size, args.samples, args.engine)
         glare()
 
         # Put the hips where the setup wants them (rest pelvis head is at J['pelvis']).
@@ -322,15 +347,33 @@ def main():
                 if o.type == 'LIGHT' and o not in rims:
                     o.matrix_world = flip @ o.matrix_world
         shared_target = None
-        for frame in args.frames.split(','):
+        shared_floor = None
+        if args.video:
+            jobs = video_frames(spec, args.video)
+            # Both key frames posed exactly like the stills; every video frame is a smooth blend of
+            # the two (bone rotations slerped), so frame 0 IS the start image and the middle IS the end.
+            key_a = posed_state(rig, spec, 'start', hips, rest_pelvis)
+            key_b = posed_state(rig, spec, 'end', hips, rest_pelvis)
+            shoulder_on = any(k.startswith('shoulder_') for f in ('start', 'end') for k in {**spec.get('base', {}), **spec['frames'][f]})
+            os.makedirs(os.path.join(HERE, 'out', 'video', ex_id), exist_ok=True)
+        else:
+            jobs = [(f, spec['frames'][f]) for f in args.frames.split(',')]
+        for frame, frame_spec in jobs:
             clear_props()
             before = {o.name for o in bpy.data.objects}
-            fr = dict(spec['frames'][frame])
+            fr = dict(frame_spec)
             fh = fr.pop('hips', None)
-            rig.location = (Vector(fh) if fh else hips) - rest_pelvis
-            dirs = mirrored({**spec.get('base', {}), **fr})
-            pose(rig, dirs)
-            floor_z = spec.get('floor', figure_min_z(body))
+            t = fr.pop('_t', None)
+            if t is not None:
+                rig.location = key_a[0].lerp(key_b[0], t)
+                makehuman.pose_between(rig, key_a[1], key_b[1], t, shoulder_on)
+            else:
+                rig.location = (Vector(fh) if fh else hips) - rest_pelvis
+                pose(rig, mirrored({**spec.get('base', {}), **fr}))
+            floor_z = spec.get('floor', shared_floor if shared_floor is not None else figure_min_z(body))
+            if args.video and shared_floor is None:
+                # The start frame's floor for the whole loop, so the floor never jumps between frames.
+                shared_floor = spec.get('floor', figure_min_z(body))
             setup = spec['setup']
             if setup == 'incline_bench':
                 s = spec['bench']
@@ -363,7 +406,7 @@ def main():
             for o in bpy.data.objects:
                 if o.name not in before_fists:
                     figure_coll.objects.link(o)
-            build_props(spec.get('props'), rig, M, spec['frames'][frame].get('db_axis') or spec.get('db_axis'))
+            build_props(spec.get('props'), rig, M, frame_spec.get('db_axis') or spec['frames']['start'].get('db_axis') or spec.get('db_axis'))
             scene.floor(floor_z)
             tag_new(before)
 
@@ -376,10 +419,13 @@ def main():
                 if o.type == 'CAMERA':
                     bpy.data.objects.remove(o, do_unlink=True)
             scene.camera(target, cam_cfg['azimuth'], cam_cfg['elevation'], cam_cfg['distance'], cam_cfg.get('lens', 50))
-            path = os.path.join(HERE, 'out', f'{ex_id}-{frame}.png')
+            path = os.path.join(HERE, 'out', 'video', ex_id, f'{frame}.png') if args.video else os.path.join(HERE, 'out', f'{ex_id}-{frame}.png')
             bpy.context.scene.render.filepath = path
-            bpy.ops.render.render(write_still=True)
-            print('wrote', path)
+            if not args.mask_only:
+                bpy.ops.render.render(write_still=True)
+                print('wrote', path)
+            # Body-only mask (1 sample, cheap) for every still AND video frame, so check_renders
+            # only looks at the body and never flags the bench, equipment or floor shadow.
             write_body_mask(body, path)
 
 

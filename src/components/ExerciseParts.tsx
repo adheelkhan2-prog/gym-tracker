@@ -2,93 +2,166 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { EQUIPMENT_LABEL, EXERCISES, type ExerciseInfo } from '../data/exercises';
+import { EXERCISE_VIDEO } from '../data/exercise-video';
 import { howToImages } from '../data/how-to';
-import { Vignette } from './glass';
+import { LoopVideo } from './LoopVideo';
+import { tipsFor } from '../data/tips';
+import { useStore, type OwnVideo } from '../store';
 import { MUSCLE_LABEL } from '../data/muscles';
 import type { Swap } from '../data/swaps';
-import { haptic } from '../feedback';
-import {
-  colorsKg,
-  fmtKg,
-  fmtPlate,
-  platesText,
-  platesTotal,
-  round1,
-  sum,
-  type Gym,
-  type MachineSetup,
-  type Unit,
-} from '../load';
-import { color, font, radius, size, space, touch, type } from '../theme';
+import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
-import { Badge, Button, Chip, Press } from './ui';
+import { Badge, Button, Press } from './ui';
 
 // ---------- How-to images ----------
 
 export { howToImages } from '../data/how-to';
 
-/** Start/end images that cross-fade on their own; tap to pause or resume. Written steps below. */
-export function HowTo({ ex }: { ex: ExerciseInfo }) {
-  const img = howToImages(ex.id);
+/** Where an exercise's picture comes from, in order of preference. */
+export type MediaKind = 'mine' | 'video' | 'clay' | 'photo' | 'none';
+export function mediaFor(exerciseId: string, userVideos: Record<string, OwnVideo> = {}) {
+  const mine = userVideos[exerciseId];
+  if (mine) return { kind: 'mine' as const, video: { uri: mine.uri }, start: mine.start, end: mine.end };
+  const v = EXERCISE_VIDEO[exerciseId];
+  if (v) return { kind: 'video' as const, video: v.source, credit: v.credit };
+  const img = howToImages(exerciseId);
+  if (img) return { kind: img.clay ? ('clay' as const) : ('photo' as const), img };
+  return { kind: 'none' as const };
+}
+
+/**
+ * The exercise's moving picture: your own imported video, else the bundled video (muted, looping), else
+ * the start/end stills cross-fading, else a photo. Tap to pause / play. Reduce motion starts paused.
+ */
+export function ExerciseMedia({ exerciseId, height = 300, label, active = true }: { exerciseId: string; height?: number; label?: string; /** Off-screen cards show a still instead of decoding video. */ active?: boolean }) {
+  const { state } = useStore();
+  const m = mediaFor(exerciseId, state.userVideos);
+  const name = label ?? EXERCISES[exerciseId]?.name ?? 'Exercise';
   const reduce = useReducedMotion();
+  const [paused, setPaused] = useState(reduce);
   const [end, setEnd] = useState(false);
-  const [paused, setPaused] = useState(false);
   const fade = useSharedValue(0);
+  const stills = m.kind === 'clay' || m.kind === 'photo';
   useEffect(() => {
-    if (!img || paused) return;
+    if (!stills || paused) return;
     const t = setInterval(() => setEnd((v) => !v), 2200);
     return () => clearInterval(t);
-  }, [img, paused]);
+  }, [stills, paused]);
   useEffect(() => {
     fade.value = reduce ? (end ? 1 : 0) : withTiming(end ? 1 : 0, { duration: 600, easing: Easing.inOut(Easing.quad) });
   }, [end, reduce, fade]);
   const endStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
-  const mode = img?.clay ? 'contain' : 'cover';
 
+  if (m.kind === 'none') {
+    return (
+      <View style={[s.photo, s.noPhoto, { height }]}>
+        <Icon name="info" size={28} color={color.muted} />
+        <Text style={[type.small, { textAlign: 'center' }]}>No picture for this one yet. Follow the steps below, or import your own video.</Text>
+      </View>
+    );
+  }
+  const isVideo = m.kind === 'mine' || m.kind === 'video';
+  if (isVideo && !active) {
+    // Not on screen: no video player at all (saves battery and memory on a long workout).
+    const poster = howToImages(exerciseId);
+    return (
+      <View style={[s.photo, s.stage, { height }]} accessibilityLabel={`${name} video`} testID="exercise-video-idle">
+        {poster ? <Image source={poster.start} style={s.img} resizeMode={poster.clay ? 'contain' : 'cover'} /> : <Icon name="video" size={28} color={color.muted} />}
+      </View>
+    );
+  }
   return (
-    <View>
-      {img ? (
-        <Press
-          onPress={() => setPaused((v) => !v)}
-          tick
-          scaleTo={0.98}
-          style={[s.photo, img.clay && s.clay]}
-          accessibilityRole="button"
-          accessibilityLabel={`${ex.name}, ${end ? 'end' : 'start'} position. ${paused ? 'Paused, tap to play' : 'Tap to pause'}`}
-          testID="howto-photo"
-        >
-          <Image source={img.start} style={s.img} resizeMode={mode} />
+    // No press ring or press-scale on media: a crimson ring drawn over a native video surface could
+    // linger as a thin red edge, and a video surface doesn't scale with its card on Android.
+    <Press
+      onPress={() => setPaused((v) => !v)}
+      tick
+      scaleTo={1}
+      glow="transparent"
+      style={[s.photo, s.stage, { height }]}
+      accessibilityRole="button"
+      accessibilityLabel={`${name} ${isVideo ? 'video' : `${end ? 'end' : 'start'} position`}. ${paused ? 'Paused, tap to play' : 'Tap to pause'}`}
+      testID={isVideo ? 'exercise-video' : 'exercise-photo'}
+    >
+      {isVideo ? (
+        <LoopVideo source={m.video} paused={paused} start={m.kind === 'mine' ? m.start : undefined} end={m.kind === 'mine' ? m.end : undefined} />
+      ) : (
+        <>
+          <Image source={m.img!.start} style={s.img} resizeMode={m.kind === 'clay' ? 'contain' : 'cover'} />
           <Animated.View style={[StyleSheet.absoluteFill, endStyle]} pointerEvents="none">
-            <Image source={img.end} style={s.img} resizeMode={mode} />
+            <Image source={m.img!.end} style={s.img} resizeMode={m.kind === 'clay' ? 'contain' : 'cover'} />
           </Animated.View>
-          {/* The renders sit in the same dark room: edges fall off into shadow. */}
-          {img.clay && <Vignette width="100%" height="100%" strength={0.85} id={`vig-${ex.id}`} cy="45%" />}
           <View style={s.phase}>
             <View style={[s.phaseDot, !end && s.phaseOn]} />
             <Text style={[s.phaseText, !end && { color: color.accentText }]}>Start</Text>
             <View style={[s.phaseDot, end && s.phaseOn]} />
             <Text style={[s.phaseText, end && { color: color.accentText }]}>End</Text>
           </View>
-          {paused && (
-            <View style={s.paused} testID="howto-paused">
-              <Text style={s.phaseText}>Paused · tap to play</Text>
-            </View>
-          )}
-        </Press>
-      ) : (
-        <View style={[s.photo, s.noPhoto]}>
-          <Icon name="info" size={28} color={color.muted} />
-          <Text style={[type.small, { textAlign: 'center' }]}>No licence-free image for this one yet. Follow the steps below.</Text>
+        </>
+      )}
+      {m.kind === 'mine' && (
+        <View style={s.mine}>
+          <Text style={s.phaseText}>Your video</Text>
         </View>
       )}
+      {paused && (
+        <View style={s.paused} testID="media-paused">
+          <Text style={s.phaseText}>Paused · tap to play</Text>
+        </View>
+      )}
+    </Press>
+  );
+}
+
+/** Where the picture came from (shown under it). */
+export function mediaCredit(exerciseId: string, userVideos: Record<string, OwnVideo> = {}) {
+  const m = mediaFor(exerciseId, userVideos);
+  if (m.kind === 'mine') return 'Your own video (stored on this phone)';
+  if (m.kind === 'video') return `Video: ${m.credit} (credits in Settings)`;
+  if (m.kind === 'clay') return '3D render: made for this app, CC BY-SA 4.0 (credits in Settings)';
+  if (m.kind === 'photo') return 'Photos: free-exercise-db (public domain)';
+  return '';
+}
+
+/** The written how-to steps. */
+export function HowToSteps({ ex }: { ex: ExerciseInfo }) {
+  return (
+    <View>
       {ex.steps.map((t, i) => (
         <View key={i} style={s.step}>
           <Text style={s.stepNo}>{i + 1}</Text>
           <Text style={[type.body, { flex: 1, color: color.muted }]}>{t}</Text>
         </View>
       ))}
-      {img && <Text style={s.credit}>{img.clay ? '3D render: made for this app, CC BY-SA 4.0 (credits in Settings)' : 'Photos: free-exercise-db (public domain)'}</Text>}
+    </View>
+  );
+}
+
+/** Form cues for the movement. */
+export function Tips({ ex }: { ex: ExerciseInfo }) {
+  const tips = tipsFor(ex);
+  return (
+    <View style={{ gap: space.sm, marginTop: space.sm }}>
+      {tips.map((t, i) => (
+        <View key={i} style={s.tip}>
+          <Icon name="check" size={14} color={color.accent} />
+          <Text style={[type.small, { flex: 1, color: color.muted }]}>{t}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Media, then the steps, then where the picture came from. */
+export function HowTo({ ex }: { ex: ExerciseInfo }) {
+  const { state } = useStore();
+  const credit = mediaCredit(ex.id, state.userVideos);
+  return (
+    <View>
+      <ExerciseMedia exerciseId={ex.id} />
+      <HowToSteps ex={ex} />
+      {credit ? <Text style={s.credit}>{credit}</Text> : null}
     </View>
   );
 }
@@ -102,6 +175,7 @@ export function SwapSheet({
   onPick,
   onReset,
   onClose,
+  note,
 }: {
   original: string;
   current: string;
@@ -109,6 +183,8 @@ export function SwapSheet({
   onPick: (id: string) => void;
   onReset: () => void;
   onClose: () => void;
+  /** Extra line under the title (e.g. what happens to sets already logged). */
+  note?: string;
 }) {
   const options: (Swap & { original?: boolean })[] = [
     { id: original, match: 'same', why: 'The exercise your program planned.', original: true },
@@ -117,7 +193,7 @@ export function SwapSheet({
   return (
     <Sheet
       title="Swap exercise"
-      subtitle={`Alternatives for ${EXERCISES[original].name}. Each one is logged and charted on its own.`}
+      subtitle={note ?? `Only exercises with exactly the same primary muscles as ${EXERCISES[original].name}. Each one is logged and charted on its own.`}
       onClose={onClose}
       testID="swap-sheet"
       footer={
@@ -140,7 +216,8 @@ export function SwapSheet({
               style={[s.swapRow, on && s.swapOn]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
-              accessibilityLabel={`${ex.name}, ${EQUIPMENT_LABEL[ex.equipment]}, ${o.original ? 'original' : o.match === 'same' ? 'same muscles' : 'close match'}`}
+              testID={o.original ? 'swap-option-original' : `swap-option-${o.id}`}
+              accessibilityLabel={`${ex.name}, ${EQUIPMENT_LABEL[ex.equipment]}, ${o.original ? 'original' : 'same primary muscles'}: ${ex.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}`}
             >
               {img ? <Image source={img.start} style={s.thumb} /> : <View style={[s.thumb, s.noThumb]}><Icon name="barbell" size={22} color={color.muted} /></View>}
               <View style={{ flex: 1, minWidth: 0, gap: space.xxs }}>
@@ -149,12 +226,13 @@ export function SwapSheet({
                 </Text>
                 <View style={s.swapTags}>
                   <Badge label={EQUIPMENT_LABEL[ex.equipment]} variant="secondary" />
-                  {o.original ? (
-                    <Badge label="Original" variant="outline" />
-                  ) : (
-                    <Badge label={o.match === 'same' ? 'Same muscles' : 'Close match'} variant={o.match === 'same' ? 'default' : 'outline'} />
-                  )}
+                  {o.original && <Badge label="Original" variant="outline" />}
                 </View>
+                {/* The muscles it works: primary (the exact match) and secondary. */}
+                <Text style={s.swapMuscles} numberOfLines={2}>
+                  <Text style={{ color: color.text }}>{ex.primary.map((m) => MUSCLE_LABEL[m]).join(', ')}</Text>
+                  {ex.secondary.length ? ` · also ${ex.secondary.map((m) => MUSCLE_LABEL[m]).join(', ')}` : ''}
+                </Text>
                 <Text style={s.why}>{o.why}</Text>
               </View>
               {on && <Icon name="checkCircle" size={24} color={color.accent} filled />}
@@ -166,122 +244,6 @@ export function SwapSheet({
   );
 }
 
-// ---------- Plate pickers ----------
-
-/** One side of the bar, drawn as plate chips. */
-function SideBar({ items, onRemove }: { items: { key: string; label: string; hex?: string; kg: number }[]; onRemove: (i: number) => void }) {
-  return (
-    <View style={s.bar}>
-      <View style={s.barShaft} />
-      <View style={s.barRow}>
-        {items.length === 0 && <Text style={type.small}>Tap plates below to load one side</Text>}
-        {items.map((p, i) => (
-          <Press
-            key={`${p.key}-${i}`}
-            onPress={() => onRemove(i)}
-            style={[s.plateOn, { height: 40 + Math.min(40, p.kg * 1.6), backgroundColor: p.hex ?? color.surface3 }]}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${p.label}`}
-          >
-            <Text style={[s.plateOnText, p.hex && { color: contrast(p.hex) }]}>{p.label}</Text>
-          </Press>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const contrast = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16);
-  const l = ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114;
-  return l > 150 ? color.ink : color.text;
-};
-
-export function PlateSheet({
-  mode,
-  gym,
-  unit,
-  initial,
-  bar: initialBar,
-  onSave,
-  onClose,
-}: {
-  mode: 'plates' | 'colors';
-  gym: Gym;
-  unit: Unit;
-  initial: (number | string)[];
-  bar: number;
-  onSave: (side: (number | string)[], bar: number) => void;
-  onClose: () => void;
-}) {
-  const [side, setSide] = useState<(number | string)[]>(initial);
-  const [bar, setBar] = useState(initialBar);
-  const kgOfItem = (x: number | string) => (typeof x === 'number' ? x : (gym.colors.find((c) => c.id === x)?.kg ?? 0));
-  const total = mode === 'plates' ? platesTotal(side as number[], bar) : bar + 2 * colorsKg(side as string[], gym);
-  const items = side.map((x) => {
-    if (typeof x === 'number') return { key: String(x), label: fmtPlate(x), kg: x };
-    const c = gym.colors.find((cc) => cc.id === x);
-    return { key: x, label: c ? fmtPlate(c.kg) : '?', hex: c?.hex, kg: c?.kg ?? 0 };
-  });
-  const add = (x: number | string) => {
-    haptic.tap();
-    setSide((v) => [...v, x].sort((a, b) => kgOfItem(b) - kgOfItem(a)));
-  };
-  return (
-    <Sheet
-      title={mode === 'plates' ? 'Load the bar' : 'Tap the colours'}
-      subtitle="One side only; the other side matches."
-      onClose={onClose}
-      testID="plate-sheet"
-      footer={
-        <View style={{ marginTop: space.sm, gap: space.sm }}>
-          <Text style={s.total} accessibilityLiveRegion="polite" testID="plate-total">
-            {mode === 'plates' ? platesText(side as number[], bar) : `${side.length ? `${side.length * 2} plates` : 'No plates'}${bar ? ' + bar' : ''}`} ={' '}
-            <Text style={{ color: color.accentText }}>{fmtKg(total, unit)}</Text>
-          </Text>
-          <Button label="Use this weight" icon="check" onPress={() => onSave(side, bar)} />
-        </View>
-      }
-    >
-      <SideBar items={items} onRemove={(i) => setSide((v) => v.filter((_, j) => j !== i))} />
-      <Text style={s.sub}>{mode === 'plates' ? 'Plates (kg)' : 'Your gym’s colours'}</Text>
-      <View style={s.plateGrid}>
-        {mode === 'plates'
-          ? gym.plates.map((p) => (
-              <Press key={p} onPress={() => add(p)} style={s.plateBtn} accessibilityRole="button" accessibilityLabel={`Add ${p} kg plate`}>
-                <Text style={s.plateBtnText}>{fmtPlate(p)}</Text>
-              </Press>
-            ))
-          : gym.colors.map((c) => (
-              <Press
-                key={c.id}
-                onPress={() => add(c.id)}
-                style={[s.plateBtn, { backgroundColor: c.hex, borderColor: c.hex }]}
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${c.name} plate, ${c.kg} kg`}
-              >
-                <Text style={[s.plateBtnText, { color: contrast(c.hex) }]}>{c.name}</Text>
-                <Text style={[s.plateKg, { color: contrast(c.hex) }]}>{fmtPlate(c.kg)} kg</Text>
-              </Press>
-            ))}
-      </View>
-      <Text style={s.sub}>Bar or sled (kg)</Text>
-      <View style={s.plateGrid}>
-        {[0, 10, 15, 20].map((b) => (
-          <Chip key={b} label={b === 0 ? 'None' : `${b}`} active={bar === b} onPress={() => setBar(b)} />
-        ))}
-        <NumberField value={bar} onChange={(n) => setBar(n ?? 0)} label="Bar weight in kg" />
-      </View>
-      {side.length > 0 && (
-        <Text style={[type.small, { marginTop: space.sm }]}>
-          Per side {round1(sum(side.map(kgOfItem)))} kg. Tap a plate on the bar to take it off.
-        </Text>
-      )}
-    </Sheet>
-  );
-}
-
-/** Small numeric input that keeps the raw text while typing. */
 export function NumberField({
   value,
   onChange,
@@ -326,60 +288,6 @@ export function NumberField({
   );
 }
 
-export function MachineSheet({
-  name,
-  setup,
-  showBar,
-  onSave,
-  onClose,
-}: {
-  name: string;
-  setup: MachineSetup;
-  showBar: boolean;
-  onSave: (m: MachineSetup) => void;
-  onClose: () => void;
-}) {
-  const [m, setM] = useState<MachineSetup>(setup);
-  const preview = m.perPlate ? (m.start ?? m.perPlate) + 6 * m.perPlate : null;
-  return (
-    <Sheet
-      title="Machine settings"
-      subtitle={`${name}. Saved for this exercise only.`}
-      onClose={onClose}
-      testID="machine-sheet"
-      footer={<View style={{ marginTop: space.sm }}><Button label="Save" icon="check" onPress={() => onSave(m)} /></View>}
-    >
-      <View style={{ gap: space.lg }}>
-        <View style={s.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.h3}>kg per plate</Text>
-            <Text style={type.small}>Printed on the stack. Leave empty to log pins only.</Text>
-          </View>
-          <NumberField value={m.perPlate} onChange={(n) => setM((v) => ({ ...v, perPlate: n }))} label="Kilograms per stack plate" placeholder="7" />
-        </View>
-        <View style={s.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.h3}>Pin 1 weight</Text>
-            <Text style={type.small}>The top plate’s weight, if different.</Text>
-          </View>
-          <NumberField value={m.start} onChange={(n) => setM((v) => ({ ...v, start: n }))} label="Starting weight in kg" placeholder={m.perPlate ? String(m.perPlate) : '7'} />
-        </View>
-        {showBar && (
-          <View style={s.formRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={type.h3}>Bar / sled weight</Text>
-              <Text style={type.small}>Added to the plates you load.</Text>
-            </View>
-            <NumberField value={m.bar} onChange={(n) => setM((v) => ({ ...v, bar: n }))} label="Bar or sled weight in kg" placeholder="20" />
-          </View>
-        )}
-        {preview !== null && <Text style={type.small}>Example: pin 7 ≈ {round1(preview)} kg</Text>}
-      </View>
-    </Sheet>
-  );
-}
-
-/** Muscle legend for the Muscles tab. */
 export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
   return (
     <View style={s.legend}>
@@ -401,10 +309,13 @@ export function MuscleLegend({ ex }: { ex: ExerciseInfo }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
+  swapMuscles: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
   photo: { height: 260, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.flash },
   img: { width: '100%', height: '100%' },
-  clay: { backgroundColor: color.bg, height: 300 },
+  stage: { backgroundColor: color.stage },
+  mine: { position: 'absolute', top: space.sm, left: space.sm, paddingHorizontal: space.sm, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: color.scrim },
+  tip: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   paused: {
     position: 'absolute',
     right: space.md,
@@ -449,27 +360,6 @@ const s = StyleSheet.create({
   swapName: { fontFamily: font.bodyBlack, fontSize: size.body, color: color.text },
   swapTags: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   why: { fontFamily: font.bodySemi, fontSize: size.label, lineHeight: 16, color: color.muted },
-  bar: { height: 110, justifyContent: 'center', marginBottom: space.md },
-  barShaft: { position: 'absolute', left: 0, right: 0, height: 10, borderRadius: 5, backgroundColor: color.surface3 },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: space.xl, flexWrap: 'nowrap' },
-  plateOn: { minWidth: 32, paddingHorizontal: 6, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.glassBorder },
-  plateOnText: { fontFamily: font.bodyBlack, fontSize: size.label, color: color.text },
-  sub: { ...type.label, marginTop: space.md, marginBottom: space.sm },
-  plateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' },
-  plateBtn: {
-    minWidth: 64,
-    minHeight: touch.min,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    backgroundColor: color.surface2,
-    borderWidth: 1,
-    borderColor: color.glassBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plateBtnText: { fontFamily: font.display, fontSize: size.h3, color: color.text },
-  plateKg: { fontFamily: font.bodyBold, fontSize: size.tiny },
-  total: { fontFamily: font.display, fontSize: size.h3, color: color.text, textAlign: 'center' },
   numField: {
     minWidth: 76,
     minHeight: touch.min,
@@ -486,4 +376,4 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   swatch: { width: 14, height: 14, borderRadius: radius.pill },
   legendText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
-});
+}));

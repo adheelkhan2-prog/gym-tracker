@@ -2,7 +2,8 @@
 // https://github.com/founded-labs/react-native-reusables): Button variants/sizes, Card
 // parts, Badge, Progress, Switch. Styling comes from src/theme.ts (no NativeWind).
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
+import React, { useContext, useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -27,7 +28,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { haptic } from '../feedback';
-import { color, font, gradient, motion, radius, size, space, touch, type } from '../theme';
+import { color, font, gradient, motion, radius, size, space, themed, touch, type } from '../theme';
 import { Backdrop, Glass } from './glass';
 import { Icon, type IconName } from './icons';
 
@@ -83,19 +84,37 @@ export function Press({
   );
 }
 
-/** Screen scaffold: backdrop + scroll view with safe-area padding. `padBottom` is added to the bottom inset. */
+/** Screen scaffold: backdrop + scroll view. `padBottom` is extra room above the tab bar (or the bottom inset). */
 export function Screen({ children, padBottom = space.x5 }: { children: React.ReactNode; padBottom?: number }) {
   const insets = useSafeAreaInsets();
+  // Inside the tabs: the tab bar's measured height (it already includes the gesture-bar inset).
+  const tabBar = useContext(BottomTabBarHeightContext);
   return (
     <Backdrop>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: insets.bottom + padBottom }}
+        contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.lg, paddingBottom: (tabBar || insets.bottom) + padBottom }}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
+      <StatusBarShade />
     </Backdrop>
+  );
+}
+
+/**
+ * A solid strip behind the phone's status bar (time, battery) with a short fade under it, so
+ * content scrolling up never runs into the status bar text. Put it last in a full-screen view.
+ */
+export function StatusBarShade() {
+  const insets = useSafeAreaInsets();
+  if (!insets.top) return null;
+  return (
+    <View pointerEvents="none" style={[s.shade, { height: insets.top + space.md }]}>
+      <View style={{ height: insets.top, backgroundColor: color.bg }} />
+      <LinearGradient colors={[color.bg, color.fadeFrom]} style={{ flex: 1 }} />
+    </View>
   );
 }
 
@@ -188,9 +207,11 @@ export function Button({
   loading,
   disabled,
   accessibilityLabel,
+  testID,
 }: {
   label?: string;
   onPress: () => void;
+  testID?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: IconName;
@@ -235,6 +256,7 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       style={{ borderRadius: radius.pill }}
+      testID={testID}
     >
       {variant === 'solid' ? (
         <LinearGradient colors={gradient.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={shape}>
@@ -427,7 +449,7 @@ export function Ring({
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   loading: { flex: 1, backgroundColor: color.bg, paddingHorizontal: space.lg, paddingTop: space.x5 + space.xxl },
   sectionRow: {
     flexDirection: 'row',
@@ -440,7 +462,7 @@ const s = StyleSheet.create({
   card: { padding: space.xl },
   btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
   btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.3 },
-  btnPrimary: { backgroundColor: '#0C0C0E', borderWidth: 1, borderColor: color.accentEdge },
+  btnPrimary: { backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.accentEdge },
   iconBtn: {
     width: touch.min,
     height: touch.min,
@@ -477,9 +499,20 @@ const s = StyleSheet.create({
   chipOn: { backgroundColor: color.accentDim, borderColor: color.accentEdge },
   chipText: { fontFamily: font.bodyBold, fontSize: size.small, color: color.text },
   track: { width: '100%', backgroundColor: color.glassBorder, overflow: 'hidden' },
+  shade: { position: 'absolute', top: 0, left: 0, right: 0 },
   switchHit: { width: touch.min + space.md, height: touch.min, borderRadius: radius.pill, justifyContent: 'center', alignItems: 'center' },
-  switchTrack: { width: 54, height: 30, borderRadius: radius.pill, backgroundColor: color.surface3, padding: 3 },
-  switchThumb: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: color.text },
+  switchTrack: { width: 54, height: 30, borderRadius: radius.pill, backgroundColor: color.switchOff, padding: 3 },
+  switchThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
+    backgroundColor: color.knob,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   flame: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -491,4 +524,4 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.glassBorder,
   },
-});
+}));

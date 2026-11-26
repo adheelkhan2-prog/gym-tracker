@@ -1,0 +1,30 @@
+# Swap the second exercise (page 2) to an alternative, then log a set on it.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- tapOn:
+    id: "next-exercise"
+- extendedWaitUntil:
+    visible: "Exercise 2 of .*"
+    timeout: 5000
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "swap-1"
+- tapOn:
+    id: "swap-1"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible:
+      id: "swap-option-.*"
+    timeout: 30000
+- tapOn:
+    id: "swap-option-.*"
+    index: 1
+- runFlow: ../lib/no-errors.yaml
+- runFlow:
+    file: ../lib/type-weight.yaml
+    env: { CARD: "1", SET: "0", WEIGHT: "30" }
+- runFlow:
+    file: ../lib/log-set.yaml
+    env: { CARD: "1", SET: "0", COUNT: "1" }

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { EQUIPMENT_LABEL, EXERCISE_LIST, EXERCISES, loadsInjury, type Equipment } from '../data/exercises';
+import { EQUIPMENT_LABEL, EXERCISE_LIST, EXERCISES, type Equipment } from '../data/exercises';
 import { howToImages } from './ExerciseParts';
-import { INJURY_REGIONS, MUSCLE_LABEL, type MuscleId } from '../data/muscles';
+import { MUSCLE_LABEL, type MuscleId } from '../data/muscles';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../data/program';
 import type { Program } from '../data/programs';
 import { addDays, dateFromKey, formatDate, todayKey } from '../store';
-import { color, font, radius, size, space, touch, type } from '../theme';
+import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import type { PaintMap } from './body/BodyModel';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
@@ -15,10 +15,11 @@ import { Button, Chip, Press } from './ui';
 /** Monday-first ordering for display. */
 export const ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-/** Red where the program trains hardest across a week; legs/abs grey while injured. */
-export function programPaint(p: Program, injured: boolean): PaintMap {
+/** Red where the program trains hardest across a week. */
+export function programPaint(p: Program): PaintMap {
   const load: Partial<Record<MuscleId, number>> = {};
-  for (const wd of p.week) {
+  // A rotating plan trains each day once per cycle; a weekday plan as often as its week uses it.
+  for (const wd of p.rotation ? p.days.map((x) => x.id) : p.week) {
     const d = p.days.find((x) => x.id === wd);
     if (!d) continue;
     for (const e of d.exercises) {
@@ -33,7 +34,6 @@ export function programPaint(p: Program, injured: boolean): PaintMap {
     if (n >= 8) paint[m] = { color: color.musclePrimary, glow: 0.12 };
     else if (n >= 3) paint[m] = { color: color.muscleSecondary };
   }
-  if (injured) for (const m of INJURY_REGIONS) paint[m] = { color: color.muscleInjured };
   return paint;
 }
 
@@ -97,9 +97,9 @@ export function SwitchSheet({
       testID="switch-sheet"
       footer={
         <View style={{ marginTop: space.sm, gap: space.xs }}>
-          <Button label={`Switch from ${from === today ? 'today' : WEEKDAY_SHORT[dateFromKey(from).getDay()]}`} icon="check" onPress={() => onConfirm(week, from)} disabled={days === 0} />
+          <Button label={`Switch from ${from === today ? 'today' : WEEKDAY_SHORT[dateFromKey(from).getDay()]}`} icon="check" onPress={() => onConfirm(week, from)} disabled={!program.rotation && days === 0} />
           <Text style={[type.small, { textAlign: 'center' }]}>
-            {days} training day{days === 1 ? '' : 's'} a week, starting {when}.
+            {program.rotation ? `Rotating plan, starting ${when}.` : `${days} training day${days === 1 ? '' : 's'} a week, starting ${when}.`}
           </Text>
         </View>
       }
@@ -110,8 +110,16 @@ export function SwitchSheet({
         <Chip label="Today" active={from === today} onPress={() => setFrom(today)} />
         {today === monday && <Chip label={`Monday after · ${formatDate(addDays(monday, 7))}`} active={from === addDays(monday, 7)} onPress={() => setFrom(addDays(monday, 7))} />}
       </View>
-      <Text style={[type.label, { marginTop: space.lg, marginBottom: space.sm }]}>Your week</Text>
-      <WeekMapper program={program} week={week} onChange={setWeek} />
+      {program.rotation ? (
+        <Text style={[type.small, { marginTop: space.lg }]}>
+          No fixed weekdays: each workout is the next day in order ({program.days.map((d) => d.name).join(' → ')} → again).
+        </Text>
+      ) : (
+        <>
+          <Text style={[type.label, { marginTop: space.lg, marginBottom: space.sm }]}>Your week</Text>
+          <WeekMapper program={program} week={week} onChange={setWeek} />
+        </>
+      )}
     </Sheet>
   );
 }
@@ -133,17 +141,16 @@ const MUSCLE_FILTERS: { label: string; muscles: MuscleId[] }[] = [
 ];
 
 /** Searchable exercise library, filtered by muscle and equipment. */
-export function LibrarySheet({ title, injured, onPick, onClose }: { title: string; injured: boolean; onPick: (id: string) => void; onClose: () => void }) {
+export function LibrarySheet({ title, onPick, onClose }: { title: string; onPick: (id: string) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
   const [muscle, setMuscle] = useState<string | null>(null);
   const [eq, setEq] = useState<Equipment | null>(null);
-  const filters = MUSCLE_FILTERS.filter((f) => !(injured && f.muscles.every((m) => INJURY_REGIONS.has(m))));
+  const filters = MUSCLE_FILTERS;
   // The React Compiler memoizes this.
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const mf = MUSCLE_FILTERS.find((f) => f.label === muscle);
   const list = EXERCISE_LIST.filter(
     (e) =>
-      !(injured && loadsInjury(e.id)) &&
       (!eq || e.equipment === eq) &&
       (!mf || e.primary.some((m) => mf.muscles.includes(m))) &&
       words.every((w) => e.name.toLowerCase().includes(w) || e.primary.some((m) => MUSCLE_LABEL[m].toLowerCase().includes(w))),
@@ -178,7 +185,7 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
 
   // Virtualized: only the rows on screen (and their full-size thumbnails) are rendered and decoded.
   return (
-    <Sheet title={title} subtitle={`${list.length} exercises${injured ? ' · leg and ab work hidden (injury mode)' : ''}`} onClose={onClose} testID="library-sheet" scroll={false}>
+    <Sheet title={title} subtitle={`${list.length} exercises`} onClose={onClose} testID="library-sheet" scroll={false}>
       <FlatList
         data={list}
         keyExtractor={(e) => e.id}
@@ -213,7 +220,7 @@ export function LibrarySheet({ title, injured, onPick, onClose }: { title: strin
 
 const LibrarySpacer = () => <View style={{ height: space.xs }} />;
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   weekRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   wd: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.accentText, width: 40 },
@@ -232,4 +239,4 @@ const s = StyleSheet.create({
   thumb: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: color.flash },
   noThumb: { backgroundColor: color.surface3, alignItems: 'center', justifyContent: 'center' },
   libName: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text },
-});
+}));

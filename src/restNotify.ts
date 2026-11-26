@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import { NOTIFY_OK, Notifications } from './notifications';
 import { Platform } from 'react-native';
 import { color, fmtClock } from './theme';
 
@@ -16,7 +16,7 @@ const LIVE_CHANNEL = 'rest-live';
 const END_CHANNEL = 'rest-end';
 const LIVE_ID = 'rest-live';
 const END_ID = 'rest-end';
-const supported = Platform.OS !== 'web';
+const supported = Platform.OS !== 'web' && NOTIFY_OK;
 
 let channels: Promise<unknown> | null = null;
 let ticker: ReturnType<typeof setInterval> | null = null;
@@ -26,21 +26,17 @@ function ensureChannels() {
   channels ??= Promise.all([
     Notifications.setNotificationChannelAsync(LIVE_CHANNEL, {
       name: 'Rest timer (countdown)',
-      // eslint-disable-next-line import/namespace -- exported at runtime; the lint parser misses it
       importance: Notifications.AndroidImportance.LOW,
       sound: null,
       vibrationPattern: null,
       enableVibrate: false,
-      // eslint-disable-next-line import/namespace -- exported at runtime
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     }),
     Notifications.setNotificationChannelAsync(END_CHANNEL, {
       name: 'Rest timer (time is up)',
-      // eslint-disable-next-line import/namespace -- exported at runtime
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 300, 120, 300],
       lightColor: color.accent,
-      // eslint-disable-next-line import/namespace -- exported at runtime
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     }),
   ]).catch(() => {});

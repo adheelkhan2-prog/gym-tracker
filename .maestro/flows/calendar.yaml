@@ -1,0 +1,43 @@
+# Log a set, then the Progress calendar: today's session opens, months swipe, Today comes back.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/type-weight.yaml
+    env: { CARD: "0", SET: "0", WEIGHT: "40" }
+- runFlow:
+    file: ../lib/log-set.yaml
+    env: { CARD: "0", SET: "0", COUNT: "1" }
+- tapOn: "Close workout"
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 10000
+- tapOn:
+    id: "tab-progress"
+- extendedWaitUntil:
+    visible:
+      id: "workout-calendar"
+    timeout: 20000
+- tapOn:
+    text: ".*, today.*"
+- extendedWaitUntil:
+    visible:
+      id: "day-sheet"
+    timeout: 10000
+- assertVisible: "Partial"
+- runFlow: ../lib/no-errors.yaml
+# Close the sheet from its backdrop.
+- tapOn:
+    point: "50%,8%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Previous month"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-today"
+    timeout: 5000
+- tapOn:
+    id: "calendar-today"
+- assertVisible:
+    id: "calendar-summary"
+- runFlow: ../lib/no-errors.yaml

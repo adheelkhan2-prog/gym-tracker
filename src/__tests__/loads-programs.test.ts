@@ -1,30 +1,27 @@
 /**
- * Load types (kg/lb, barbell plates, machine pin, colour plates), PRs/charts/volume numbers,
+ * Load types (kg/lb, machine pin, bodyweight, timed), the old plate/colour logs converting to kg,
+ * PRs/charts/volume numbers,
  * programs + injury mode, and How to images for every exercise the app can show.
  */
-import { EXERCISES, loadsInjury } from '../data/exercises';
+import { EXERCISES } from '../data/exercises';
 import { EXERCISE_3D } from '../data/exercise-3d';
 import { howToImages } from '../data/how-to';
-import { PROGRAMS, hasLegWork } from '../data/programs';
+import { PROGRAMS } from '../data/programs';
 import { SWAPS, swapsFor } from '../data/swaps';
 import {
-  DEFAULT_GYM,
   LB,
-  colorsKg,
   fmtKg,
   fromKg,
-  loadKg,
   loadTypeOf,
   loadTypesFor,
-  platesTotal,
   round1,
   stackKg,
   toKg,
   weightFromLoad,
 } from '../load';
-import { DEFAULT_STATE, applyPending, exerciseHistory, kgOf, prCountsByDate, setKg, trainingStreak, type SetEntry, type State } from '../store';
-import { exerciseFor, loadText, visiblePlans } from '../workout';
-import { volumeOn } from '../xp';
+import { DEFAULT_STATE, applyPending, exerciseHistory, kgOf, migrate, plateToKg, prCountsByDate, setKg, trainingStreak, type SetEntry, type State } from '../store';
+import { loadText, visiblePlans } from '../workout';
+import { volumeOn } from '../totals';
 
 const set = (weight: string, reps: string, u: 'kg' | 'lb', load?: SetEntry['load']): SetEntry => ({ weight, reps, done: true, u, load });
 
@@ -50,33 +47,38 @@ describe('kg / lb', () => {
   });
 });
 
-describe('barbell plates', () => {
-  test('bar + both sides', () => {
-    expect(platesTotal([20, 10, 2.5], 20)).toBe(85);
-    expect(platesTotal([], 20)).toBe(20);
-    expect(platesTotal([1.25], 0)).toBe(2.5);
+describe('old barbell-plate and colour-plate sets become plain kg', () => {
+  const old = (load: object, weight = '') => ({ weight, reps: '5', done: true, u: 'kg', load }) as unknown as SetEntry;
+
+  test('the kg they saved is kept exactly, and the plates are dropped', () => {
+    expect(plateToKg(old({ t: 'plates', plates: [20, 5], bar: 20 }, '70'))).toEqual({ weight: '70', reps: '5', done: true, u: 'kg' });
+    expect(plateToKg(old({ t: 'colors', colors: ['red'], bar: 20 }, '70'))).toEqual({ weight: '70', reps: '5', done: true, u: 'kg' });
   });
 
-  test('a plates set is saved in kg and shown in either unit', () => {
-    const w = weightFromLoad({ t: 'plates', plates: [20, 5], bar: 20 }, DEFAULT_GYM);
-    expect(w).toEqual({ weight: '70', u: 'kg', load: { t: 'plates', plates: [20, 5], bar: 20 } });
-    const s: SetEntry = { ...w, reps: '5', done: true };
-    expect(loadText(s, 'kg', DEFAULT_GYM)).toBe('2×20 + 2×5 + bar · 70 kg');
-    expect(loadText(s, 'lb', DEFAULT_GYM)).toBe('2×20 + 2×5 + bar · 154.3 lb');
-  });
-});
-
-describe('colour plates', () => {
-  test('colours add up per side, with the bar', () => {
-    expect(colorsKg(['red', 'blue'], DEFAULT_GYM)).toBe(45);
-    expect(loadKg({ t: 'colors', colors: ['red', 'blue'], bar: 20 }, DEFAULT_GYM)).toBe(110);
-    expect(loadKg({ t: 'colors', colors: [], bar: 0 }, DEFAULT_GYM)).toBe(0);
+  test('a missing total is worked out from the plates (and your old gym colours)', () => {
+    expect(plateToKg(old({ t: 'plates', plates: [20, 10, 2.5], bar: 20 })).weight).toBe('85');
+    expect(plateToKg(old({ t: 'colors', colors: ['red', 'blue'], bar: 20 })).weight).toBe('110');
+    expect(plateToKg(old({ t: 'colors', colors: ['c1', 'c1'], bar: 15 }), { colors: [{ id: 'c1', kg: 12.5 }] }).weight).toBe('65');
   });
 
-  test("your gym's colours are used (custom kg)", () => {
-    const gym = { ...DEFAULT_GYM, colors: [{ id: 'c1', name: 'Purple', hex: '#800080', kg: 12.5 }] };
-    expect(loadKg({ t: 'colors', colors: ['c1', 'c1'], bar: 15 }, gym)).toBe(65);
-    expect(loadText({ ...weightFromLoad({ t: 'colors', colors: ['c1'], bar: 15 }, gym), reps: '8', done: true }, 'kg', gym)).toBe('purple + bar · 40 kg');
+  test('pins and plain sets are untouched', () => {
+    const pin = { ...weightFromLoad({ t: 'stack', pin: 7 }), reps: '10', done: true };
+    expect(plateToKg(pin)).toBe(pin);
+    expect(plateToKg(set('60', '5', 'kg'))).toEqual(set('60', '5', 'kg'));
+  });
+
+  test('on load: history, PRs and volume stay the same; plate load types and My gym are gone', () => {
+    const logs = {
+      '2026-11-02': { flat_bench: { sets: [old({ t: 'plates', plates: [20], bar: 20 }, '60')] } },
+      '2026-11-09': { flat_bench: { sets: [old({ t: 'colors', colors: ['blue', 'green'], bar: 20 }, '80')] } },
+    };
+    const before = prCountsByDate(logs as State['logs']);
+    const s = migrate({ ...DEFAULT_STATE, logs, loadTypes: { flat_bench: 'plates', lat_pulldown: 'stack' }, gym: { bar: 20 } }, false);
+    expect(s.logs['2026-11-09'].flat_bench.sets[0]).toEqual({ weight: '80', reps: '5', done: true, u: 'kg' });
+    expect(prCountsByDate(s.logs)).toEqual(before);
+    expect(exerciseHistory(s.logs, 'flat_bench').map((p) => p.top)).toEqual([60, 80]);
+    expect(s.loadTypes).toEqual({ lat_pulldown: 'stack' });
+    expect('gym' in s).toBe(false);
   });
 });
 
@@ -90,11 +92,11 @@ describe('machine pin', () => {
   });
 
   test('a pin logged before setup has no kg; it converts once kg per plate is set', () => {
-    const s: SetEntry = { ...weightFromLoad({ t: 'stack', pin: 7 }, DEFAULT_GYM, undefined), reps: '10', done: true };
+    const s: SetEntry = { ...weightFromLoad({ t: 'stack', pin: 7 }, undefined), reps: '10', done: true };
     expect(s.weight).toBe('');
     expect(kgOf(s)).toBeNull();
     expect(setKg(s, { perPlate: 7 })).toBe(49);
-    expect(loadText(s, 'kg', DEFAULT_GYM)).toBe('Pin 7');
+    expect(loadText(s, 'kg')).toBe('Pin 7');
   });
 });
 
@@ -103,7 +105,7 @@ describe('PRs, charts and volume use the right numbers', () => {
     '2026-11-02': { flat_bench: { sets: [set('60', '5', 'kg')] } },
     '2026-11-09': { flat_bench: { sets: [set('135', '5', 'lb')] } }, // 61.2 kg: a PR
     '2026-11-16': { flat_bench: { sets: [set('130', '5', 'lb')] } }, // 59 kg: not a PR
-    '2026-11-17': { lat_pulldown: { sets: [{ ...weightFromLoad({ t: 'stack', pin: 7 }, DEFAULT_GYM), reps: '10', done: true }] } },
+    '2026-11-17': { lat_pulldown: { sets: [{ ...weightFromLoad({ t: 'stack', pin: 7 }), reps: '10', done: true }] } },
   };
 
   test('PRs compare kg across units', () => {
@@ -131,16 +133,21 @@ describe('PRs, charts and volume use the right numbers', () => {
 });
 
 describe('load type choices', () => {
-  test('each kind of equipment offers the right load types', () => {
+  test('each kind of exercise logs the right thing: machines and cables by pin or kg, other lifts by kg, reps, or seconds', () => {
     expect(loadTypesFor('lat_pulldown')).toEqual(['stack', 'weight']);
-    expect(loadTypesFor('flat_bench')).toEqual(['weight', 'plates', 'colors']);
+    expect(loadTypesFor('seated_cable_row')).toEqual(['stack', 'weight']);
+    expect(loadTypesFor('plank')).toEqual(['timed']);
+    expect(loadTypesFor('farmers_walk')).toEqual(['weight']);
+    expect(loadTypesFor('flat_bench')).toEqual(['weight']);
+    expect(loadTypesFor('ez_curl')).toEqual(['weight']);
     expect(loadTypesFor('lateral_raise')).toEqual(['weight']);
     expect(loadTypesFor('push_ups')).toEqual(['bodyweight']);
   });
 
   test("a saved load type that doesn't fit the exercise falls back to the default", () => {
     expect(loadTypeOf('lateral_raise', { lateral_raise: 'stack' })).toBe('weight');
-    expect(loadTypeOf('flat_bench', { flat_bench: 'colors' })).toBe('colors');
+    expect(loadTypeOf('lat_pulldown', { lat_pulldown: 'weight' })).toBe('weight');
+    expect(loadTypeOf('lat_pulldown', { lat_pulldown: 'stack' })).toBe('stack');
   });
 });
 
@@ -160,33 +167,10 @@ describe('programs and injury mode', () => {
     expect(trainingStreak(after, '2026-11-16')).toBe(trainingStreak(before, '2026-11-16'));
   });
 
-  test('injury mode hides every leg/ab exercise on every program day, and turning it off shows them again', () => {
-    for (const p of PROGRAMS) {
-      for (const d of p.days) {
-        const on = visiblePlans({ ...DEFAULT_STATE, injured: true }, d);
-        expect(on.every((pl) => !loadsInjury(exerciseFor(DEFAULT_STATE, pl)))).toBe(true);
-        const off = visiblePlans({ ...DEFAULT_STATE, injured: false }, d);
-        expect(off).toHaveLength(d.exercises.length);
-      }
-    }
-  });
-
-  test('injury mode never offers a leg/ab swap', () => {
-    for (const id of Object.keys(EXERCISES)) {
-      expect(swapsFor(id, true).some((s) => loadsInjury(s.id))).toBe(false);
-    }
-  });
-
-  test('a swap to a leg/ab exercise is hidden too while injury mode is on', () => {
-    const day = PROGRAMS[0].days[0];
-    const slot = day.exercises[0].slot;
-    const st: State = { ...DEFAULT_STATE, injured: true, swaps: { [slot]: 'back_squat' } };
-    expect(visiblePlans(st, day).some((p) => p.slot === slot)).toBe(false);
-    expect(visiblePlans({ ...st, injured: false }, day).some((p) => p.slot === slot)).toBe(true);
-  });
-
-  test('the Programs list hides programs with leg work in injury mode (only the upper-body split stays)', () => {
-    expect(PROGRAMS.filter((p) => !hasLegWork(p)).map((p) => p.id)).toEqual(['upper5']);
+  test('injury mode is gone: every exercise of every program day shows, and old saves drop the setting', () => {
+    for (const p of PROGRAMS) for (const d of p.days) expect(visiblePlans(DEFAULT_STATE, d)).toHaveLength(d.exercises.length);
+    const old = migrate({ ...DEFAULT_STATE, injured: true, easeInFrom: '2026-11-01', easeInDismissed: false }, false);
+    expect('injured' in old || 'easeInFrom' in old || 'easeInDismissed' in old).toBe(false);
   });
 });
 
@@ -195,7 +179,7 @@ describe('How to images', () => {
   const shown = new Set<string>();
   for (const p of PROGRAMS) for (const d of p.days) for (const e of d.exercises) e.options.forEach((o) => shown.add(o));
   for (const id of [...shown]) {
-    swapsFor(id, false).forEach((s) => shown.add(s.id));
+    swapsFor(id).forEach((s) => shown.add(s.id));
     (SWAPS[id] ?? []).forEach((s) => shown.add(s.id));
   }
 

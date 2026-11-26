@@ -1,6 +1,7 @@
-The MIT License (MIT)
+The MIT License (MIT) — applies to the source code in this repository.
 
-Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+Copyright (c) 2025-present adheelkhan2-prog
+Portions from the Expo app template: Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +20,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+Third-party assets keep their own licences (not MIT). Full list, with where each
+asset is used and what was changed: src/data/asset-licences.md
+
+- 3D muscle model (assets/models/muscles.glb, render/source/muscles-src.glb):
+  Z-Anatomy (Gauthier Kervyn), based on BodyParts3D (Kousaku Okubo, (c) The Database
+  Center for Life Science, CC BY-SA 2.1 JP), via the Gymmetry muscle map (kalibismail).
+  CC BY-SA 4.0. See assets/models/CREDITS.md.
+- Clay exercise images (assets/exercises-3d/) and the baked render data (render/cache/):
+  adaptations of the muscle model above, shared under CC BY-SA 4.0.
+- Render body (render/source/makehuman/): MakeHuman / MPFB2, CC0 1.0.
+- Exercise photos (assets/exercises/): free-exercise-db, Unlicense (public domain).
+- Fonts (Bricolage Grotesque, Figtree): SIL Open Font License 1.1.

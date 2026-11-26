@@ -1,0 +1,10 @@
+# Fresh install state, app open on Today.
+appId: com.gymtracker.app
+---
+- launchApp:
+    clearState: true
+- runFlow: system-dialogs.yaml
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 120000
+- runFlow: no-errors.yaml

@@ -1,19 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { EXERCISES, loadsInjury, type LogKind } from './data/exercises';
-import { INJURY_REGIONS, type MuscleId } from './data/muscles';
-import { DEFAULT_WEEK, pickOption, type WorkoutDay } from './data/program';
-import { PROGRAMS, hasLegWork, type Program } from './data/programs';
-import { DEFAULT_GYM, stackKg, toKg, type Gym, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
+import { EXERCISES, type LogKind } from './data/exercises';
+import type { MuscleId } from './data/muscles';
+import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
+import { PROGRAMS, type Program } from './data/programs';
+import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 
 export type { Unit } from './load';
+export type ThemeSetting = 'system' | 'light' | 'dark';
+/**
+ * One supplement's reminders ('HH:MM' times): the morning one, follow-ups while it isn't marked
+ * taken, and a last call. Marking it taken cancels only its own follow-ups for that day.
+ */
+export type SuppReminder = { on: boolean; morning: string; followUps: string[]; lastCall: string | null };
+export const DEFAULT_REMINDER: SuppReminder = { on: true, morning: '08:00', followUps: ['13:00'], lastCall: '19:00' };
+/** A supplement's reminders, with defaults for one that has none saved yet. */
+export const reminderFor = (state: Pick<State, 'suppReminders'>, name: string): SuppReminder => state.suppReminders?.[name] ?? DEFAULT_REMINDER;
+/** Your own clip of an exercise: the file, and the trimmed part (seconds) that loops. */
+export type OwnVideo = { uri: string; start: number; end: number };
 /**
  * One set. `reps` holds seconds for timed exercises; `weight` is empty for reps-only ones.
  * `weight` is in the set's own unit `u` (kg or lb), so switching units never rewrites history.
- * `load` keeps the pin / plates / colours the set was logged with.
+ * `load` keeps the machine pin the set was logged with.
  */
 export type SetEntry = { weight: string; reps: string; done: boolean; u?: Unit; load?: LoadInfo };
-export type ExerciseLog = { sets: SetEntry[]; skipped?: boolean };
+/** `carried`: sets of this slot done today on another exercise before a mid-workout swap. They stay
+ * logged under that exercise (its history and PRs); here they only count towards the slot. */
+export type ExerciseLog = { sets: SetEntry[]; /** Old saves only (injury mode); ignored. */ skipped?: boolean; carried?: number };
 export type DayLog = Record<string, ExerciseLog>; // exerciseId -> log
 export type Session = { dayId: string; startedAt?: number; finishedAt?: number };
 
@@ -24,13 +37,11 @@ export type State = {
   sessions: Record<string, Session>;
   variants: Record<string, string>; // program slot -> chosen exercise
   warmups: Record<string, boolean>; // date -> warm-up done
-  injured: boolean;
   restSound: boolean;
-  /** Frosted blur on glass panels (off = tinted see-through panels, lighter on the GPU). */
-  blur: boolean;
+  /** Supplement names, in the order shown. */
   supplements: string[];
-  remindersOn: boolean;
-  reminderTimes: string[]; // 'HH:MM'; first is the morning reminder, the rest are follow-ups
+  /** Each supplement's own reminders (keyed by name). */
+  suppReminders: Record<string, SuppReminder>;
   taken: Record<string, Record<string, boolean>>; // date -> supplement -> taken
   /** Active program. `week` above is its weekday -> day mapping. */
   programId: string;
@@ -41,10 +52,11 @@ export type State = {
   swaps: Record<string, string>;
   loadTypes: Record<string, LoadType>;
   machines: Record<string, MachineSetup>;
-  gym: Gym;
-  /** Date injury mode was turned off: shows the "ease in" card for two weeks. */
-  easeInFrom: string | null;
-  easeInDismissed: boolean;
+  /** Appearance: follow the phone, or always light / dark. */
+  theme: ThemeSetting;
+  /** Exercise -> a video you recorded or imported (a file in this app's storage on the phone, never
+   * bundled or uploaded), with the part that loops; replaces the bundled video. */
+  userVideos: Record<string, OwnVideo>;
 };
 
 export const DEFAULT_STATE: State = {
@@ -54,12 +66,9 @@ export const DEFAULT_STATE: State = {
   sessions: {},
   variants: {},
   warmups: {},
-  injured: true,
   restSound: true,
-  blur: true,
   supplements: ['Creatine', 'Protein'],
-  remindersOn: true,
-  reminderTimes: ['08:00', '13:00', '19:00'],
+  suppReminders: {},
   taken: {},
   programId: 'upper5',
   pending: null,
@@ -67,9 +76,8 @@ export const DEFAULT_STATE: State = {
   swaps: {},
   loadTypes: {},
   machines: {},
-  gym: DEFAULT_GYM,
-  easeInFrom: null,
-  easeInDismissed: false,
+  userVideos: {},
+  theme: 'system',
 };
 
 export const STORAGE_KEY = 'gym-tracker/state/v3';
@@ -115,7 +123,7 @@ export async function loadState(): Promise<State | null> {
 
 /** Turn a saved state from any version into the current shape. */
 export function migrate(raw: unknown, fromOld: boolean): State {
-  const r = (raw ?? {}) as Partial<State> & { logs?: Record<string, Record<string, unknown>> };
+  const r = (raw ?? {}) as Partial<State> & { logs?: Record<string, Record<string, unknown>>; gym?: LegacyGym };
   // Sets saved before v3 have no unit of their own: they were typed in the unit chosen at the time.
   const legacyUnit: Unit = r.unit === 'kg' ? 'kg' : 'lb';
   const logs: State['logs'] = {};
@@ -127,12 +135,28 @@ export function migrate(raw: unknown, fromOld: boolean): State {
       // an update can never delete history; screens skip ids they can't show.
       const newId = fromOld ? OLD_IDS[id] : id;
       if (!newId || (fromOld && !EXERCISES[newId])) continue;
-      const log = Array.isArray(v) ? { sets: v as SetEntry[] } : (v as ExerciseLog);
-      out[newId] = { ...log, sets: (log.sets ?? []).map((st) => (st.u ? st : { ...st, u: legacyUnit })) };
+      const raw = Array.isArray(v) ? { sets: v as SetEntry[] } : (v as ExerciseLog & { skipped?: boolean });
+      // "Skipped for joint pain" went with injury mode: an old flag must not count a day as trained.
+      const { skipped: _sk, ...log } = raw;
+      void _sk;
+      out[newId] = { ...log, sets: (log.sets ?? []).map((st) => plateToKg(st.u ? st : { ...st, u: legacyUnit }, r.gym)) };
     }
     if (Object.keys(out).length) logs[date] = out;
   }
-  const merged = { ...DEFAULT_STATE, ...(r as Partial<State>) };
+  // Removed settings (My gym, injury mode, frosted glass, the shared reminder times) are dropped;
+  // programs and history are kept as they are.
+  const {
+    gym: _gym,
+    injured: _i,
+    easeInFrom: _e,
+    easeInDismissed: _d,
+    blur: _b,
+    remindersOn: _ro,
+    reminderTimes: _rt,
+    ...known
+  } = r as typeof r & LegacyFields;
+  void [_gym, _i, _e, _d, _b, _ro, _rt];
+  const merged = { ...DEFAULT_STATE, ...(known as Partial<State>) };
   const program = programById(merged, merged.programId) ?? PROGRAMS[0];
   const validWeek =
     Array.isArray(r.week) && r.week.length === 7 && r.week.every((d) => d === null || program.days.some((x) => x.id === d));
@@ -141,10 +165,106 @@ export function migrate(raw: unknown, fromOld: boolean): State {
     programId: program.id,
     week: validWeek ? (r.week as State['week']) : program.week,
     logs,
-    sessions: fromOld ? {} : (r.sessions ?? {}),
+    sessions: fromOld ? {} : cleanSessions(r.sessions ?? {}, logs),
     variants: r.variants ?? {},
-    gym: { ...DEFAULT_GYM, ...(r.gym ?? {}) },
+    userVideos: Object.fromEntries(
+      Object.entries((r.userVideos ?? {}) as Record<string, OwnVideo | string>).map(([id, v]) => [id, typeof v === 'string' ? { uri: v, start: 0, end: 6 } : v]),
+    ),
+    suppReminders: migrateReminders(r as Partial<State> & LegacyFields, merged.supplements),
+    // Saves from before the light theme keep the dark look until the theme is changed in Settings.
+    theme: r.theme === 'light' || r.theme === 'dark' || r.theme === 'system' ? r.theme : 'dark',
+    // Barbell-plate and colour-plate logging were removed: those exercises go back to kg/lb (machine
+    // pins stay).
+    loadTypes: keepKgLifts(
+      Object.fromEntries(Object.entries(r.loadTypes ?? {}).filter(([id, t]) => loadTypesFor(id).includes(t))),
+      logs,
+    ),
   };
+}
+
+/**
+ * Older versions could save a workout as finished with no sets logged (e.g. Finish tapped on an
+ * empty workout), which showed the day as Done with 0 sets and hid Start workout. Those "finished"
+ * marks are dropped; every set and every real session is kept.
+ */
+export function cleanSessions(sessions: Record<string, Session>, logs: State['logs']): Record<string, Session> {
+  const out: Record<string, Session> = {};
+  for (const [date, ses] of Object.entries(sessions)) {
+    if (ses?.finishedAt && !hasLoggedSets(logs, date)) {
+      const { finishedAt: _f, ...rest } = ses;
+      void _f;
+      out[date] = rest;
+    } else out[date] = ses;
+  }
+  return out;
+}
+
+/**
+ * Machines and cables default to logging by pin. A lift you've been logging in kg (with no choice
+ * saved) keeps kg, so your history, targets and PRs stay continuous after an update.
+ */
+export function keepKgLifts(loadTypes: Record<string, LoadType>, logs: State['logs']): Record<string, LoadType> {
+  const out = { ...loadTypes };
+  for (const day of Object.values(logs))
+    for (const [id, l] of Object.entries(day)) {
+      if (out[id] || loadTypesFor(id)[0] !== 'stack') continue;
+      if (l.sets.some((st) => st.done && st.weight !== '' && st.load?.pin === undefined)) out[id] = 'weight';
+    }
+  return out;
+}
+
+type LegacyFields = { injured?: unknown; easeInFrom?: unknown; easeInDismissed?: unknown; blur?: unknown; remindersOn?: boolean; reminderTimes?: string[] };
+
+const HHMM = /^\d{2}:\d{2}$/;
+
+/**
+ * Every supplement gets its own reminders. Saves from before had one shared set of times (morning,
+ * follow-ups, last call) and one on/off switch: each supplement starts with exactly those, so
+ * nothing changes until you edit one. Streaks live in `taken` and are untouched.
+ */
+export function migrateReminders(r: Partial<State> & LegacyFields, supplements: string[]): Record<string, SuppReminder> {
+  const out: Record<string, SuppReminder> = {};
+  const saved = (r.suppReminders ?? {}) as Record<string, Partial<SuppReminder>>;
+  const times = (Array.isArray(r.reminderTimes) ? r.reminderTimes : []).filter((t) => HHMM.test(t));
+  const shared: SuppReminder = times.length
+    ? { on: r.remindersOn !== false, morning: times[0], followUps: times.slice(1, Math.max(1, times.length - 1)), lastCall: times.length > 1 ? times[times.length - 1] : null }
+    : { ...DEFAULT_REMINDER, on: r.remindersOn !== false };
+  for (const name of supplements) {
+    const v = saved[name];
+    out[name] = v && typeof v.morning === 'string' && HHMM.test(v.morning)
+      ? {
+          on: v.on !== false,
+          morning: v.morning,
+          followUps: (Array.isArray(v.followUps) ? v.followUps : []).filter((t) => HHMM.test(t)),
+          lastCall: typeof v.lastCall === 'string' && HHMM.test(v.lastCall) ? v.lastCall : null,
+        }
+      : { ...shared, followUps: [...shared.followUps] };
+  }
+  return out;
+}
+
+/** The "My gym" settings older versions saved (bar and colour-plate weights), for converting old sets. */
+type LegacyGym = { bar?: number; colors?: { id: string; kg: number }[] };
+type LegacyLoad = { t: string; pin?: number; plates?: number[]; colors?: string[]; bar?: number };
+const LEGACY_COLOURS: Record<string, number> = { red: 25, blue: 20, yellow: 15, green: 10, white: 5 };
+
+/**
+ * Sets logged with barbell plates or colour plates (removed) become plain kg sets. Those sets
+ * already saved their total in kg; it's recomputed from the plates only if it's missing, so history,
+ * charts and PRs stay exactly the same.
+ */
+export function plateToKg(st: SetEntry, gym?: LegacyGym): SetEntry {
+  const l = st.load as LegacyLoad | undefined;
+  if (!l || (l.t !== 'plates' && l.t !== 'colors')) return st;
+  const { load: _old, ...rest } = st;
+  void _old;
+  if (st.weight !== '' && Number.isFinite(Number(st.weight))) return { ...rest, u: st.u ?? 'kg' };
+  const side =
+    l.t === 'plates'
+      ? (l.plates ?? []).reduce((a, b) => a + b, 0)
+      : (l.colors ?? []).reduce((a, c) => a + (gym?.colors?.find((x) => x.id === c)?.kg ?? LEGACY_COLOURS[c] ?? 0), 0);
+  const kg = (l.bar ?? 0) + 2 * side;
+  return { ...rest, weight: String(Math.round(kg * 100) / 100), u: 'kg' };
 }
 
 // ---------- Programs ----------
@@ -191,7 +311,14 @@ export const addDays = (key: string, n: number) => {
   return todayKey(d);
 };
 
-type Ctx = { state: State; ready: boolean; update: (fn: (s: State) => State) => void };
+type Ctx = {
+  state: State;
+  ready: boolean;
+  update: (fn: (s: State) => State) => void;
+  /** Apply a change and write it to storage now (not after the usual short delay). Use before
+   * anything heavy that could crash, e.g. the workout-complete celebration. */
+  commit: (fn: (s: State) => State) => Promise<void>;
+};
 const StoreContext = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -199,9 +326,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The newest state, always: every change is computed from it at once, so update() and commit()
+  // calls in the same tap compose in order and commit() saves exactly what's shown.
+  const latest = useRef(state);
+
   useEffect(() => {
     loadState().then((loaded) => {
-      if (loaded) setState(loaded);
+      if (loaded) {
+        latest.current = loaded;
+        setState(loaded);
+      }
       setReady(true);
     });
   }, []);
@@ -214,8 +348,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, 250);
   }, [state, ready]);
 
-  const update = useCallback((fn: (s: State) => State) => setState(fn), []);
-  const value = useMemo(() => ({ state, ready, update }), [state, ready, update]);
+  const update = useCallback((fn: (s: State) => State) => {
+    const next = fn(latest.current);
+    latest.current = next;
+    setState(next);
+  }, []);
+  const commit = useCallback(async (fn: (s: State) => State) => {
+    const next = fn(latest.current);
+    latest.current = next;
+    setState(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }, []);
+  const value = useMemo(() => ({ state, ready, update, commit }), [state, ready, update, commit]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
@@ -360,28 +505,61 @@ export function exerciseHistory(logs: State['logs'], exerciseId: string, machine
     });
 }
 
+/** Replace or remove set `i` of `id` on `date`. Removing the last set removes the exercise from that day. */
+export function editSet(state: State, id: string, { date, i }: { date: string; i: number }, next: SetEntry | null): State {
+  const day = state.logs[date];
+  const log = day?.[id];
+  if (!log || !log.sets[i]) return state;
+  const sets = next ? log.sets.map((x, j) => (j === i ? next : x)) : log.sets.filter((_, j) => j !== i);
+  const nextDay = { ...day };
+  // The exercise leaves that day only when nothing is left: no sets at all and no sets carried
+  // over from a mid-workout swap.
+  if (sets.length || log.carried) nextDay[id] = { ...log, sets };
+  else delete nextDay[id];
+  const logs = { ...state.logs };
+  if (Object.keys(nextDay).length) logs[date] = nextDay;
+  else delete logs[date];
+  return { ...state, logs };
+}
+
 // ---------- Days, streaks, badges ----------
 
-/** A day counts as trained when any set was finished or any exercise was skipped for joint pain. */
-export const trainedOn = (state: State, date: string) =>
-  Object.entries(state.logs[date] ?? {}).some(([id, l]) => l.skipped || doneSets(l, kindOf(id)).length > 0);
+/** At least one finished set (with its numbers) was logged on `date`. */
+export const hasLoggedSets = (logs: State['logs'], date: string) =>
+  Object.entries(logs[date] ?? {}).some(([id, l]) => doneSets(l, kindOf(id)).length > 0);
 
-/** False for a day whose every exercise is hidden by injury mode (e.g. leg day): it counts as rest. */
+/** The workout on `date` was finished with sets logged: the only thing that shows a day as Done. */
+export const finishedOn = (state: Pick<State, 'logs' | 'sessions'>, date: string) =>
+  !!state.sessions[date]?.finishedAt && hasLoggedSets(state.logs, date);
+
+/** A day counts as trained when any set was finished on it. */
+export const trainedOn = (state: Pick<State, 'logs'>, date: string) => hasLoggedSets(state.logs, date);
+
+/** True when the weekday's slot holds a workout day (with at least one exercise). */
 export function dayHasWork(state: State, dayId: string | null | undefined) {
   const day = dayById(state, dayId);
-  if (!day) return false;
-  if (!state.injured) return true;
-  return day.exercises.some((p) => {
-    const sw = state.swaps[p.slot];
-    return !loadsInjury(sw && EXERCISES[sw] ? sw : pickOption(p, state.variants));
-  });
+  return !!day && day.exercises.length > 0;
 }
 
 const scheduled = (state: State, date: string) => dayHasWork(state, state.week[dateFromKey(date).getDay()]);
 
-/** Consecutive scheduled training days trained. Rest days don't break it; today doesn't until it's over. */
+/**
+ * Consecutive scheduled training days trained. Rest days don't break it; today doesn't until it's over.
+ * Rotating plans have no fixed weekdays: the streak breaks after 3+ days in a row without training.
+ */
 export function trainingStreak(state: State, today = todayKey()) {
   let n = 0;
+  if (activeProgram(state).rotation) {
+    let gap = 0;
+    for (let i = 0; i < 400; i++) {
+      const d = addDays(today, -i);
+      if (trainedOn(state, d)) {
+        n++;
+        gap = 0;
+      } else if (i > 0 && ++gap >= 3) break;
+    }
+    return n;
+  }
   for (let i = 0; i < 400; i++) {
     const d = addDays(today, -i);
     const isScheduled = scheduled(state, d);
@@ -393,6 +571,52 @@ export function trainingStreak(state: State, today = todayKey()) {
 
 export const allTaken = (state: State, date: string) =>
   state.supplements.length > 0 && state.supplements.every((x) => state.taken[date]?.[x]);
+
+/** Days in a row one supplement was marked taken (today doesn't break it until it's over). */
+export function supplementStreakFor(state: Pick<State, 'taken'>, name: string, today = todayKey()) {
+  let n = 0;
+  for (let i = 0; i < 400; i++) {
+    const d = addDays(today, -i);
+    if (state.taken[d]?.[name]) n++;
+    else if (i > 0) break;
+  }
+  return n;
+}
+
+/** Rename a supplement everywhere: its reminders and every day it was taken (streaks carry over). */
+export function renameSupplement(state: State, from: string, to: string): State {
+  const name = to.trim();
+  if (!name || name === from || state.supplements.includes(name)) return state;
+  const taken: State['taken'] = {};
+  for (const [d, day] of Object.entries(state.taken)) {
+    if (!(from in day)) taken[d] = day;
+    else {
+      const { [from]: v, ...rest } = day;
+      taken[d] = { ...rest, [name]: v };
+    }
+  }
+  const { [from]: rem, ...others } = state.suppReminders;
+  return {
+    ...state,
+    supplements: state.supplements.map((x) => (x === from ? name : x)),
+    suppReminders: { ...others, [name]: rem ?? DEFAULT_REMINDER },
+    taken,
+  };
+}
+
+/** Remove a supplement from the stack (days it was taken stay in the log). */
+export function removeSupplement(state: State, name: string): State {
+  const { [name]: _r, ...suppReminders } = state.suppReminders;
+  void _r;
+  return { ...state, supplements: state.supplements.filter((x) => x !== name), suppReminders };
+}
+
+/** Add a supplement with the default reminders. */
+export function addSupplement(state: State, raw: string): State {
+  const name = raw.trim();
+  if (!name || state.supplements.includes(name)) return state;
+  return { ...state, supplements: [...state.supplements, name], suppReminders: { ...state.suppReminders, [name]: { ...DEFAULT_REMINDER, followUps: [...DEFAULT_REMINDER.followUps] } } };
+}
 
 export function supplementStreak(state: State, today = todayKey()) {
   let n = 0;
@@ -423,25 +647,15 @@ export function weeklyMuscleSets(state: State, keys = weekKeys()) {
       for (const m of ex.secondary) out[m] = (out[m] ?? 0) + n * 0.5;
     }
   }
-  if (state.injured) for (const m of INJURY_REGIONS) delete out[m];
   return out;
-}
-
-/**
- * Show the "welcome back, ease in" card for the first two weeks after injury mode is turned OFF,
- * and only when the active program actually brings leg/ab work back (never on the upper-body
- * injury program, never while injury mode is on).
- */
-export function easingIn(state: State, today = todayKey()) {
-  if (state.injured || !state.easeInFrom || state.easeInDismissed) return false;
-  if (!hasLegWork(activeProgram(state))) return false;
-  return today < addDays(state.easeInFrom, 14);
 }
 
 export function weekSummary(state: State, today = todayKey()) {
   const keys = weekKeys(today);
-  const planned = keys.filter((d) => scheduled(state, d)).length;
+  // A rotating plan has no weekdays: plan one session per day in the rotation (at most 7).
+  const program = activeProgram(state);
   const trained = keys.filter((d) => trainedOn(state, d)).length;
+  const planned = program.rotation ? Math.max(trained, Math.min(7, program.days.filter((d) => d.exercises.length).length)) : keys.filter((d) => scheduled(state, d)).length;
   const prs = keys.reduce((n, d) => n + prSetsOn(state.logs, d).length, 0);
   const supps = keys.filter((d) => allTaken(state, d)).length;
   const daysSoFar = keys.filter((d) => d <= today).length;

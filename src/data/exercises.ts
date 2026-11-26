@@ -1,5 +1,5 @@
 import { MORE } from './exercises-more';
-import { INJURY_REGIONS, type MuscleId } from './muscles';
+import type { MuscleId } from './muscles';
 
 /**
  * How a set is logged:
@@ -213,8 +213,8 @@ const list: Base[] = [
     kind: 'weight_reps',
     heavy: true,
     press: true,
-    primary: ['anterior_delt', 'lateral_delt'],
-    secondary: [...TRICEPS, 'upper_traps'],
+    primary: ['anterior_delt'],
+    secondary: ['lateral_delt', ...TRICEPS, 'upper_traps'],
     steps: [
       'Sit upright with back support. Hold the dumbbells at shoulder height, palms forward.',
       'Press up until your arms are straight, without arching your lower back.',
@@ -584,5 +584,3 @@ export const EXERCISES: Record<string, ExerciseInfo> = Object.fromEntries(
 
 export const EXERCISE_LIST = Object.values(EXERCISES);
 
-/** Trains legs or abs as a main muscle: hidden while injury mode is on. */
-export const loadsInjury = (id: string) => (EXERCISES[id]?.primary ?? []).some((m) => INJURY_REGIONS.has(m));

@@ -1,12 +1,12 @@
-import { Tabs, type BottomTabBarProps } from 'expo-router/tabs';
-import { useEffect, useState } from 'react';
+import { BottomTabBarHeightCallbackContext, Tabs, type BottomTabBarProps } from 'expo-router/tabs';
+import { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon, type IconName } from '../../components/icons';
 import { Press } from '../../components/ui';
-import { color, font, motion, radius, size, space, touch } from '../../theme';
+import { color, font, motion, radius, size, space, themed, touch } from '../../theme';
 
 const TABS: Record<string, { title: string; icon: IconName }> = {
   index: { title: 'Today', icon: 'barbell' },
@@ -22,6 +22,7 @@ const TABS: Record<string, { title: string; icon: IconName }> = {
 function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
+  const onHeight = useContext(BottomTabBarHeightCallbackContext);
   const [w, setW] = useState(0);
   const x = useSharedValue(0);
   const tabW = w / state.routes.length;
@@ -32,8 +33,9 @@ function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
   }, [state.index, tabW, reduce]);
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
-    <View style={[s.wrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none">
-      <LinearGradient colors={['rgba(7,7,8,0)', color.bg]} style={s.fade} pointerEvents="none" />
+    // Report the bar's real height (incl. the gesture-bar inset) so screens can pad above it.
+    <View style={[s.wrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none" onLayout={(e) => onHeight?.(e.nativeEvent.layout.height)}>
+      <LinearGradient colors={[color.fadeFrom, color.bg]} style={s.fade} pointerEvents="none" />
       <View style={s.bar}>
         <View style={s.row} onLayout={(e) => setW(e.nativeEvent.layout.width)} accessibilityRole="tablist">
           {tabW > 0 && (
@@ -53,6 +55,7 @@ function GlassTabBar({ state, navigateToTab }: BottomTabBarProps) {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={t.title}
+                testID={`tab-${route.name}`}
                 style={s.tab}
                 glow={color.accent}
               >
@@ -83,7 +86,7 @@ export default function TabsLayout() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg },
   fade: { position: 'absolute', left: 0, right: 0, top: -space.x4, height: space.x4 },
   bar: {
@@ -92,7 +95,7 @@ const s = StyleSheet.create({
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.glassBorder,
-    shadowColor: '#000000',
+    shadowColor: color.shadow,
     shadowOpacity: 0.7,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
@@ -102,4 +105,7 @@ const s = StyleSheet.create({
   pillLine: { width: 28, height: 2, borderRadius: 1, backgroundColor: color.accent, shadowColor: color.accent, shadowOpacity: 0.8, shadowRadius: 6 },
   tab: { flex: 1, minWidth: 0, minHeight: touch.primary + space.xs, alignItems: 'center', justifyContent: 'center', gap: space.xxs, paddingHorizontal: space.xxs, borderRadius: radius.lg },
   label: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
-});
+}));
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

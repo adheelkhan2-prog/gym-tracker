@@ -1,0 +1,33 @@
+# Swipes that START on a set row's box must scroll the exercise page. The notes are opened first so
+# the page is long enough to scroll, then the swipes start on set 3's reps box.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "notes-0"
+- tapOn:
+    id: "notes-0"
+- scrollUntilVisible:
+    element:
+      id: "log-0-1"
+    direction: UP
+    centerElement: true
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 3000
+# Set 2 is centred, so 58% down / 60% across is set 3's reps box.
+- assertVisible:
+    id: "reps-0-2"
+- swipe:
+    start: 60%, 58%
+    end: 60%, 18%
+    duration: 500
+- swipe:
+    start: 60%, 58%
+    end: 60%, 18%
+    duration: 500
+- assertNotVisible:
+    id: "log-0-1"
+- runFlow: ../lib/no-errors.yaml

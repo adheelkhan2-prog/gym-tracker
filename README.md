@@ -4,27 +4,14 @@ An Android app (Expo / React Native) for a 5-day Push · Pull · Legs · Upper �
 
 ## What it does
 
-- **Train**: shows today's workout from your weekly schedule. Each exercise has a photo, sets × reps and what you lifted last time. You can switch to any day.
-- **Log sets**: enter weight and reps for every set, tick it off, and a rest timer starts. Empty fields reuse last session's numbers. New personal records get a **PR** badge. When you hit the top of the rep range on every set, the app tells you to go heavier.
-- **Progress**: chart of your heaviest set or estimated 1-rep max for each exercise, plus session history.
-- **Supplements**: tick creatine and protein each day. The reminder comes at **8:00 AM** with **Taken** / **Not yet** buttons. If you haven't taken them, you're reminded again at **1:00 PM** and **7:00 PM**. Tapping Taken cancels the rest of that day's reminders. All three times are adjustable.
-- **Settings**: lb / kg, and which workout falls on which weekday.
+- **Today**: today's workout from your program and week, a 5-minute warm-up, supplements, and your week at a glance.
+- **Focus mode**: one exercise at a time with the set pre-filled (last time, or a step up when you earned it), so logging is one tap. Rest timer with a lock-screen countdown.
+- **Programs**: seven built-in splits plus your own, with an injury mode that hides leg and ab work.
+- **How to**: clay 3D images of every exercise (or a photo where there isn't one yet) and an interactive 3D muscle model.
+- **Progress**: charts per exercise, PRs, weekly muscle heat, XP and streaks.
+- **Supplements**: creatine and protein reminders at 8 AM, then 1 PM and 7 PM until marked taken.
 
-All data stays on the phone.
-
-## The program
-
-| Day | Workout | Focus |
-|---|---|---|
-| Mon | Push | Chest · Shoulders · Triceps |
-| Tue | Pull | Back · Rear delts · Biceps |
-| Wed | Legs | Quads · Hamstrings · Calves |
-| Thu | Rest | |
-| Fri | Upper | Chest · Back · Arms |
-| Sat | Lower | Glutes · Hamstrings · Core |
-| Sun | Rest | |
-
-Exercises, sets, reps and rest times are in `src/data/program.ts`.
+All data stays on the phone. No accounts, no analytics.
 
 ## Develop
 
@@ -46,6 +33,15 @@ The APK lands in `android/app/build/outputs/apk/release/`. On GitHub, the
 **Build Android APK** workflow does this on every push to `main` and attaches
 the APK to the run.
 
-## Credits
+## Credits and licences
 
-Exercise photos and instructions: [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense / public domain).
+Code: MIT (see `LICENSE`). Assets keep their own licences, listed in full in
+[`src/data/asset-licences.md`](src/data/asset-licences.md) and in the app under Settings → Credits:
+
+- 3D muscle model: [Z-Anatomy](https://github.com/Z-Anatomy/Models-of-human-anatomy), based on
+  [BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/), via the
+  [Gymmetry muscle map](https://github.com/kalibismail/gymmetry-muscle-model): CC BY-SA 4.0.
+- Clay exercise images: rendered for this app from the muscle model above and the
+  [MakeHuman / MPFB2](https://github.com/makehumancommunity/mpfb2) body (CC0): CC BY-SA 4.0.
+- Exercise photos: [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense, public domain).
+- Fonts: Bricolage Grotesque and Figtree (SIL Open Font License).

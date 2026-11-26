@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BACKUP_PREFIX,
   DEFAULT_STATE,
+  finishedOn,
   STORAGE_KEY,
   loadState,
   migrate,
@@ -19,19 +20,19 @@ import {
 const TODAY = '2026-11-20';
 
 /** A saved state that uses every feature: logs with every load type, PRs, streaks, a non-default
- * program, swaps, variants, load types, machines, gym, supplements and settings. */
+ * program, swaps, variants, load types, machines, supplements and settings. */
 function richState(): State {
   return {
     ...DEFAULT_STATE,
     unit: 'kg',
     programId: 'ppl6',
     week: ['ppl-legs-b', 'ppl-push-a', 'ppl-pull-a', null, 'ppl-push-b', 'ppl-pull-b', 'ppl-legs-a'],
-    injured: false,
     restSound: false,
-    blur: false,
     supplements: ['Creatine', 'Protein'],
-    remindersOn: true,
-    reminderTimes: ['07:30', '13:00', '19:00'],
+    suppReminders: {
+      Creatine: { on: true, morning: '07:30', followUps: ['13:00'], lastCall: '19:00' },
+      Protein: { on: false, morning: '09:00', followUps: [], lastCall: null },
+    },
     taken: {
       '2026-11-18': { Creatine: true, Protein: true },
       '2026-11-19': { Creatine: true, Protein: true },
@@ -39,13 +40,10 @@ function richState(): State {
     },
     variants: { 'wed-3': 'cable_crossover' },
     swaps: { 'mon-1': 'flat_db_press' },
-    loadTypes: { lat_pulldown: 'stack', flat_bench: 'plates', bb_bent_row: 'colors' },
+    loadTypes: { flat_bench: 'weight' },
     machines: { lat_pulldown: { perPlate: 7, start: 7 } },
-    gym: { ...DEFAULT_STATE.gym, bar: 15 },
     customPrograms: [],
     pending: null,
-    easeInFrom: '2026-11-01',
-    easeInDismissed: true,
     warmups: { '2026-11-20': true },
     sessions: {
       '2026-11-18': { dayId: 'mon', startedAt: 1, finishedAt: 2 },
@@ -56,7 +54,7 @@ function richState(): State {
       '2026-11-18': {
         flat_bench: {
           sets: [
-            { weight: '60', reps: '8', done: true, u: 'kg', load: { t: 'plates', plates: [20], bar: 20 } },
+            { weight: '60', reps: '8', done: true, u: 'kg' },
             { weight: '135', reps: '8', done: true, u: 'lb' },
           ],
         },
@@ -64,11 +62,11 @@ function richState(): State {
       },
       '2026-11-19': {
         flat_bench: { sets: [{ weight: '65', reps: '8', done: true, u: 'kg' }] },
-        bb_bent_row: { sets: [{ weight: '60', reps: '10', done: true, u: 'kg', load: { t: 'colors', colors: ['blue'], bar: 20 } }] },
+        bb_bent_row: { sets: [{ weight: '60', reps: '10', done: true, u: 'kg' }] },
         push_ups: { sets: [{ weight: '', reps: '20', done: true, u: 'kg' }] },
       },
       '2026-11-20': {
-        flat_bench: { sets: [{ weight: '70', reps: '6', done: true, u: 'kg' }], skipped: false },
+        flat_bench: { sets: [{ weight: '70', reps: '6', done: true, u: 'kg' }] },
       },
     },
   };
@@ -94,7 +92,7 @@ describe('update keeps saved data', () => {
     expect(supplementStreak(loaded, TODAY)).toBe(3);
   });
 
-  test('program choice, swaps, variants, load types, machines, gym and settings survive', async () => {
+  test('program choice, swaps, variants, machines, reminders and settings survive', async () => {
     const saved = richState();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     const s = (await loadState())!;
@@ -104,21 +102,56 @@ describe('update keeps saved data', () => {
     expect(s.variants).toEqual(saved.variants);
     expect(s.loadTypes).toEqual(saved.loadTypes);
     expect(s.machines).toEqual(saved.machines);
-    expect(s.gym.bar).toBe(15);
-    expect([s.unit, s.injured, s.restSound, s.blur, s.remindersOn]).toEqual(['kg', false, false, false, true]);
-    expect(s.reminderTimes).toEqual(['07:30', '13:00', '19:00']);
+    expect(s.suppReminders).toEqual(saved.suppReminders);
+    expect([s.unit, s.restSound]).toEqual(['kg', false]);
   });
 
   test('settings added in a later version get defaults without touching old data', () => {
     const saved: Partial<State> = { ...richState() };
-    delete saved.gym;
     delete saved.machines;
-    delete saved.blur;
+    delete saved.suppReminders;
     const s = migrate(JSON.parse(JSON.stringify(saved)), false);
-    expect(s.gym).toEqual(DEFAULT_STATE.gym);
     expect(s.machines).toEqual({});
-    expect(s.blur).toBe(true);
+    expect(s.suppReminders.Creatine).toEqual({ on: true, morning: '08:00', followUps: ['13:00'], lastCall: '19:00' });
     expect(s.logs).toEqual(richState().logs);
+  });
+
+  test('round-7 update: the shared reminder times become each supplement\'s own, streaks unchanged', () => {
+    const { suppReminders: _r, ...rest } = richState();
+    void _r;
+    const old = { ...rest, blur: false, remindersOn: true, reminderTimes: ['07:30', '12:00', '16:00', '20:30'] };
+    const s = migrate(JSON.parse(JSON.stringify(old)), false);
+    expect(s.suppReminders).toEqual({
+      Creatine: { on: true, morning: '07:30', followUps: ['12:00', '16:00'], lastCall: '20:30' },
+      Protein: { on: true, morning: '07:30', followUps: ['12:00', '16:00'], lastCall: '20:30' },
+    });
+    expect('blur' in s || 'remindersOn' in s || 'reminderTimes' in s).toBe(false);
+    expect(supplementStreak(s, TODAY)).toBe(3);
+    // Reminders switched off before stay off for every supplement.
+    expect(migrate({ ...old, remindersOn: false }, false).suppReminders.Creatine.on).toBe(false);
+  });
+
+  test('round-7 update: a day "finished" with 0 sets is no longer Done; real sessions and every set are kept', () => {
+    const saved = richState();
+    saved.sessions['2026-11-21'] = { dayId: 'wed', startedAt: 7, finishedAt: 8 }; // finished, nothing logged
+    saved.logs['2026-11-21'] = { flat_bench: { sets: [{ weight: '60', reps: '8', done: false, u: 'kg' }] } };
+    const s = migrate(JSON.parse(JSON.stringify(saved)), false);
+    expect(s.sessions['2026-11-21']).toEqual({ dayId: 'wed', startedAt: 7 });
+    expect(s.sessions['2026-11-20']).toEqual(saved.sessions['2026-11-20']);
+    expect(s.logs['2026-11-21']).toEqual(saved.logs['2026-11-21']);
+    expect(finishedOn(s, '2026-11-21')).toBe(false);
+    expect(finishedOn(s, '2026-11-20')).toBe(true);
+  });
+
+  test('round-7 update: old "skipped" flags no longer count a day as trained; machine-pin choices are kept', () => {
+    const saved = richState();
+    saved.logs['2026-11-21'] = { flat_bench: { sets: [], skipped: true } };
+    const s = migrate(JSON.parse(JSON.stringify({ ...saved, loadTypes: { lat_pulldown: 'stack', flat_bench: 'weight' } })), false);
+    expect(trainingStreak(s, '2026-11-21')).toBe(3);
+    expect(s.logs['2026-11-21'].flat_bench.skipped).toBeUndefined();
+    expect(s.loadTypes).toEqual({ lat_pulldown: 'stack', flat_bench: 'weight' });
+    // The pin sets themselves stay as they were.
+    expect(s.logs['2026-11-18'].lat_pulldown).toEqual(saved.logs['2026-11-18'].lat_pulldown);
   });
 
   test('logs for an exercise this version does not know are kept (an update never deletes history)', () => {

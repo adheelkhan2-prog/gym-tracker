@@ -1,0 +1,21 @@
+# Fresh install, then open today's workout (on a rest day: train Monday's workout today).
+appId: com.gymtracker.app
+---
+- runFlow: launch.yaml
+- runFlow:
+    when:
+      notVisible: "Start workout"
+    commands:
+      - tapOn:
+          text: "Monday.*"
+      - tapOn: "Train .* today"
+- runFlow:
+    when:
+      visible: "Start workout"
+    commands:
+      - tapOn: "Start workout"
+- extendedWaitUntil:
+    visible:
+      id: "exercise-0"
+    timeout: 20000
+- runFlow: no-errors.yaml

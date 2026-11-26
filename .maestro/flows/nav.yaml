@@ -1,0 +1,23 @@
+# Today -> Settings -> Today, Supps -> Today, Progress (3D model) -> Today.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/launch.yaml
+- tapOn:
+    id: "tab-settings"
+- runFlow: ../lib/no-errors.yaml
+- tapOn:
+    id: "tab-index"
+- runFlow: ../lib/no-errors.yaml
+- tapOn:
+    id: "tab-supplements"
+- runFlow: ../lib/no-errors.yaml
+- tapOn:
+    id: "tab-index"
+- runFlow: ../lib/no-errors.yaml
+- tapOn:
+    id: "tab-progress"
+- runFlow: ../lib/no-errors.yaml
+- tapOn:
+    id: "tab-index"
+- assertVisible: "Today"
+- runFlow: ../lib/no-errors.yaml

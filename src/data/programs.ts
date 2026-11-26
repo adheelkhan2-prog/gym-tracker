@@ -2,7 +2,6 @@
 // listed in src/data/exercise-sources.md. Day ids are unique across programs so old sessions
 // always point at the right day, and slots are unique so swaps are remembered per program.
 
-import { loadsInjury } from './exercises';
 import { DAYS, DEFAULT_WEEK, type PlannedExercise, type WorkoutDay } from './program';
 
 export type Program = {
@@ -16,6 +15,8 @@ export type Program = {
   /** Weekday (0 = Sunday) -> day id, or null for rest. Days may repeat (Arnold split). */
   week: (string | null)[];
   custom?: boolean;
+  /** Rotating plan: no fixed weekdays; each workout is the next day in order (Day 1, 2, 3, 1, ...). */
+  rotation?: boolean;
 };
 
 const ex = (day: string, n: number, id: string, sets: number, target: string, note?: string): PlannedExercise => ({
@@ -39,7 +40,7 @@ const R = null;
 export const PROGRAMS: Program[] = [
   {
     id: 'upper5',
-    name: 'Upper Body 5-Day (Injury)',
+    name: 'Upper Body 5-Day',
     focus: 'Chest, back, shoulders, arms. No legs or abs.',
     blurb: 'Your current split. Every muscle above the waist twice a week while your legs and abs rest.',
     days: DAYS,
@@ -307,7 +308,5 @@ export const PROGRAMS: Program[] = [
   },
 ];
 
-/** True when any exercise in the program trains legs or abs. */
-export const hasLegWork = (p: Program) => p.days.some((d) => d.exercises.some((e) => e.options.some(loadsInjury)));
 
 export const trainingDays = (week: (string | null)[]) => week.filter(Boolean).length;

@@ -1,0 +1,389 @@
+{
+ "bb_curl": {
+  "file": "bb_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/91/view/",
+  "original": "https://wger.de/media/exercise-video/91/483f4bff-e108-41f1-8e7b-0caf24952552.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.4 s loop (5.5-9.3 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "cable_curl": {
+  "file": "cable_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/95/view/",
+  "original": "https://wger.de/media/exercise-video/95/ab770931-47d3-44fd-aef0-ac7a64c3b794.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.6 s loop (3.8-7.8 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "cable_lateral_raise": {
+  "file": "cable_lateral_raise.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/349/view/",
+  "original": "https://wger.de/media/exercise-video/349/9896d82e-d8b6-48af-bdd5-b8545dc523e9.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (0.5-3.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "cable_overhead_ext": {
+  "file": "cable_overhead_ext.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/659/view/",
+  "original": "https://wger.de/media/exercise-video/659/1f2eb3b6-3185-429f-8330-26dc88f39aff.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 4.4 s loop (5.1-9.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "cable_shrug": {
+  "file": "cable_shrug.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/570/view/",
+  "original": "https://wger.de/media/exercise-video/570/bd1f14a3-9d2b-4ec0-b6b9-e82d739f7e60.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (5.4-8.8 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "chest_dips": {
+  "file": "chest_dips.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/194/view/",
+  "original": "https://wger.de/media/exercise-video/194/d039ec90-474d-47a9-a3ad-bf0b00828c82.MP4",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.9 s loop (5.1-9.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "db_curl": {
+  "file": "db_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/92/view/",
+  "original": "https://wger.de/media/exercise-video/92/8bfb917c-3d0d-49b9-8073-5d7e01c1b894.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.1 s loop (3.9-7.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "db_kickback": {
+  "file": "db_kickback.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/655/view/",
+  "original": "https://wger.de/media/exercise-video/655/69e8c1e5-55b2-4da6-8166-092c24b16735.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.5 s loop (5.5-9.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "db_lunge": {
+  "file": "db_lunge.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/206/view/",
+  "original": "https://wger.de/media/exercise-video/206/47a65c45-6fd1-4181-b71a-3a6c882e516b.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 4.1 s loop (4.0-8.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "db_rdl": {
+  "file": "db_rdl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/507/view/",
+  "original": "https://wger.de/media/exercise-video/507/307e7276-a14d-4ea0-b579-f5b0dbc6f5af.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 5.7 s loop (0.0-6.1 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "db_shoulder_press": {
+  "file": "db_shoulder_press.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/567/view/",
+  "original": "https://wger.de/media/exercise-video/567/64f33c19-1d96-4b7c-af17-6c6a4941c614.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (7.0-10.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "face_pull": {
+  "file": "face_pull.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/222/view/",
+  "original": "https://wger.de/media/exercise-video/222/245a824b-cd39-45f2-b251-2c0b7efead0d.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 4.5 s loop (3.5-8.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "flat_bench": {
+  "file": "flat_bench.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/73/view/",
+  "original": "https://wger.de/media/exercise-video/73/cfb72002-898f-443a-a124-a0bce8a2e6ad.MP4",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.7 s loop (11.2-15.3 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "flat_db_press": {
+  "file": "flat_db_press.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/75/view/",
+  "original": "https://wger.de/media/exercise-video/75/080c799b-8afd-4130-8d72-9cef0cd79f54.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (7.0-10.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "hack_squat": {
+  "file": "hack_squat.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/375/view/",
+  "original": "https://wger.de/media/exercise-video/375/effa7a81-dbdd-4014-83ee-ddf0fd835301.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.4 s loop (3.6-7.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "hammer_curl": {
+  "file": "hammer_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/272/view/",
+  "original": "https://wger.de/media/exercise-video/272/df069052-2173-4f24-855f-a0eebe729f24.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (5.5-8.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "hip_thrust": {
+  "file": "hip_thrust.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/294/view/",
+  "original": "https://wger.de/media/exercise-video/294/45bacf4b-1bb6-4d47-8bd1-9f00eddd4019.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 4.8 s loop (8.8-14.0 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "incline_bb_press": {
+  "file": "incline_bb_press.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/538/view/",
+  "original": "https://wger.de/media/exercise-video/538/4349a6f6-4cee-4c09-828b-c5e7fc2c1ff1.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.7 s loop (15.3-19.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "incline_db_press": {
+  "file": "incline_db_press.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/537/view/",
+  "original": "https://wger.de/media/exercise-video/537/b9c937e9-daeb-42a9-be8e-7a77e368478c.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.1 s loop (18.6-22.1 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "lateral_raise": {
+  "file": "lateral_raise.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/348/view/",
+  "original": "https://wger.de/media/exercise-video/348/de69928a-8a35-4096-821c-1f46de5e0e03.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (4.0-7.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "leg_press": {
+  "file": "leg_press.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/371/view/",
+  "original": "https://wger.de/media/exercise-video/371/6aae16b4-01b9-4eb4-935c-3250f84d2c59.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 5.5 s loop (14.6-20.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "lying_leg_curl": {
+  "file": "lying_leg_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/365/view/",
+  "original": "https://wger.de/media/exercise-video/365/becaf013-5044-40d0-bae9-7ed60c973737.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (3.1-6.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "machine_shoulder_press": {
+  "file": "machine_shoulder_press.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/543/view/",
+  "original": "https://wger.de/media/exercise-video/543/dbfd396b-1aab-4a64-a50b-2c31ff0a2cf7.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 5.4 s loop (5.1-10.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "overhead_db_ext": {
+  "file": "overhead_db_ext.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/211/view/",
+  "original": "https://wger.de/media/exercise-video/211/85f6eb25-a76c-409e-9af9-497794ac0dfb.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.9 s loop (27.1-31.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "preacher_curl": {
+  "file": "preacher_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/465/view/",
+  "original": "https://wger.de/media/exercise-video/465/b64ca95b-c677-4f3b-bb50-f75edc81aa74.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.9 s loop (7.1-11.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "rear_raise": {
+  "file": "rear_raise.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/82/view/",
+  "original": "https://wger.de/media/exercise-video/82/28b53647-27e7-47cf-8852-2ee666c8b628.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (3.2-6.6 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "rope_hammer_curl": {
+  "file": "rope_hammer_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/275/view/",
+  "original": "https://wger.de/media/exercise-video/275/af1fff93-eb58-4ba7-97a4-b38ee67853b4.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (7.9-11.3 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "seated_cable_row": {
+  "file": "seated_cable_row.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/512/view/",
+  "original": "https://wger.de/media/exercise-video/512/fff4c294-93f0-4926-b3a2-bf59ad4afaa5.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 4.9 s loop (0.1-5.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "seated_calf_raise": {
+  "file": "seated_calf_raise.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/590/view/",
+  "original": "https://wger.de/media/exercise-video/590/a325ae2e-686b-4a1f-aff2-ba37fa3fa157.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.1 s loop (14.1-17.6 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "seated_leg_curl": {
+  "file": "seated_leg_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/366/view/",
+  "original": "https://wger.de/media/exercise-video/366/43df4b79-d4c3-4fbf-bcb5-e0d825b84120.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (18.8-22.2 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "skull_crusher": {
+  "file": "skull_crusher.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/246/view/",
+  "original": "https://wger.de/media/exercise-video/246/75eb8c88-922e-45c5-8be3-ac073f62b63f.MP4",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 5.3 s loop (5.5-11.2 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "smith_calf_raise": {
+  "file": "smith_calf_raise.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/622/view/",
+  "original": "https://wger.de/media/exercise-video/622/35b7b625-77fd-4c09-8c57-3ad0f2f23175.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (12.9-16.3 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "smith_squat": {
+  "file": "smith_squat.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/341/view/",
+  "original": "https://wger.de/media/exercise-video/341/0cbfeace-dda9-4166-8424-f51358e88a4f.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.0 s loop (5.8-9.2 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "standing_leg_curl": {
+  "file": "standing_leg_curl.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/367/view/",
+  "original": "https://wger.de/media/exercise-video/367/6c24960c-20ab-4ef9-90f8-cf53e630ccec.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 3.1 s loop (15.2-18.7 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "triceps_dips": {
+  "file": "triceps_dips.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/194/view/",
+  "original": "https://wger.de/media/exercise-video/194/7a6987aa-138d-41e4-8842-5c3e3d970bd9.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 4.1 s loop (11.0-15.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "lat_pulldown": {
+  "file": "lat_pulldown.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-working-out-on-a-lat-pulldown-machine-100549/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100549/1725385782/100549-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 5.1 s loop (11.17-16.67 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "push_ups": {
+  "file": "push_ups.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-doing-push-ups-731/",
+  "original": "https://assets.mixkit.co/videos/731/731-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 3.5 s loop (1.5-5.4 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "pull_ups": {
+  "file": "pull_ups.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/muscular-man-doing-pull-ups-on-a-bar-44410/",
+  "original": "https://assets.mixkit.co/videos/44410/44410-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 3.2 s loop (12.58-16.17 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "machine_chest_press": {
+  "file": "machine_chest_press.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-exercising-on-chest-press-machine-in-gym-100538/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100538/1725384701/100538-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 3.8 s loop (1.0-5.2 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "cable_crossover": {
+  "file": "cable_crossover.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/man-performing-cable-fly-exercise-in-gym-100546/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100546/1725385655/100546-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 4.9 s loop (7.33-12.58 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "hanging_leg_raise": {
+  "file": "hanging_leg_raise.mp4",
+  "credit": "Mixkit (mixkit.co), Mixkit Stock Video Free License (trimmed)",
+  "source": "https://mixkit.co/free-stock-video/toned-man-performing-pull-ups-100551/",
+  "original": "https://assets.mixkit.co/active_storage/video_items/100551/1725385878/100551-video-1080.mp4",
+  "author": "Mixkit",
+  "licence": "Mixkit Stock Video Free License",
+  "changes": "Trimmed to a 5.5 s loop (4.75-10.67 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "front_squat": {
+  "file": "front_squat.mp4",
+  "credit": "Goulart via wger.de, CC BY-SA 4.0 (trimmed)",
+  "source": "https://wger.de/en/exercise/257/view/",
+  "original": "https://wger.de/media/exercise-video/257/520b98d4-c767-47dd-83e6-850189217925.MOV",
+  "author": "Goulart",
+  "licence": "CC BY-SA 4.0",
+  "changes": "Trimmed to a 2.1 s loop (9.0-11.5 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 1920x1080 and frame rate."
+ },
+ "wide_pulldown": {
+  "file": "wide_pulldown.mp4",
+  "credit": "blackmarketmusic via Pixabay, Pixabay Content License (trimmed)",
+  "source": "https://pixabay.com/videos/id-135162/",
+  "original": "https://pixabay.com/videos/id-135162/ (2560x1440 rendition)",
+  "author": "blackmarketmusic (Pixabay)",
+  "licence": "Pixabay Content License",
+  "changes": "Trimmed to a 3.5 s loop (6.0-9.9 s of the original, last 0.4 s cross-faded into the start), sound removed, re-encoded H.264 at the original 2560x1440 and frame rate."
+ }
+}

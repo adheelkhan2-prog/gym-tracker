@@ -301,14 +301,19 @@ def pose(rig, dirs, aim):
             v = dirs[name]
             for bone in CHAINS[name]:
                 aim(rig, bone, v[:3], v[3] if len(v) > 3 else 0.0)
+    finish_pose(rig, any(k.startswith('shoulder_') for k in dirs))
+
+
+def finish_pose(rig, shoulder_on):
+    """After the bones are set: belly flattening, the opt-in shoulder smoothing, folded fingers."""
+    bpy.context.view_layer.update()
     # Flatten the lower belly as the hips bend.
     body = next((c for c in rig.children if c.type == 'MESH'), None)
     if body is not None and body.data.shape_keys and 'belly_flat' in body.data.shape_keys.key_blocks:
         body.data.shape_keys.key_blocks['belly_flat'].value = _hip_flexion(rig)
     if body is not None and 'ShoulderSmooth' in body.modifiers:
         # Opt-in (poses that set shoulder_L/R), so already-approved renders stay reproducible.
-        on = any(k.startswith('shoulder_') for k in dirs)
-        body.modifiers['ShoulderSmooth'].factor = _shoulder_elevation(rig) if on else 0.0
+        body.modifiers['ShoulderSmooth'].factor = _shoulder_elevation(rig) if shoulder_on else 0.0
         if os.environ.get('SHOULDER_DEBUG'):
             print('shoulder smooth', round(body.modifiers['ShoulderSmooth'].factor, 3))
     # Fold the fingers away: the sculpted clay fist (scene.fist) wraps the handle instead.
@@ -318,6 +323,16 @@ def pose(rig, dirs, aim):
             if pb:
                 pb.scale = (0.35, 0.35, 0.35)
     bpy.context.view_layer.update()
+
+
+def pose_between(rig, basis_a, basis_b, t, shoulder_on):
+    """Every bone part-way between two posed states (bone rotations slerped, locations lerped)."""
+    for pb in rig.pose.bones:
+        la, ra, sa = basis_a[pb.name].decompose()
+        lb, rb, sb = basis_b[pb.name].decompose()
+        from mathutils import Matrix
+        pb.matrix_basis = Matrix.LocRotScale(la.lerp(lb, t), ra.slerp(rb, t), sa.lerp(sb, t))
+    finish_pose(rig, shoulder_on)
 
 
 def rest_hips(rig):

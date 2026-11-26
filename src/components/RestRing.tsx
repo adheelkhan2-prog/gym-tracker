@@ -1,5 +1,5 @@
-import { useAudioPlayer } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
+import { safeRequire } from '../safe';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { haptic } from '../feedback';
 import { startRestNotification, stopRestNotification } from '../restNotify';
-import { color, fmtClock, font, leading, radius, size, space, touch, type } from '../theme';
+import { color, fmtClock, font, leading, radius, size, space, themed, touch, type } from '../theme';
 import { Icon } from './icons';
 import { Press } from './ui';
 
@@ -36,6 +36,8 @@ type Props = {
   onDone: () => void;
   /** Start as the slim bar (a rest carried over from the previous exercise). */
   startMini?: boolean;
+  /** Extra space under the slim bar (e.g. above the workout's Previous / Next buttons). */
+  above?: number;
 };
 
 /**
@@ -43,7 +45,15 @@ type Props = {
  * background to shrink it to a slim bar so the next set stays 1–2 taps away.
  * Pulses in the last 5 seconds, buzzes (and optionally beeps) at zero.
  */
-export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, onAdd, onSkip, onDone, startMini = false }: Props) {
+type Sound = { seekTo: (s: number) => unknown; play: () => void } | null;
+const SOUND = require('../../assets/sounds/rest-done.wav');
+// The rest-done chime. The audio module is loaded guarded (never a crash); if it can't load the
+// timer is silent. Picked once here, so the hook order never changes between renders.
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- guarded optional native module
+const audio = safeRequire('expo-audio', () => require('expo-audio') as typeof import('expo-audio'));
+const useRestSound: () => Sound = audio ? () => audio.useAudioPlayer(SOUND) as unknown as Sound : () => null;
+
+export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, onAdd, onSkip, onDone, startMini = false, above = 0 }: Props) {
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -51,7 +61,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
   const [left, setLeft] = useState(() => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
   const progress = useSharedValue(left / total);
   const beat = useSharedValue(1);
-  const player = useAudioPlayer(require('../../assets/sounds/rest-done.wav'));
+  const player = useRestSound();
   const lastBeat = useRef(left);
 
   useEffect(() => {
@@ -72,8 +82,8 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
         haptic.timerEnd();
         if (sound) {
           try {
-            player.seekTo(0);
-            player.play();
+            player?.seekTo(0);
+            player?.play();
           } catch {}
         }
         onDone();
@@ -108,7 +118,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
 
   if (mini) {
     return (
-      <Animated.View entering={reduce ? undefined : FadeIn.duration(160)} style={[s.bar, { bottom: insets.bottom + space.md }]}>
+      <Animated.View entering={reduce ? undefined : FadeIn.duration(160)} style={[s.bar, { bottom: insets.bottom + space.md + above }]}>
         <Press onPress={() => setMini(false)} style={s.barMain} accessibilityRole="button" accessibilityLabel={`Rest, ${left} seconds left. Open timer`} glow={tint}>
           <Svg width={56} height={56} viewBox="0 0 56 56">
             <Circle cx={28} cy={28} r={RM} stroke={color.surface3} strokeWidth={3} fill="none" />
@@ -133,7 +143,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
         <Press onPress={onAdd} style={s.barBtn} accessibilityRole="button" accessibilityLabel="Add 15 seconds" glow={tint}>
           <Text style={s.barBtnText}>+15s</Text>
         </Press>
-        <Press onPress={skip} style={[s.barBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
+        <Press onPress={skip} testID="rest-skip" style={[s.barBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
           <Text style={[s.barBtnText, { color: tint }]}>{skipLabel}</Text>
         </Press>
       </Animated.View>
@@ -183,7 +193,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
             <Icon name="plus" size={20} color={color.text} />
             <Text style={s.bigBtnText}>15s</Text>
           </Press>
-          <Press onPress={skip} style={[s.bigBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
+          <Press onPress={skip} testID="rest-skip" style={[s.bigBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
             <Text style={[s.bigBtnText, { color: tint }]}>{skipLabel}</Text>
             <Icon name="arrowRight" size={20} color={tint} />
           </Press>
@@ -194,8 +204,8 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
   );
 }
 
-const s = StyleSheet.create({
-  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,4,5,0.97)' },
+const s = themed(() => StyleSheet.create({
+  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.bg },
   fullInner: { flex: 1, alignItems: 'center', justifyContent: 'space-between' },
   count: { fontFamily: font.display, fontSize: size.mega, lineHeight: leading.mega, color: color.text, fontVariant: ['tabular-nums'], letterSpacing: -1 },
   next: { fontFamily: font.bodyBold, fontSize: size.body, color: color.muted, marginTop: space.xs, maxWidth: '80%' },
@@ -238,4 +248,4 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   barBtnText: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text },
-});
+}));

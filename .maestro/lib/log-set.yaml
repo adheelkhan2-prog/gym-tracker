@@ -1,0 +1,26 @@
+# Log set ${SET} of exercise card ${CARD} (run type-weight.yaml first to enter a weight), expect the day's
+# count to read "${COUNT} of N sets", then skip the rest timer if it shows.
+appId: com.gymtracker.app
+---
+- runFlow:
+    file: scroll-to.yaml
+    env:
+      ID: "log-${CARD}-${SET}"
+- tapOn:
+    id: "log-${CARD}-${SET}"
+- extendedWaitUntil:
+    visible: "${COUNT} of .* sets"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "rest-skip"
+    timeout: 5000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "rest-skip"
+    commands:
+      - tapOn:
+          id: "rest-skip"
+- runFlow: no-errors.yaml

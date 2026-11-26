@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
+import React, { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,18 +10,20 @@ import { Icon } from '../../components/icons';
 import { CountUp } from '../../components/motion';
 import { Button, Flame, Press, Ring, Screen } from '../../components/ui';
 import { GREETING, REST_DAY, line } from '../../copy';
+import { crumb, logCrash } from '../../crash';
 import { EXERCISES } from '../../data/exercises';
 import { MUSCLE_LABEL } from '../../data/muscles';
 import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../../data/program';
 import { haptic } from '../../feedback';
 import {
   activeProgram,
+  addDays,
   allTaken,
   applyPending,
   dateFromKey,
   dayById,
   dayHasWork,
-  easingIn,
+  finishedOn,
   formatDate,
   programById,
   todayKey,
@@ -29,51 +32,66 @@ import {
   useStore,
   weekKeys,
 } from '../../store';
-import { bottomClearance, color, floating, font, leading, motion, radius, size, space, touch, type } from '../../theme';
-import { WARMUP, dayProgress, subtitleOf, titleOf, todayDayId } from '../../workout';
-import { levelFor, rankFor, totalXp } from '../../xp';
+import { bottomClearance, color, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
+import { WARMUP, dayProgress, nextInRotation, subtitleOf, titleOf, todayDayId } from '../../workout';
 
 export default function TodayScreen() {
-  const { state, update } = useStore();
+  const { state, update, commit } = useStore();
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
+  // Real heights, measured: the tab bar (incl. gesture-bar inset) and the floating main button.
+  const tabBar = useContext(BottomTabBarHeightContext);
+  const [ctaH, setCtaH] = useState<number>(floating.action);
   const now = new Date();
   const date = todayKey(now);
   const weekday = now.getDay();
   // A day tapped in the week strip: shown as a preview, with a clear way back to today.
-  const [picked, setPicked] = useState<{ id: string; wd: number } | null>(null);
+  const [picked, setPicked] = useState<{ id: string; wd: number; d: string } | null>(null);
   // A switch booked for "next Monday" kicks in when that day arrives.
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   const which = todayDayId(state, date, weekday, picked?.id);
   const chosen = dayById(state, which.id);
-  // With injury mode on, a day of only leg/ab work becomes a rest day instead of an empty workout.
+  // A day with no exercises (e.g. emptied in the plan builder) shows as a rest day.
   const hiddenDay = chosen && !dayHasWork(state, chosen.id) ? chosen : undefined;
   const day = hiddenDay ? undefined : chosen;
   const program = activeProgram(state);
   const pending = state.pending ? programById(state, state.pending.programId) : undefined;
-  const progress = day ? dayProgress(state, day, date) : null;
+  // The date being looked at: today, or the tapped day (a past day shows what you did that day).
+  const viewDate = picked?.d ?? date;
+  const progress = day ? dayProgress(state, day, viewDate) : null;
   const started = !!progress && progress.done > 0;
-  const finished = !!state.sessions[date]?.finishedAt && !which.preview;
-  const lvl = levelFor(totalXp(state));
-  const rank = rankFor(lvl.level);
+  // Done only when the workout was finished with sets logged (never "Done" with 0 sets).
+  const finished = finishedOn(state, viewDate);
 
   const openExercise = (exerciseId: string, slot: string) =>
     router.push({ pathname: '/exercise/[id]', params: { id: exerciseId, day: day!.id, slot } });
-  const openFocus = () => {
+  const openWorkout = () => {
     haptic.tap();
-    router.push({ pathname: '/focus', params: { day: day!.id } });
+    router.push({ pathname: '/workout', params: { day: day!.id } });
   };
 
-  const finish = () => {
+  // Save the finished session to disk first; only then open the celebration, so a crash there
+  // can never lose the workout.
+  const [finishing, setFinishing] = useState(false);
+  const finish = async () => {
+    if (finishing) return;
+    setFinishing(true);
+    crumb('finish workout (Today)');
     const at = Date.now();
-    update((s) => ({
+    await commit((s) => ({
       ...s,
       sessions: { ...s.sessions, [date]: { ...s.sessions[date], dayId: s.sessions[date]?.dayId ?? day!.id, finishedAt: at } },
-    }));
+    })).catch((e) => logCrash('error', e, 'saving finished workout'));
+    setFinishing(false);
     router.push({ pathname: '/complete', params: { date } });
   };
 
   const nextTraining = (() => {
+    if (program.rotation) {
+      // After today's session (or today, if not trained yet), the next day in the rotation.
+      const id = trainedOn(state, date) ? nextInRotation(state, addDays(date, 1)) : which.scheduled;
+      return id && dayById(state, id) ? { when: trainedOn(state, date) ? 'next' : 'up today', id } : null;
+    }
     for (let i = 1; i <= 7; i++) {
       const id = state.week[(weekday + i) % 7];
       if (id && dayHasWork(state, id)) return { when: i === 1 ? 'tomorrow' : `on ${WEEKDAY_LONG[(weekday + i) % 7]}`, id };
@@ -84,31 +102,40 @@ export default function TodayScreen() {
   const warmDone = !!state.warmups[date];
   const suppsDone = allTaken(state, date);
   // One tile per weekday that has a workout in your day order (Mon-first).
-  const pass = weekKeys(date)
-    .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
-    .filter((x) => dayHasWork(state, state.week[x.wd]))
-    .map((x) => ({ ...x, id: state.week[x.wd]! }));
+  // Rotating plans have no weekdays: every day of the week gets a tile, showing the day you trained
+  // on it (or today's next day); the count is out of the rotation's length.
+  const pass = program.rotation
+    ? weekKeys(date)
+        .map((d) => ({ d, wd: dateFromKey(d).getDay(), id: (trainedOn(state, d) ? state.sessions[d]?.dayId : d === date ? which.scheduled : null) ?? '' }))
+    : weekKeys(date)
+        .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
+        .filter((x) => dayHasWork(state, state.week[x.wd]))
+        .map((x) => ({ ...x, id: state.week[x.wd]! }));
+  const passDone = pass.filter((x) => trainedOn(state, x.d)).length;
+  // Rotating plans: one pass through the rotation is the goal; training more never reads "5 of 3".
+  const passPlanned = program.rotation ? Math.max(passDone, Math.min(7, program.days.length)) : pass.length;
   const shownWd = picked ? picked.wd : weekday;
   const mins = progress ? Math.round(progress.total * 2.6) : 0;
-  const cta = finished ? null : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
+  // Looking at another day (a preview, or a past day in the strip): the button only ever trains that
+  // day today; it never finishes or continues a past date.
+  const trainToday = which.preview || viewDate !== date;
+  // Today's card always has a way in: Start, Continue, Finish, or Train again once truly done.
+  const cta = trainToday ? 'Train' : finished ? 'Train again' : progress?.allDone ? 'Finish workout' : started ? 'Continue' : 'Start workout';
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen padBottom={cta && day ? bottomClearance.tabsWithAction : bottomClearance.tabs}>
+      <Screen padBottom={cta && day ? floating.gap + ctaH + bottomClearance.tabs : bottomClearance.tabs}>
         {/* Header: date, a quiet line, streak and level */}
         <View style={s.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={s.date}>{now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+            <Text style={s.date} accessibilityLiveRegion="polite">
+              {longDate(viewDate)}
+            </Text>
             <Text style={s.greet} numberOfLines={2}>
               {line(day ? GREETING : REST_DAY, date)}
             </Text>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: space.xs }}>
-            <Flame count={trainingStreak(state)} label="training" />
-            <Text style={s.rankText} accessibilityLabel={`Level ${lvl.level}, ${rank.name}`}>
-              {rank.name} · L{lvl.level}
-            </Text>
-          </View>
+          <Flame count={trainingStreak(state)} label="training" />
         </View>
 
         {which.preview && (
@@ -163,37 +190,19 @@ export default function TodayScreen() {
             <Icon name="moon" size={28} color={color.muted} />
             <Text style={[s.dayTitle, { marginTop: space.md }]}>Rest day</Text>
             <Text style={s.focus}>
-              {hiddenDay
-                ? `${hiddenDay.name} rests while injury mode is on.`
-                : nextTraining
+              {nextTraining
                   ? `${titleOf(dayById(state, nextTraining.id)!)} is ${nextTraining.when}.`
                   : 'Recover and refuel.'}
             </Text>
           </Glass>
         )}
 
-        {easingIn(state, date) && (
-          <Glass style={s.card} r={radius.xl}>
-            <View style={s.row}>
-              <Icon name="bandage" size={22} color={color.accent} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={type.h3}>Welcome back. Ease in.</Text>
-                <Text style={type.small}>
-                  For your first 2 weeks, start leg and ab work at about half your old weights and stop 3–4 reps short of failure.
-                </Text>
-              </View>
-            </View>
-            <View style={{ alignSelf: 'flex-end' }}>
-              <Button size="sm" variant="ghost" label="Got it" onPress={() => update((st) => ({ ...st, easeInDismissed: true }))} />
-            </View>
-          </Glass>
-        )}
 
         {/* The week: done days get a thin crimson check, today a thin crimson edge */}
         <View style={s.sectionHead}>
           <Text style={type.label}>This week</Text>
           <Text style={s.sectionCount}>
-            {pass.filter((x) => trainedOn(state, x.d)).length} of {pass.length}
+            {passDone} of {passPlanned}
           </Text>
         </View>
         <View style={s.pass}>
@@ -204,14 +213,20 @@ export default function TodayScreen() {
             return (
               <Press
                 key={d}
-                onPress={() => setPicked(isToday ? null : { id, wd })}
+                disabled={!id}
+                onPress={() => {
+                  if (!id) return;
+                  haptic.tap();
+                  setPicked(isToday ? null : { id, wd, d });
+                }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: sel }}
-                accessibilityLabel={`${WEEKDAY_LONG[wd]}: ${done ? 'done' : isToday ? 'today' : 'not done'}${isToday ? '' : '. Preview'}`}
-                style={[s.passTile, isToday && s.passToday, sel && !isToday && s.passSel]}
+                accessibilityLabel={`${WEEKDAY_LONG[wd]}${isToday ? ', today' : ''}${done ? ', done' : ''}${sel ? ', selected' : ''}`}
+                style={[s.passTile, sel && s.passSel]}
               >
-                <Text style={[s.passDay, isToday && { color: color.text }]}>{WEEKDAY_SHORT[wd]}</Text>
-                {done ? <Icon name="check" size={18} color={color.accent} /> : <View style={[s.passDot, isToday && { backgroundColor: color.accent }]} />}
+                <Text style={[s.passDay, sel && s.passDaySel]}>{WEEKDAY_SHORT[wd]}</Text>
+                {/* Small markers only: ✓ for a finished day, a dot for today. The selection is the strong highlight. */}
+                {done ? <Icon name="check" size={16} color={color.accent} /> : <View style={[s.passDot, isToday && s.passDotToday]} />}
               </Press>
             );
           })}
@@ -336,9 +351,13 @@ export default function TodayScreen() {
 
       {/* The main action, in thumb reach above the tab bar */}
       {day && progress && cta && (
-        <View style={[s.ctaBar, { bottom: insets.bottom + TAB_BAR }]} pointerEvents="box-none">
-          <LinearGradient colors={['rgba(7,7,8,0)', color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
-          <Button size="lg" label={which.preview ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={progress.allDone ? finish : openFocus} />
+        <View
+          style={[s.ctaBar, { bottom: (tabBar || insets.bottom + floating.tabBar) + floating.gap }]}
+          pointerEvents="box-none"
+          onLayout={(e) => setCtaH(e.nativeEvent.layout.height)}
+        >
+          <LinearGradient colors={[color.fadeFrom, color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
+          <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && !finished && progress.allDone ? finish : openWorkout} />
         </View>
       )}
     </View>
@@ -346,14 +365,17 @@ export default function TodayScreen() {
 }
 
 const RING = 84;
-/** Where the floating main button sits: just above the tab bar. */
-const TAB_BAR = floating.tabBarOffset;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "Tuesday, 24 Nov" */
+const longDate = (key: string) => {
+  const d = dateFromKey(key);
+  return `${WEEKDAY_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+};
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   date: { ...type.label },
   greet: { fontFamily: font.displayBold, fontSize: size.h3, lineHeight: 24, color: color.muted, marginTop: space.sm },
-  rankText: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.4, color: color.subtle },
   preview: {
     marginTop: space.xl,
     flexDirection: 'row',
@@ -392,8 +414,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: space.sm,
   },
-  passToday: { borderColor: color.accentEdge },
-  passSel: { borderColor: color.muted },
+  passSel: { borderColor: color.accent, borderWidth: 2, backgroundColor: color.accentDim },
+  passDaySel: { color: color.text },
+  passDotToday: { backgroundColor: color.accent },
   passDay: { fontFamily: font.bodyBold, fontSize: size.label, color: color.subtle, letterSpacing: 0.4 },
   passDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: color.surface3 },
   card: { marginTop: space.lg, padding: space.lg, gap: space.sm },
@@ -425,5 +448,8 @@ const s = StyleSheet.create({
   programPending: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.accentText, marginTop: 2 },
   programChange: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   ctaBar: { position: 'absolute', left: space.lg, right: space.lg },
-  ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -TAB_BAR },
-});
+  ctaFade: { position: 'absolute', left: -space.lg, right: -space.lg, top: -space.x4, bottom: -(floating.tabBar + floating.gap) },
+}));
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

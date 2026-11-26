@@ -2,6 +2,7 @@
 // with a solid fill for "active" states. One style everywhere, no icon fonts.
 import { View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { color } from '../theme';
 
 export type IconName =
   | 'barbell'
@@ -46,7 +47,10 @@ export type IconName =
   | 'flag'
   | 'chevronDown'
   | 'chevronUp'
-  | 'star';
+  | 'star'
+  | 'video'
+  | 'drag'
+  | 'copy';
 
 type Glyph = (c: string, filled: boolean) => React.ReactNode;
 
@@ -101,7 +105,7 @@ const G: Record<IconName, Glyph> = {
   checkCircle: (c, f) => (
     <>
       <Circle cx={12} cy={12} r={9} {...st(c)} fill={fillOr(c, f)} />
-      <Path d="M8 12.3l2.8 2.8L16.2 9.6" {...st(f ? '#0B0B10' : c)} />
+      <Path d="M8 12.3l2.8 2.8L16.2 9.6" {...st(f ? color.bg : c)} />
     </>
   ),
   back: (c) => <Path d="M14.5 5l-7 7 7 7" {...st(c)} strokeWidth={3} />,
@@ -116,20 +120,20 @@ const G: Record<IconName, Glyph> = {
   timer: (c, f) => (
     <>
       <Circle cx={12} cy={13.5} r={7.5} {...st(c)} fill={fillOr(c, f)} />
-      <Path d="M10 2.8h4M12 13.5V9.5M18.5 6.5l1.5-1.5" {...st(f ? '#0B0B10' : c)} />
+      <Path d="M10 2.8h4M12 13.5V9.5M18.5 6.5l1.5-1.5" {...st(f ? color.bg : c)} />
     </>
   ),
   bandage: (c, f) => (
     <>
       <Rect x={2.5} y={8} width={19} height={8} rx={4} {...st(c)} fill={fillOr(c, f)} transform="rotate(-35 12 12)" />
-      <Path d="M10.6 11.2h.01M13.4 12.8h.01M12.8 10.4h.01M11.2 13.6h.01" {...st(f ? '#0B0B10' : c)} strokeWidth={2.2} />
+      <Path d="M10.6 11.2h.01M13.4 12.8h.01M12.8 10.4h.01M11.2 13.6h.01" {...st(f ? color.bg : c)} strokeWidth={2.2} />
     </>
   ),
   bolt: (c, f) => <Path d="M13.5 2.5L5 13.5h6.5l-1 8 8.5-11h-6.5z" {...st(c)} fill={fillOr(c, f)} />,
   calendar: (c, f) => (
     <>
       <Rect x={3.5} y={5} width={17} height={15.5} rx={3.5} {...st(c)} fill={fillOr(c, f)} />
-      <Path d="M8 3v4M16 3v4M3.5 10h17" {...st(f ? '#0B0B10' : c)} />
+      <Path d="M8 3v4M16 3v4M3.5 10h17" {...st(f ? color.bg : c)} />
     </>
   ),
   share: (c) => (
@@ -142,13 +146,13 @@ const G: Record<IconName, Glyph> = {
   info: (c, f) => (
     <>
       <Circle cx={12} cy={12} r={9} {...st(c)} fill={fillOr(c, f)} />
-      <Path d="M12 11v5.5M12 7.6h.01" {...st(f ? '#0B0B10' : c)} strokeWidth={3} />
+      <Path d="M12 11v5.5M12 7.6h.01" {...st(f ? color.bg : c)} strokeWidth={3} />
     </>
   ),
   alert: (c, f) => (
     <>
       <Path d="M10.3 4.3L2.9 17.5A2 2 0 004.6 20.5h14.8a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z" {...st(c)} fill={fillOr(c, f)} />
-      <Path d="M12 9.5v4.2M12 16.8h.01" {...st(f ? '#0B0B10' : c)} strokeWidth={3} />
+      <Path d="M12 9.5v4.2M12 16.8h.01" {...st(f ? color.bg : c)} strokeWidth={3} />
     </>
   ),
   moon: (c, f) => <Path d="M19.5 14.6A8 8 0 019.4 4.5 8 8 0 1019.5 14.6z" {...st(c)} fill={fillOr(c, f)} />,
@@ -183,7 +187,7 @@ const G: Record<IconName, Glyph> = {
   clock: (c, f) => (
     <>
       <Circle cx={12} cy={12} r={9} {...st(c)} fill={fillOr(c, f)} />
-      <Path d="M12 7v5.3l3.3 2" {...st(f ? '#0B0B10' : c)} />
+      <Path d="M12 7v5.3l3.3 2" {...st(f ? color.bg : c)} />
     </>
   ),
   rotate: (c) => <Path d="M19.5 12a7.5 7.5 0 11-2.2-5.3M19.5 4.5v4.2h-4.2" {...st(c)} />,
@@ -211,6 +215,19 @@ const G: Record<IconName, Glyph> = {
     <>
       <Path d="M5 21V4" {...st(c)} />
       <Path d="M5 4.5h11.5l-2 4 2 4H5" {...st(c)} fill={fillOr(c, f)} />
+    </>
+  ),
+  drag: (c) => <Path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" {...st(c)} strokeWidth={3.2} />,
+  copy: (c, f) => (
+    <>
+      <Rect x={8} y={8} width={12} height={12} rx={2.5} {...st(c)} fill={fillOr(c, f)} />
+      <Path d="M16 8V5.5A1.5 1.5 0 0014.5 4h-9A1.5 1.5 0 004 5.5v9A1.5 1.5 0 005.5 16H8" {...st(c)} />
+    </>
+  ),
+  video: (c, f) => (
+    <>
+      <Rect x={3} y={6} width={13} height={12} rx={2.5} {...st(c)} fill={fillOr(c, f)} />
+      <Path d="M16 10.5l5-3v9l-5-3" {...st(c)} />
     </>
   ),
   star: (c, f) => (

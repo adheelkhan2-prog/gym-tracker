@@ -1,19 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
-import { NumberField } from '../../components/ExerciseParts';
+import { StyleSheet, Text, View } from 'react-native';
+import { clearCrashLog, readCrashLog } from '../../crash';
+import { shareCrashLog } from '../../crashShare';
 import { Glass } from '../../components/glass';
 import { Icon, type IconName } from '../../components/icons';
 import { WeekMapper } from '../../components/ProgramParts';
 import { Button, Chip, Press, Screen, SectionTitle, Switch } from '../../components/ui';
-import { EXERCISES } from '../../data/exercises';
-import { exerciseFor } from '../../workout';
-import { DEFAULT_GYM, fmtPlate, type PlateColor } from '../../load';
-import { activeProgram, easingIn, todayKey, useStore } from '../../store';
-import { bottomClearance, color, font, leading, radius, size, space, touch, type } from '../../theme';
-
-const ALL_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5];
-const SWATCHES = ['#E5322D', '#2F6BFF', '#F5C518', '#2DBE60', '#F2F2F2', '#1A1A1A', '#FF7A1A', '#8E5CFF'];
+import { activeProgram, useStore } from '../../store';
+import { bottomClearance, color, font, leading, radius, size, space, themed, touch, type } from '../../theme';
 
 /** Every third-party asset in the app, grouped by where it shows up (see src/data/asset-licences.md). */
 const CREDITS: { title: string; note: string; links: { label: string; url: string }[] }[] = [
@@ -34,6 +29,17 @@ const CREDITS: { title: string; note: string; links: { label: string; url: strin
     links: [
       { label: 'MakeHuman / MPFB2 (CC0 1.0)', url: 'https://github.com/makehumancommunity/mpfb2' },
       { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+    ],
+  },
+  {
+    title: 'Exercise videos',
+    note: '43 exercises play a short looping video of a real person: 36 by Goulart from the open exercise database wger (wger.de, CC BY-SA 4.0), 6 from Mixkit (mixkit.co, Mixkit Stock Video Free License) and 1 from Pixabay (pixabay.com, Pixabay Content License). Changes: chosen per exercise, trimmed to a 3–6 s loop, cross-faded at the loop point, sound removed, re-encoded at the original resolution; the wger clips are shared under CC BY-SA 4.0. The source of every clip is listed in the app’s asset-licences file. Videos you import stay on this phone.',
+    links: [
+      { label: 'wger exercise database (videos by Goulart)', url: 'https://wger.de/en/exercise/overview/' },
+      { label: 'Licence: CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+      { label: 'Mixkit free stock video', url: 'https://mixkit.co/free-stock-video/' },
+      { label: 'Mixkit Stock Video Free License', url: 'https://mixkit.co/license/#videoFree' },
+      { label: 'Pixabay Content License', url: 'https://pixabay.com/service/license-summary/' },
     ],
   },
   {
@@ -71,18 +77,26 @@ export default function SettingsScreen() {
   const { state, update } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const program = activeProgram(state);
-  const slots = program.days.flatMap((d) => d.exercises.filter((e) => e.options.length > 1).map((e) => ({ day: d, plan: e })));
-  const gym = state.gym;
-  const setGym = (patch: Partial<typeof gym>) => update((st) => ({ ...st, gym: { ...st.gym, ...patch } }));
-  const setColor = (i: number, patch: Partial<PlateColor>) => setGym({ colors: gym.colors.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
-  // Every machine you've set up stays listed, even while a field is cleared to type a new value.
-  const machines = Object.entries(state.machines).filter(([id]) => EXERCISES[id]);
 
   return (
     <Screen padBottom={bottomClearance.tabs}>
       <Text style={s.title} accessibilityRole="header">
         Settings
       </Text>
+
+      <SectionTitle>Appearance</SectionTitle>
+      <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }} accessibilityRole="radiogroup">
+        {(
+          [
+            ['system', 'System'],
+            ['light', 'Light'],
+            ['dark', 'Dark'],
+          ] as const
+        ).map(([v, label]) => (
+          <Chip key={v} label={label} active={state.theme === v} onPress={() => update((st) => ({ ...st, theme: v }))} />
+        ))}
+      </View>
+      <Text style={[type.small, { marginTop: space.sm }]}>System follows your phone’s light or dark mode.</Text>
 
       <SectionTitle>Weight unit</SectionTitle>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -100,35 +114,7 @@ export default function SettingsScreen() {
           checked={state.restSound}
           onChange={(v) => update((st) => ({ ...st, restSound: v }))}
         />
-        <View style={s.divider} />
-        <Toggle
-          icon="layers"
-          title="Frosted glass"
-          sub="Real blur on Android 12+. Turn off for extra speed on older phones."
-          checked={state.blur}
-          onChange={(v) => update((st) => ({ ...st, blur: v }))}
-        />
-        <View style={s.divider} />
-        <Toggle
-          icon="bandage"
-          title="Injury mode"
-          sub={
-            state.injured
-              ? 'Leg and ab exercises, and splits built around them, are hidden. Legs and abs rest grey on the model.'
-              : 'Every split and exercise is unlocked.'
-          }
-          checked={state.injured}
-          onChange={(v) => update((st) => ({ ...st, injured: v, easeInFrom: v ? null : todayKey(), easeInDismissed: false }))}
-        />
       </Glass>
-      {easingIn(state) && (
-        <Glass r={radius.xl} style={s.welcome} glow={color.accent}>
-          <Text style={type.h3}>Welcome back. Ease in.</Text>
-          <Text style={type.small}>
-            Legs and abs are back. For the first 2 weeks, use about half your old leg weights, stop 3–4 reps short of failure, and add load only when it feels easy.
-          </Text>
-        </Glass>
-      )}
 
       <SectionTitle
         right={
@@ -144,126 +130,15 @@ export default function SettingsScreen() {
           <Text style={type.h3}>{program.name}</Text>
           <Text style={type.small}>{program.focus}</Text>
         </View>
-        <Text style={type.label}>Day order</Text>
-        <WeekMapper program={program} week={state.week} onChange={(week) => update((st) => ({ ...st, week }))} />
-        <Button size="sm" variant="ghost" label="Reset to the program’s default week" onPress={() => update((st) => ({ ...st, week: program.week }))} />
-      </Glass>
-
-      {slots.length > 0 && <SectionTitle>Exercise choices</SectionTitle>}
-      <View style={{ gap: space.md }}>
-        {slots.map(({ day, plan }) => {
-          // What the workout actually uses: a swap made during a workout wins over the version picked here.
-          const current = exerciseFor(state, plan);
-          const swapped = !plan.options.includes(current);
-          return (
-            <Glass key={plan.slot} r={radius.xl} style={{ gap: space.sm, padding: space.lg }}>
-              <Text style={type.label}>{day.name}</Text>
-              {swapped && <Text style={type.small}>Swapped to {EXERCISES[current].name}. Pick a version to switch back.</Text>}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-                {plan.options.map((o) => (
-                  <Chip
-                    key={o}
-                    label={EXERCISES[o].name}
-                    active={o === current}
-                    onPress={() =>
-                      update((st) => {
-                        const { [plan.slot]: _drop, ...swaps } = st.swaps;
-                        return { ...st, variants: { ...st.variants, [plan.slot]: o }, swaps };
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            </Glass>
-          );
-        })}
-      </View>
-
-      <SectionTitle
-        right={
-          <Press onPress={() => setGym(DEFAULT_GYM)} style={s.link} accessibilityRole="button">
-            <Text style={s.linkText}>Reset</Text>
-          </Press>
-        }
-      >
-        My gym
-      </SectionTitle>
-      <Glass r={radius.xxl} style={{ padding: space.lg, gap: space.xl }}>
-        <View style={s.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.h3}>Bar weight</Text>
-            <Text style={type.small}>kg, used for barbell plate maths.</Text>
-          </View>
-          <NumberField value={gym.bar} onChange={(n) => n !== undefined && setGym({ bar: n })} label="Bar weight in kilograms" />
-        </View>
-        <View style={{ gap: space.sm }}>
-          <Text style={type.h3}>Plates you have (kg)</Text>
-          <View style={s.wrap}>
-            {ALL_PLATES.map((p) => {
-              const on = gym.plates.includes(p);
-              return (
-                <Chip
-                  key={p}
-                  label={fmtPlate(p)}
-                  active={on}
-                  onPress={() => setGym({ plates: on ? gym.plates.filter((x) => x !== p) : [...gym.plates, p].sort((a, b) => b - a) })}
-                />
-              );
-            })}
-          </View>
-        </View>
-        <View style={{ gap: space.sm }}>
-          <Text style={type.h3}>Plate colours</Text>
-          <Text style={type.small}>Match your gym. Tap a swatch to change its colour.</Text>
-          {gym.colors.map((c, i) => (
-            <View key={c.id} style={s.colorRow}>
-              <Press
-                onPress={() => setColor(i, { hex: SWATCHES[(SWATCHES.indexOf(c.hex) + 1) % SWATCHES.length] })}
-                style={[s.swatch, { backgroundColor: c.hex }]}
-                accessibilityRole="button"
-                accessibilityLabel={`${c.name} plate colour. Tap to change`}
-              >
-                <View />
-              </Press>
-              <TextInput value={c.name} onChangeText={(t) => setColor(i, { name: t })} style={s.colorName} accessibilityLabel={`Colour ${i + 1} name`} />
-              <NumberField value={c.kg} onChange={(n) => n !== undefined && setColor(i, { kg: n })} label={`${c.name} plate kilograms`} />
-              <Text style={s.kg}>kg</Text>
-              <Press onPress={() => setGym({ colors: gym.colors.filter((_, j) => j !== i) })} style={s.del} accessibilityRole="button" accessibilityLabel={`Remove ${c.name}`}>
-                <Icon name="close" size={16} color={color.muted} />
-              </Press>
-            </View>
-          ))}
-          <Button
-            size="sm"
-            variant="secondary"
-            icon="plus"
-            label="Add colour"
-            onPress={() =>
-              setGym({ colors: [...gym.colors, { id: `c${gym.colors.length}-${Date.now().toString(36)}`, name: 'New', hex: SWATCHES[gym.colors.length % SWATCHES.length], kg: 2.5 }] })
-            }
-          />
-        </View>
-        <View style={{ gap: space.sm }}>
-          <Text style={type.h3}>Machine stacks</Text>
-          {machines.length === 0 ? (
-            <Text style={type.small}>Pick “Machine pin” on a machine or cable exercise, then set its kg per plate there.</Text>
-          ) : (
-            machines.map(([id, m]) => (
-              <View key={id} style={s.colorRow}>
-                <Text style={[s.colorName, { textAlignVertical: 'center' }]} numberOfLines={1}>
-                  {EXERCISES[id].name}
-                </Text>
-                <NumberField
-                  value={m.perPlate}
-                  onChange={(n) => update((st) => ({ ...st, machines: { ...st.machines, [id]: { ...st.machines[id], perPlate: n } } }))}
-                  label={`${EXERCISES[id].name} kilograms per plate`}
-                  placeholder="kg"
-                />
-                <Text style={s.kg}>/ plate</Text>
-              </View>
-            ))
-          )}
-        </View>
+        {program.rotation ? (
+          <Text style={type.small}>Rotating plan: each session is the next day in order ({program.days.map((d) => d.name).join(' → ')}). Change it in Programs.</Text>
+        ) : (
+          <>
+            <Text style={type.label}>Day order</Text>
+            <WeekMapper program={program} week={state.week} onChange={(week) => update((st) => ({ ...st, week }))} />
+            <Button size="sm" variant="ghost" label="Reset to the program’s default week" onPress={() => update((st) => ({ ...st, week: program.week }))} />
+          </>
+        )}
       </Glass>
 
       <SectionTitle>Credits</SectionTitle>
@@ -273,10 +148,13 @@ export default function SettingsScreen() {
             <Text style={s.creditTitle}>{g.title}</Text>
             <Text style={type.small}>{g.note}</Text>
             {g.links.map((c) => (
-              <Press key={c.url} onPress={() => Linking.openURL(c.url).catch(() => {})} style={s.credit} accessibilityRole="link" accessibilityLabel={`${c.label}, opens in browser`}>
-                <Icon name="link" size={16} color={color.accent} />
+              // The app is fully offline: sources are listed as text (selectable to copy), never opened.
+              <View key={c.url} style={s.credit}>
                 <Text style={s.creditText}>{c.label}</Text>
-              </Press>
+                <Text style={s.creditUrl} selectable>
+                  {c.url}
+                </Text>
+              </View>
             ))}
           </View>
         ))}
@@ -284,6 +162,8 @@ export default function SettingsScreen() {
           Icons and the rest-timer sound were made for this app. Component structure after react-native-reusables (MIT).
         </Text>
       </Glass>
+
+      <CrashLogSection />
 
       <SectionTitle>Data</SectionTitle>
       <Text style={[type.small, { marginBottom: space.md }]}>Everything is stored on this phone only.</Text>
@@ -314,7 +194,67 @@ export default function SettingsScreen() {
   );
 }
 
-const s = StyleSheet.create({
+/** Crash log: what went wrong and the last steps before it, kept on the phone. */
+function CrashLogSection() {
+  const [entries, setEntries] = useState(() => readCrashLog());
+  const [open, setOpen] = useState(false);
+  const shown = open ? entries : entries.slice(0, 3);
+  return (
+    <>
+      <SectionTitle>Crash log</SectionTitle>
+      <Glass r={radius.xl} style={{ gap: space.md, padding: space.lg }}>
+        {entries.length === 0 ? (
+          <Text style={type.small}>No crashes recorded. If the app ever closes or shows an error, the details are saved here so you can share them.</Text>
+        ) : (
+          <>
+            <Text style={type.small}>
+              {entries.length} recorded. Share the log so the problem can be found; your workouts are not included.
+            </Text>
+            {shown.map((c) => (
+              <View key={c.at + c.message} style={s.crashRow}>
+                <Icon name="alert" size={16} color={color.warn} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.crashWhen}>
+                    {new Date(c.at).toLocaleString()} · {c.kind === 'unclean-exit' ? 'closed unexpectedly' : c.kind}
+                  </Text>
+                  <Text style={type.small} numberOfLines={open ? 6 : 2}>
+                    {c.message}
+                  </Text>
+                  {open && c.trail.length > 0 && <Text style={s.crashTrail}>Last steps: {c.trail.slice(-6).join(' → ')}</Text>}
+                </View>
+              </View>
+            ))}
+            {entries.length > 3 && <Button size="sm" variant="ghost" label={open ? 'Show less' : `Show all ${entries.length}`} onPress={() => setOpen(!open)} />}
+          </>
+        )}
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <View style={{ flex: 1 }}>
+            <Button size="sm" variant="secondary" icon="share" label="Share log" onPress={() => void shareCrashLog().catch(() => {})} />
+          </View>
+          {entries.length > 0 && (
+            <View style={{ flex: 1 }}>
+              <Button
+                size="sm"
+                variant="destructive"
+                icon="trash"
+                label="Clear"
+                onPress={() => {
+                  clearCrashLog();
+                  setEntries([]);
+                }}
+              />
+            </View>
+          )}
+        </View>
+      </Glass>
+    </>
+  );
+}
+
+const s = themed(() => StyleSheet.create({
+  crashRow: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
+  crashWhen: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
+  crashTrail: { fontFamily: font.body, fontSize: size.label, color: color.subtle, marginTop: space.xxs },
   title: { fontFamily: font.display, fontSize: size.numXL, lineHeight: leading.numXL, letterSpacing: -2, color: color.text },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
   toggleIcon: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },
@@ -329,8 +269,12 @@ const s = StyleSheet.create({
   colorName: { flex: 1, minWidth: 0, minHeight: touch.min, color: color.text, fontFamily: font.bodyBold, fontSize: size.small },
   kg: { fontFamily: font.bodyBold, fontSize: size.label, color: color.muted },
   del: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  credit: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch.min, borderRadius: radius.sm },
+  credit: { gap: 2, paddingVertical: space.xs },
+  creditUrl: { fontFamily: font.body, fontSize: size.label, color: color.subtle },
   creditGroup: { marginTop: space.md, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line },
   creditTitle: { fontFamily: font.bodyBlack, fontSize: size.small, color: color.text, marginBottom: space.xs },
   creditText: { flex: 1, fontFamily: font.bodySemi, fontSize: size.small, color: color.text },
-});
+}));
+
+// One bad screen shows a recovery panel for that screen only; it never takes the app down.
+export { RouteError as ErrorBoundary } from '../../components/RouteError';

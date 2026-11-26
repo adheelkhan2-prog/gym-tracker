@@ -6,8 +6,9 @@ import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
 import { Figtree_800ExtraBold } from '@expo-google-fonts/figtree/800ExtraBold';
 import { registerRootComponent } from 'expo';
 import { useFonts } from 'expo-font';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '../src/components/icons';
@@ -16,13 +17,13 @@ import SettingsScreen from '../src/app/(tabs)/settings';
 import SupplementsScreen from '../src/app/(tabs)/supplements';
 import TodayScreen from '../src/app/(tabs)/index';
 import CompleteScreen from '../src/app/complete';
-import FocusScreen from '../src/app/focus';
+import WorkoutScreen from '../src/app/workout';
 import ExerciseScreen from '../src/app/exercise/[id]';
 import BuilderScreen from '../src/app/builder';
 import ProgramsScreen from '../src/app/programs';
 import { Loading, Press } from '../src/components/ui';
 import { STORAGE_KEY, StoreProvider, addDays, todayKey, useStore, type DayLog } from '../src/store';
-import { color, font, size, space } from '../src/theme';
+import { applyScheme, color, font, size, space, themed } from '../src/theme';
 import { FocusContext, ParamsContext, setNav, type Route } from './router-shim';
 
 const sets = (w: number, reps: number[]) => reps.map((r) => ({ weight: String(w), reps: String(r), done: true }));
@@ -94,7 +95,8 @@ const TABS: { id: string; title: string; icon: IconName; C: () => React.ReactNod
 ];
 
 function Demo() {
-  const { ready } = useStore();
+  const { ready, state } = useStore();
+  const phone = useColorScheme();
   const [fonts] = useFonts({
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold,
@@ -105,6 +107,8 @@ function Demo() {
   });
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<string>('index');
+  // Like the app's tab bar: report its measured height so screens pad above it.
+  const [barH, setBarH] = useState<number | undefined>(undefined);
   const [stack, setStack] = useState<Route[]>([]);
   const [example] = useState(() => {
     try {
@@ -127,6 +131,9 @@ function Demo() {
   }, []);
 
   if (!ready || !fonts) return <Loading />;
+  // Same theme rule as the app (Settings choice, or the browser's when "System").
+  const want = state.theme === 'system' ? (phone === 'light' ? 'light' : 'dark') : state.theme;
+  applyScheme(want);
   const top = stack[stack.length - 1];
 
   const clearExample = () => {
@@ -137,7 +144,7 @@ function Demo() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: color.bg }}>
+    <View key={want} style={{ flex: 1, backgroundColor: color.bg }}>
       {example && !top && (
         <View style={s.banner}>
           <Text style={s.bannerText}>Demo with example workouts. Reminders and haptics only work in the Android app.</Text>
@@ -154,8 +161,8 @@ function Demo() {
             <ProgramsScreen />
           ) : top.name === 'builder' ? (
             <BuilderScreen key={JSON.stringify(top.params)} />
-          ) : top.name === 'focus' ? (
-            <FocusScreen key={JSON.stringify(top.params)} />
+          ) : top.name === 'workout' ? (
+            <WorkoutScreen key={JSON.stringify(top.params)} />
           ) : (
             <CompleteScreen />
           )}
@@ -163,6 +170,7 @@ function Demo() {
       )}
       {/* Tabs stay mounted under pushed screens, like the real app's stack. */}
       <View style={{ flex: 1, display: top ? 'none' : 'flex' }}>
+          <BottomTabBarHeightContext.Provider value={barH}>
           <View style={{ flex: 1 }}>
             {TABS.map((t) => (
               <View key={t.id} style={{ flex: 1, display: t.id === tab ? 'flex' : 'none' }}>
@@ -172,7 +180,12 @@ function Demo() {
               </View>
             ))}
           </View>
-          <View style={[s.barWrap, { paddingBottom: insets.bottom + space.sm }]} pointerEvents="box-none">
+          </BottomTabBarHeightContext.Provider>
+          <View
+            style={[s.barWrap, { paddingBottom: insets.bottom + space.sm }]}
+            pointerEvents="box-none"
+            onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+          >
             <View style={s.bar}>
               <View style={{ flexDirection: 'row' }} accessibilityRole="tablist">
                 {TABS.map((t) => {
@@ -207,7 +220,7 @@ function Root() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: color.surface2, paddingHorizontal: space.lg, paddingVertical: space.sm },
   bannerText: { flex: 1, fontFamily: font.body, fontSize: size.label, lineHeight: 16, color: color.muted },
   bannerBtn: { borderWidth: 1, borderColor: color.line, borderRadius: 999, paddingHorizontal: space.lg, minHeight: 48, justifyContent: 'center' },
@@ -217,6 +230,6 @@ const s = StyleSheet.create({
   tab: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 60, borderRadius: 24 },
   tabLine: { position: 'absolute', top: 0, width: 28, height: 2, borderRadius: 1, backgroundColor: color.accent },
   tabText: { fontFamily: font.bodyBold, fontSize: size.tiny, letterSpacing: 0.3 },
-});
+}));
 
 registerRootComponent(Root);

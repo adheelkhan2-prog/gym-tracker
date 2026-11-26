@@ -44,3 +44,9 @@ yarn-error.*
 /android
 render/out/
 __pycache__/
+
+# EAS local signing: React Native's public debug keystore (same key as earlier APKs, so the app
+# updates in place). Kept out of git; eas-cli reads it from here when it starts a build.
+/credentials.json
+/credentials/
+/apk-out/

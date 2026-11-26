@@ -1,0 +1,35 @@
+# One exercise per page: Next / Previous, a sideways swipe, and the "Exercise k of n" list.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- assertVisible: "Exercise 1 of .*"
+- tapOn:
+    id: "next-exercise"
+- extendedWaitUntil:
+    visible: "Exercise 2 of .*"
+    timeout: 5000
+- tapOn:
+    id: "prev-exercise"
+- extendedWaitUntil:
+    visible: "Exercise 1 of .*"
+    timeout: 5000
+# Swipe right-to-left across the exercise name: next exercise.
+- swipe:
+    start: 85%, 47%
+    end: 10%, 47%
+    duration: 400
+- extendedWaitUntil:
+    visible: "Exercise 2 of .*"
+    timeout: 5000
+- tapOn:
+    id: "exercise-list"
+- extendedWaitUntil:
+    visible:
+      id: "jump-3"
+    timeout: 10000
+- tapOn:
+    id: "jump-3"
+- extendedWaitUntil:
+    visible: "Exercise 4 of .*"
+    timeout: 5000
+- runFlow: ../lib/no-errors.yaml

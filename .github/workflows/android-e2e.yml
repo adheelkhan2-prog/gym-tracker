@@ -1,0 +1,66 @@
+name: Android emulator test session
+
+# One emulator, kept running for up to ~5 h. It builds the real release APK once, boots an Android
+# emulator, then serves test requests from .maestro/session.txt on the branch (see
+# .maestro/session.sh): run only the flows asked for, rebuild only when app code changed, and push
+# results to the e2e-results branch. "full" is the crash test: every flow 10 times, network on
+# (zero app traffic), then airplane mode.
+# Started by a push whose commit message contains [e2e-session]; later requests only edit
+# .maestro/session.txt (no new job, the running emulator picks them up).
+on:
+  push:
+    branches: [round-6, round-7]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-e2e-session
+  cancel-in-progress: false
+
+jobs:
+  session:
+    if: contains(github.event.head_commit.message, '[e2e-session]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      GH_TOKEN: ${{ github.token }}
+      E2E_BRANCH: ${{ github.ref_name }}
+      E2E_MINUTES: '320'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Build release APK (x86_64, for the emulator; same code and signing as the phone build)
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=x86_64
+      - name: Enable KVM (hardware acceleration for the emulator)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Maestro
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+      - name: Emulator session
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          cores: 4
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: adb install -r android/app/build/outputs/apk/release/app-release.apk && bash .maestro/session.sh
