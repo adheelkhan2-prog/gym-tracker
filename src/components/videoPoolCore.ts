@@ -6,7 +6,7 @@
 // never piles up decoders or memory. Each player is made for one video and never re-pointed at
 // another, so a page's video view is only ever tied to its own player (on Android a view that's gone
 // stays referenced by its player until that player is released).
-import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Src = number | { uri: string } | null;
 
@@ -34,10 +34,19 @@ export const VideoSheetContext = createContext<((open: boolean) => void) | null>
  */
 export function VideoSheetScope({ children }: { children: ReactNode }) {
   const setOpen = useContext(VideoSheetContext);
+  // Inside a workout the sheet's own video starts a moment later, once the workout has let go of
+  // its players, so they never all hold a decoder at once.
+  const [ready, setReady] = useState(!setOpen);
   useEffect(() => {
-    setOpen?.(true);
-    return () => setOpen?.(false);
+    if (!setOpen) return;
+    setOpen(true);
+    const t = setTimeout(() => setReady(true), 150);
+    return () => {
+      clearTimeout(t);
+      setOpen(false);
+    };
   }, [setOpen]);
+  if (!ready) return null;
   return createElement(VideoHoldContext.Provider, { value: false }, createElement(VideoPoolContext.Provider, { value: null }, children));
 }
 /** What the pool's host reports: the players it holds. */

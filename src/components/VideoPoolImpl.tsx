@@ -75,6 +75,8 @@ class Players {
     this.closing = null;
     this.freeRetired();
     // A video whose player couldn't be made gets another try once it's off screen and comes back.
+    // (Held, both are null: that's a pause, not a new page, so it doesn't count as arriving.)
+    if (!current && !next) return this.releaseHeld();
     const arrived = !sameSource(current, this.current);
     this.current = current;
     this.failed = this.failed.filter((f) => (sameSource(f, current) && !arrived) || sameSource(f, next));
@@ -121,6 +123,20 @@ class Players {
       this.closing = null;
       this.releaseAll();
     }, 1000);
+  }
+
+  /** Held behind another screen: let every player go but remember which video was on screen. */
+  private releaseHeld() {
+    if (this.later) clearTimeout(this.later.timer);
+    this.later = null;
+    if (!this.held.length) return;
+    for (const h of this.held.splice(0))
+      try {
+        h.player.release();
+      } catch {
+        // Already gone.
+      }
+    this.emit();
   }
 
   releaseAll() {
