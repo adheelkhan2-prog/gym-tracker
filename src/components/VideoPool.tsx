@@ -59,7 +59,7 @@ export function VideoPoolProvider({
         </VideoHoldContext.Provider>
       </VideoSheetContext.Provider>
       {/* Held: the pool lets go of its players (they're remade on return); the pages show their stills. */}
-      <Host current={hold ? null : current} next={hold ? null : next} onPool={setHeld} />
+      <Host current={current} next={next} hold={hold} onPool={setHeld} />
     </>
   );
 }

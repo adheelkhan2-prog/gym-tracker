@@ -47,8 +47,9 @@ export function LoopVideo(props: Props) {
   const pool = useContext(VideoPoolContext);
   const hold = useContext(VideoHoldContext);
   if (pool && !segment && pool.manages(source)) return <PooledVideo {...props} paused={props.paused || hold} pool={pool} />;
-  // In a workout, your own clip pauses too while another screen or sheet is on top.
-  return <OwnVideo {...props} paused={props.paused || hold} />;
+  // Held (another screen or sheet plays its own video): no player at all meanwhile, just the still.
+  if (hold) return <Poster poster={props.poster} />;
+  return <OwnVideo {...props} />;
 }
 
 function PooledVideo({ pool, ...props }: Props & { pool: VideoPool }) {

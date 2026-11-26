@@ -70,13 +70,13 @@ class Players {
   /** Videos whose player couldn't be made: their still shows (see sync for when they're retried). */
   failed: Src[] = [];
 
-  sync(current: Src, next: Src) {
+  sync(current: Src, next: Src, hold = false) {
     if (this.closing) clearTimeout(this.closing);
     this.closing = null;
     this.freeRetired();
     // A video whose player couldn't be made gets another try once it's off screen and comes back.
-    // (Held, both are null: that's a pause, not a new page, so it doesn't count as arriving.)
-    if (!current && !next) return this.releaseHeld();
+    // Held behind another screen: a pause, not a new page, so it doesn't count as arriving.
+    if (hold) return this.releaseHeld();
     const arrived = !sameSource(current, this.current);
     this.current = current;
     this.failed = this.failed.filter((f) => (sameSource(f, current) && !arrived) || sameSource(f, next));
@@ -158,10 +158,21 @@ class Players {
  * Holds the workout's players (the exercise on screen and the next one, made in advance) and hands
  * what it holds to `onPool`. It renders nothing, so if it ever fails only the pool is lost, never the page.
  */
-export function VideoPoolHost({ current, next, onPool }: { current: Src; next: Src; onPool: (pool: HeldPlayers | 'off') => void }) {
+export function VideoPoolHost({
+  current,
+  next,
+  hold,
+  onPool,
+}: {
+  current: Src;
+  next: Src;
+  /** Another screen or sheet is on top: let every player go (they're remade on return). */
+  hold?: boolean;
+  onPool: (pool: HeldPlayers | 'off') => void;
+}) {
   const [players] = useState(() => new Players());
   const held = useSyncExternalStore(players.subscribe, players.snapshot);
-  useEffect(() => players.sync(current, next), [players, current, next]);
+  useEffect(() => players.sync(current, next, hold), [players, current, next, hold]);
   useEffect(
     () => () => {
       // Released at once (the page, rendered before this host, has already let go of them), so
