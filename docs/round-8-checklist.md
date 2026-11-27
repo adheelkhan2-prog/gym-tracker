@@ -60,6 +60,6 @@
 
 ✓ Light and dark screenshots of every changed screen: `docs/screenshots/round-8/`.
 
-✗ Final test: 3 crash-test loops + 1 airplane-mode run. This runs next.
+✓ Final test: 3 crash-test loops (every flow, including − / + and the finish screen) with the network on: 0 bytes sent, no crash. Then 1 airplane-mode run: passed.
 
 ✗ EAS APK (versionCode 11, same key, installs over build 10). Builds after the test passes.
