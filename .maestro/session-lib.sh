@@ -80,7 +80,13 @@ rest_check() {
   adb shell dumpsys deviceidle unforce >/dev/null 2>&1 || true
   adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard 2>/dev/null || true
   [ -n "$(countdown_when)" ] && { log "FAIL $how: the countdown was still showing after the end"; return 1; }
-  if [ "$late" -gt 1500 ] || [ "$late" -lt -1500 ]; then log "FAIL $how: Rest is over posted ${late} ms from the end time"; return 1; fi
+  if [ "$late" -gt 1500 ] || [ "$late" -lt -1500 ]; then
+    log "FAIL $how: Rest is over posted ${late} ms from the end time"
+    { echo "--- channels ---"; notif_dump | grep -E "NotificationChannel\{.*(rest|mId=)" | grep -i rest | cut -c1-300 | head -8
+      echo "--- app notifications ---"; notif_dump | grep -A3 "pkg=$PKG" | cut -c1-300 | head -20
+      echo "--- log ---"; adb logcat -d | grep -iE "notif|channel|expo|alarm" | grep -iE "gymtracker|expo|No Channel|rest-end" | tail -25 | cut -c1-300; } >>"$RES/results.txt"
+    return 1
+  fi
   log "PASS $how: Rest is over posted ${late} ms after 0:00 (countdown: $(tr '\n' ' ' <"$RES/countdown.txt" | cut -c1-160))"
   # +15s then Skip, in the app: Skip removes the countdown and the alarm straight away.
   maestro test --debug-output "$RES/dbg" .maestro/flows/rest-start.yaml >"$RES/maestro.out" 2>&1 || true
