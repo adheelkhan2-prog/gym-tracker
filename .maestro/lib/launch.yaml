@@ -4,24 +4,24 @@ appId: com.gymtracker.app
 - launchApp:
     clearState: true
 - runFlow: system-dialogs.yaml
+# Until Today shows: the first launch asks to keep the rest timer on time (battery optimisation) in
+# its own window, which hides Today until it is dismissed: "Not now".
+- repeat:
+    while:
+      notVisible: "Today"
+    times: 60
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "rest-setup-close"
+          commands:
+            - tapOn:
+                id: "rest-setup-close"
+                retryTapIfNoChange: false
+      - waitForAnimationToEnd:
+          timeout: 2000
 - extendedWaitUntil:
     visible: "Today"
     timeout: 120000
-# First launch asks to keep the rest timer on time (battery optimisation): not now.
-- extendedWaitUntil:
-    visible:
-      id: "rest-setup-close"
-    timeout: 4000
-    optional: true
-- runFlow:
-    when:
-      visible:
-        id: "rest-setup-close"
-    commands:
-      - tapOn:
-          id: "rest-setup-close"
-          # The sheet slides away on the first tap; a retry would land on the tab bar under it.
-          retryTapIfNoChange: false
-      - waitForAnimationToEnd:
-          timeout: 1500
 - runFlow: no-errors.yaml
