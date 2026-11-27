@@ -2,7 +2,8 @@
 // as Huawei hold back alarms of apps under battery optimisation, so the "Rest is over" alert could
 // come late. Each button opens the right system setting; the state is re-checked on return.
 import React, { useCallback, useEffect, useState } from 'react';
-import { AppState, Platform, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Platform, StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RestAlarm from '../../modules/rest-alarm';
 import { NOTIFY_OK, Notifications } from '../notifications';
 import { color, font, size, space, themed, type } from '../theme';
@@ -39,7 +40,10 @@ export function RestSetupSheet({ onClose }: { onClose: () => void }) {
     return () => sub.remove();
   }, [refresh]);
 
+  // In its own window, above the tab bar (a sheet inside a tab screen sits under it).
   return (
+    <Modal transparent visible statusBarTranslucent navigationBarTranslucent animationType="none" onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
     <Sheet
       title="Keep the rest timer on time"
       subtitle="So “Rest is over” buzzes at 0:00, even with the screen off."
@@ -89,6 +93,8 @@ export function RestSetupSheet({ onClose }: { onClose: () => void }) {
         )}
       </View>
     </Sheet>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 

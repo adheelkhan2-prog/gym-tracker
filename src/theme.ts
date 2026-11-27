@@ -86,7 +86,6 @@ const DARK = {
   flameFg: '#F2F2F5',
   flameIcon: '#E0243A',
   ringTrack: '#313138',
-  glowTop: 'rgba(224,36,58,0)', // warm crimson glow at the top of the page (dark has its own red glow)
 };
 
 export type Palette = { [K in keyof typeof DARK]: string };
@@ -160,7 +159,6 @@ const LIGHT: Palette = {
   flameFg: '#FFFFFF',
   flameIcon: '#FFFFFF',
   ringTrack: 'rgba(200,16,46,0.16)',
-  glowTop: 'rgba(200,16,46,0.22)',
 };
 
 export type Scheme = 'dark' | 'light';

@@ -121,9 +121,10 @@ function TopGlow({ width, height }: { width: number; height: number }) {
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
         <RadialGradient id="topglow" cx="50%" cy="-4%" rx="95%" ry="34%">
-          <Stop offset="0" stopColor={color.glowTop} stopOpacity={1} />
-          <Stop offset="0.55" stopColor={color.glowTop} stopOpacity={0.45} />
-          <Stop offset="1" stopColor={color.glowTop} stopOpacity={0} />
+          {/* A plain colour with the opacity on the stops (Android ignores alpha in stop colours). */}
+          <Stop offset="0" stopColor={color.accent} stopOpacity={0.16} />
+          <Stop offset="0.5" stopColor={color.accent} stopOpacity={0.06} />
+          <Stop offset="1" stopColor={color.accent} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <Rect x={0} y={0} width={width} height={height} fill="url(#topglow)" />
