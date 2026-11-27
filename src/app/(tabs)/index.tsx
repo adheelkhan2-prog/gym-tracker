@@ -6,6 +6,7 @@ import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Glass } from '../../components/glass';
+import { RestSetupSheet, restSetupDone, restSetupStatus } from '../../components/RestSetup';
 import { Icon } from '../../components/icons';
 import { CountUp } from '../../components/motion';
 import { Button, Flame, Press, Ring, Screen } from '../../components/ui';
@@ -49,6 +50,24 @@ export default function TodayScreen() {
   // A day tapped in the week strip: shown as a preview, with a clear way back to today.
   const [picked, setPicked] = useState<{ id: string; wd: number; d: string } | null>(null);
   useEffect(() => perfMark('today-ready'), []);
+  // First launch (Android): ask once to keep the rest timer on time (battery optimisation, exact
+  // alarms). Only shown when something is actually missing; always reachable again in Settings.
+  const [restSetup, setRestSetup] = useState(false);
+  useEffect(() => {
+    if (state.restSetupAsked) return;
+    let live = true;
+    restSetupStatus()
+      .then((st) => {
+        if (!live) return;
+        update((s) => ({ ...s, restSetupAsked: true }));
+        if (!restSetupDone(st)) setRestSetup(true);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // A switch booked for "next Monday" kicks in when that day arrives.
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   const which = todayDayId(state, date, weekday, picked?.id);
@@ -376,6 +395,7 @@ export default function TodayScreen() {
           <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && !finished && progress.allDone ? finish : openWorkout} />
         </View>
       )}
+      {restSetup && <RestSetupSheet onClose={() => setRestSetup(false)} />}
     </View>
   );
 }

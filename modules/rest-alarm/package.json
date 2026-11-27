@@ -1,0 +1,8 @@
+{
+  "name": "rest-alarm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rest timer: a lock-screen countdown kept by Android itself, and battery-optimisation settings (local module).",
+  "main": "index.ts",
+  "types": "index.ts"
+}

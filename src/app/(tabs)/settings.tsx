@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { RestSetupSheet } from '../../components/RestSetup';
 import { clearCrashLog, readCrashLog } from '../../crash';
 import { shareCrashLog } from '../../crashShare';
 import { Glass } from '../../components/glass';
@@ -76,9 +77,11 @@ function Toggle({ icon, title, sub, checked, onChange }: { icon: IconName; title
 export default function SettingsScreen() {
   const { state, update } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [restSetup, setRestSetup] = useState(false);
   const program = activeProgram(state);
 
   return (
+    <View style={{ flex: 1 }}>
     <Screen padBottom={bottomClearance.tabs}>
       <Text style={s.title} accessibilityRole="header">
         Settings
@@ -115,6 +118,18 @@ export default function SettingsScreen() {
           onChange={(v) => update((st) => ({ ...st, restSound: v }))}
         />
       </Glass>
+      {Platform.OS === 'android' && (
+        <View style={{ marginTop: space.sm }}>
+        <Button
+          variant="outline"
+          icon="clock"
+          label="Keep the rest timer on time"
+          accessibilityLabel="Keep the rest timer on time: battery optimisation, exact alarms and notifications"
+          onPress={() => setRestSetup(true)}
+          testID="open-rest-setup"
+        />
+        </View>
+      )}
 
       <SectionTitle
         right={
@@ -191,6 +206,8 @@ export default function SettingsScreen() {
         <Button variant="destructive" icon="trash" label="Delete workout history" onPress={() => setConfirmDelete(true)} />
       )}
     </Screen>
+    {restSetup && <RestSetupSheet onClose={() => setRestSetup(false)} />}
+    </View>
   );
 }
 

@@ -1,0 +1,20 @@
+# Start a rest (log set 1 of the first exercise), check +15s, and leave the rest running.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/type-weight.yaml
+    env: { CARD: "0", SET: "0", WEIGHT: "40" }
+- runFlow:
+    file: ../lib/scroll-to.yaml
+    env:
+      ID: "log-0-0"
+- tapOn:
+    id: "log-0-0"
+- extendedWaitUntil:
+    visible:
+      id: "rest-skip"
+    timeout: 10000
+- tapOn:
+    id: "rest-add"
+- runFlow: ../lib/no-errors.yaml

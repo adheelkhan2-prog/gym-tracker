@@ -115,3 +115,13 @@ describe('volume (kg) counts only sets logged in kg', () => {
     expect(monthSummary(s, 2026, 10, '2026-11-27')).toMatchObject({ volume: 600, pinSets: 3 });
   });
 });
+
+describe('rest timer alert', () => {
+  test('the end of rest is an exact alarm clock at the end time, on the alarm channel', () => {
+    const { endTrigger } = jest.requireActual('../restNotify') as typeof import('../restNotify');
+    const t = endTrigger(1_800_000_000_000, true);
+    expect(t).toMatchObject({ delivery: 'alarmClock', channelId: 'rest-end-alarm' });
+    expect((t.date as Date).getTime()).toBe(1_800_000_000_000);
+    expect(endTrigger(1, false).channelId).toBe('rest-end-vibrate');
+  });
+});

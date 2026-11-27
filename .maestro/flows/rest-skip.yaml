@@ -1,0 +1,16 @@
+# Skip a running rest (the app is already on the workout with the rest timer showing).
+appId: com.gymtracker.app
+---
+- launchApp:
+    clearState: false
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: "rest-skip"
+    timeout: 10000
+- tapOn:
+    id: "rest-skip"
+- extendedWaitUntil:
+    notVisible:
+      id: "rest-skip"
+    timeout: 5000

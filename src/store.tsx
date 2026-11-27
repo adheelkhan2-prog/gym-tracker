@@ -64,6 +64,8 @@ export type State = {
   restored?: string[];
   /** Dates whose workouts were brought back from an older copy; shown once on Today. */
   restoreNote?: { dates: string[] } | null;
+  /** The first-launch "keep the rest timer on time" question was shown. */
+  restSetupAsked?: boolean;
 };
 
 export const DEFAULT_STATE: State = {

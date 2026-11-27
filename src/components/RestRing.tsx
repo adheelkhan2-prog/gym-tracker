@@ -140,7 +140,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
             <Text style={[type.num, { fontSize: size.title, color: final ? tint : color.text }]}>{fmtClock(left)}</Text>
           </View>
         </Press>
-        <Press onPress={onAdd} style={s.barBtn} accessibilityRole="button" accessibilityLabel="Add 15 seconds" glow={tint}>
+        <Press onPress={onAdd} testID="rest-add" style={s.barBtn} accessibilityRole="button" accessibilityLabel="Add 15 seconds" glow={tint}>
           <Text style={s.barBtnText}>+15s</Text>
         </Press>
         <Press onPress={skip} testID="rest-skip" style={[s.barBtn, s.bigBtnMain]} accessibilityRole="button" accessibilityLabel={skipLabel === 'Skip' ? 'Skip rest' : `${skipLabel} exercise`}>
@@ -189,7 +189,7 @@ export function RestTimer({ endsAt, total, tint, nextLabel, skipLabel, sound, on
           </Text>
         </Animated.View>
         <View style={s.actions} pointerEvents="box-none">
-          <Press onPress={onAdd} style={s.bigBtn} glow={tint} accessibilityRole="button" accessibilityLabel="Add 15 seconds">
+          <Press onPress={onAdd} testID="rest-add" style={s.bigBtn} glow={tint} accessibilityRole="button" accessibilityLabel="Add 15 seconds">
             <Icon name="plus" size={20} color={color.text} />
             <Text style={s.bigBtnText}>15s</Text>
           </Press>

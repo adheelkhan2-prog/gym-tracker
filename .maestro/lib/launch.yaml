@@ -7,4 +7,19 @@ appId: com.gymtracker.app
 - extendedWaitUntil:
     visible: "Today"
     timeout: 120000
+# First launch asks to keep the rest timer on time (battery optimisation): not now.
+- extendedWaitUntil:
+    visible:
+      id: "rest-setup-close"
+    timeout: 4000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "rest-setup-close"
+    commands:
+      - tapOn:
+          id: "rest-setup-close"
+      - waitForAnimationToEnd:
+          timeout: 1500
 - runFlow: no-errors.yaml

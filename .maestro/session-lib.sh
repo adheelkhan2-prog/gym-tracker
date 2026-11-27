@@ -1,7 +1,7 @@
 # Sourced by session.sh for every request (from the commit under test). Uses: RES, PKG, APK, built.
 # npm ci + prebuild when native config changed between two commits (returns 1 on failure).
 native_prep() {
-  if git diff --name-only "$1" "$2" | grep -qE '^(app\.json|plugins/|package(-lock)?\.json|metro\.config\.js|babel\.config\.js)'; then
+  if git diff --name-only "$1" "$2" | grep -qE '^(app\.json|plugins/|modules/|package(-lock)?\.json|metro\.config\.js|babel\.config\.js)'; then
     log "rebuild: native config changed -> prebuild + build"
     npm ci --no-audit --no-fund >/dev/null && npx expo prebuild --platform android --no-install >/dev/null || return 1
     return 0
@@ -43,12 +43,60 @@ diagnose() {
   [ -f after-swap-tap.png ] && cp after-swap-tap.png "$RES/fail-$n-after-tap.png"
 }
 
+# --- Rest alarm checks: "rest-off" (screen off + forced Doze) and "rest-bg" (app in background) ----
+# Starts a rest in the app, then measures, from outside the app, when "Rest is over" is posted
+# compared with the countdown's own end time (the chronometer's `when`), and checks the countdown is
+# an ongoing count-down chronometer visible on the lock screen. Then +15s / Skip are checked.
+notif_dump() { adb shell dumpsys notification --noredact 2>/dev/null | tr -d '\r'; }
+# The countdown's end (epoch ms) from its notification (id 7311), or empty.
+countdown_when() { notif_dump | awk '/pkg=com.gymtracker.app/ && /id=7311/ {f=1} f && /when=/ {match($0, /when=[0-9]+/); if (RSTART) {print substr($0, RSTART+5, RLENGTH-5); exit}}'; }
+end_posted() { notif_dump | grep -q "channel=rest-end-alarm\|channel=rest-end-vibrate"; }
+now_ms() { adb shell date +%s%3N | tr -d '\r'; }
+rest_check() {
+  local how="$1" end seen late=999999 i
+  adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
+  adb shell appops set "$PKG" SCHEDULE_EXACT_ALARM allow 2>/dev/null || true
+  rm -rf "$RES/dbg"
+  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-start.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: could not start a rest"; tail -8 "$RES/maestro.out" >>"$RES/results.txt"; diagnose "$how"; return 1; }
+  sleep 2
+  end=$(countdown_when)
+  [ -n "$end" ] || { log "FAIL $how: no countdown notification"; notif_dump | grep -A30 "pkg=$PKG" | head -60 >>"$RES/results.txt"; return 1; }
+  notif_dump | awk '/pkg=com.gymtracker.app/ && /id=7311/ {f=1} f {print} f && /^ *NotificationRecord/ && !/id=7311/ {exit}' | grep -E "chronometerCountDown|showChronometer|flags=|vis=|channel=" | head -6 >"$RES/countdown.txt"
+  grep -q "chronometerCountDown=true" "$RES/countdown.txt" || { log "FAIL $how: countdown is not an Android count-down chronometer"; cat "$RES/countdown.txt" >>"$RES/results.txt"; return 1; }
+  adb shell dumpsys alarm | grep -B2 -A6 "$PKG" | grep -m3 -iE "ALARM_CLOCK|RTC_WAKEUP|alarmClock" >>"$RES/results.txt" || true
+  if [ "$how" = rest-off ]; then
+    adb shell input keyevent KEYCODE_SLEEP; sleep 1
+    adb shell dumpsys deviceidle force-idle >/dev/null 2>&1 || true
+  else
+    adb shell input keyevent KEYCODE_HOME
+  fi
+  log "$how: rest ends at $end (in $(( (end - $(now_ms)) / 1000 )) s)"
+  for i in $(seq 1 400); do
+    if end_posted; then seen=$(now_ms); late=$((seen - end)); break; fi
+    sleep 0.5
+  done
+  adb shell dumpsys deviceidle unforce >/dev/null 2>&1 || true
+  adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard 2>/dev/null || true
+  [ -n "$(countdown_when)" ] && { log "FAIL $how: the countdown was still showing after the end"; return 1; }
+  if [ "$late" -gt 1500 ] || [ "$late" -lt -1500 ]; then log "FAIL $how: Rest is over posted ${late} ms from the end time"; return 1; fi
+  log "PASS $how: Rest is over posted ${late} ms after 0:00 (countdown: $(tr '\n' ' ' <"$RES/countdown.txt" | cut -c1-160))"
+  # +15s then Skip, in the app: Skip removes the countdown and the alarm straight away.
+  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-start.yaml >"$RES/maestro.out" 2>&1 || true
+  sleep 1; local e1; e1=$(countdown_when)
+  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-skip.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: Skip"; return 1; }
+  sleep 1
+  if [ -n "$(countdown_when)" ]; then log "FAIL $how: countdown still there after Skip (was $e1)"; return 1; fi
+  if adb shell dumpsys alarm | grep -A4 "$PKG" | grep -qi "expo.modules.notifications"; then log "FAIL $how: alarm still pending after Skip"; return 1; fi
+  log "PASS $how: Skip cleared the countdown and the alarm"
+}
+
 run_flows() {
   local tag="$1"; shift
   local ok=0 n=0
   for f in "$@"; do
     n=$((n + 1)); touch "$RES/.start"
     rm -rf "$RES/dbg"
+    if [ "$f" = rest-off ] || [ "$f" = rest-bg ]; then rest_check "$f" || ok=1; continue; fi
     if maestro test --debug-output "$RES/dbg" ".maestro/flows/$f.yaml" >"$RES/maestro.out" 2>&1; then
       log "PASS $tag $f"
     else
