@@ -179,7 +179,10 @@ async function restoreBackups(state: State | null): Promise<State | null> {
   for (const key of todo) {
     try {
       const raw = await AsyncStorage.getItem(key);
-      copies.push({ key, state: raw ? migrate(JSON.parse(raw), key.startsWith(`${BACKUP_PREFIX}v1-`)) : { logs: {}, sessions: {} } });
+      let copy = raw ? migrate(JSON.parse(raw), key.startsWith(`${BACKUP_PREFIX}v1-`)) : null;
+      // (A backup made before copies were named by format may hold the oldest format.)
+      if (raw && copy && !Object.keys(copy.logs).length) copy = migrate(JSON.parse(raw), true);
+      copies.push({ key, state: copy ?? { logs: {}, sessions: {} } });
     } catch {
       // A copy that can't be read stays where it is; it is marked as tried and adds nothing.
       copies.push({ key, state: { logs: {}, sessions: {} } });
@@ -433,17 +436,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 Object.entries(now).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify((DEFAULT_STATE as Record<string, unknown>)[k])),
               ) as Partial<State>;
               const cleared = !!now.historyClearedAt;
-              // Per exercise, the version with more logged sets wins; sessions keep a finish.
+              // The app ran from empty data meanwhile, so every set in memory is new: it is added
+              // after the saved sets of that exercise. Sessions keep the earliest start and a finish.
               const logs = cleared ? now.logs : mergeLogs(now.logs, base.logs).logs;
               if (!cleared)
-                for (const [d, day] of Object.entries(base.logs))
-                  for (const [id, l] of Object.entries(day))
-                    if ((l.sets ?? []).filter(isLoggedSet).length > (logs[d]?.[id]?.sets ?? []).filter(isLoggedSet).length) logs[d] = { ...logs[d], [id]: l };
+                for (const [d, day] of Object.entries(now.logs))
+                  for (const [id, l] of Object.entries(day)) {
+                    const saved = base.logs[d]?.[id];
+                    if (saved) logs[d] = { ...logs[d], [id]: { ...saved, ...l, sets: [...saved.sets, ...l.sets] } };
+                  }
+              const finite = (x: number) => (Number.isFinite(x) && x > 0 ? x : undefined);
               const sessions = { ...base.sessions };
               for (const [d, ses] of Object.entries(now.sessions)) {
                 const b = base.sessions[d];
                 sessions[d] = b
-                  ? { ...b, ...ses, startedAt: Math.min(b.startedAt ?? Infinity, ses.startedAt ?? Infinity) || undefined, finishedAt: Math.max(b.finishedAt ?? 0, ses.finishedAt ?? 0) || undefined }
+                  ? { ...ses, ...b, startedAt: finite(Math.min(b.startedAt ?? Infinity, ses.startedAt ?? Infinity)), finishedAt: finite(Math.max(b.finishedAt ?? 0, ses.finishedAt ?? 0)) }
                   : ses;
               }
               const merged: State = {

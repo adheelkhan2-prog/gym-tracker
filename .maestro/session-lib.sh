@@ -65,7 +65,7 @@ rest_check() {
   local e0; e0=$(countdown_when)
   [ -n "$e0" ] || { log "FAIL $how: no countdown notification"; notif_dump | grep -A30 "pkg=$PKG" | head -60 >>"$RES/results.txt"; return 1; }
   # +15s moves the countdown (and the alarm) 15 s later, straight away.
-  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-add.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: +15s"; return 1; }
+  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-add.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: +15s"; tail -8 "$RES/maestro.out" >>"$RES/results.txt"; diagnose "$how"; return 1; }
   sleep 1
   end=$(countdown_when)
   if [ -z "$end" ] || [ $((end - e0)) -lt 14000 ] || [ $((end - e0)) -gt 16000 ]; then log "FAIL $how: +15s moved the countdown by $((${end:-0} - e0)) ms"; return 1; fi
@@ -97,6 +97,7 @@ rest_check() {
   log "PASS $how: Rest is over posted ${late} ms after 0:00 (countdown: $(tr '\n' ' ' <"$RES/countdown.txt" | cut -c1-160))"
   # +15s then Skip, in the app: Skip removes the countdown and the alarm straight away.
   maestro test --debug-output "$RES/dbg" .maestro/flows/rest-start.yaml >"$RES/maestro.out" 2>&1 || true
+  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-add.yaml >"$RES/maestro.out" 2>&1 || true
   sleep 1; local e1; e1=$(countdown_when)
   maestro test --debug-output "$RES/dbg" .maestro/flows/rest-skip.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: Skip"; return 1; }
   sleep 1
