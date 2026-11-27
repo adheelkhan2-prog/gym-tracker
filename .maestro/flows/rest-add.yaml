@@ -1,0 +1,5 @@
+# +15s on the running rest (the app is on the workout with the rest timer showing).
+appId: com.gymtracker.app
+---
+- tapOn:
+    id: "rest-add"

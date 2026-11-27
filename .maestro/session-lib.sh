@@ -52,7 +52,8 @@ diagnose() {
 notif_dump() { adb shell dumpsys notification --noredact 2>/dev/null | tr -d '\r'; }
 # The countdown's end (epoch ms) from its notification (id 7311), or empty.
 countdown_when() { notif_dump | awk '/pkg=com.gymtracker.app/ && /id=7311/ {f=1} f && /when=/ {match($0, /when=[0-9]+/); if (RSTART) {print substr($0, RSTART+5, RLENGTH-5); exit}}'; }
-end_posted() { notif_dump | grep -q "channel=rest-end-alarm\|channel=rest-end-vibrate"; }
+# (Read into a variable first: with pipefail, grep -q closing the pipe early would read as "not found".)
+end_posted() { local d; d=$(notif_dump); grep -qE "channel=rest-end-(alarm|vibrate)" <<<"$d"; }
 now_ms() { adb shell date +%s%3N | tr -d '\r'; }
 rest_check() {
   local how="$1" end seen late=999999 i
@@ -61,8 +62,14 @@ rest_check() {
   rm -rf "$RES/dbg"
   maestro test --debug-output "$RES/dbg" .maestro/flows/rest-start.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: could not start a rest"; tail -8 "$RES/maestro.out" >>"$RES/results.txt"; diagnose "$how"; return 1; }
   sleep 2
+  local e0; e0=$(countdown_when)
+  [ -n "$e0" ] || { log "FAIL $how: no countdown notification"; notif_dump | grep -A30 "pkg=$PKG" | head -60 >>"$RES/results.txt"; return 1; }
+  # +15s moves the countdown (and the alarm) 15 s later, straight away.
+  maestro test --debug-output "$RES/dbg" .maestro/flows/rest-add.yaml >"$RES/maestro.out" 2>&1 || { log "FAIL $how: +15s"; return 1; }
+  sleep 1
   end=$(countdown_when)
-  [ -n "$end" ] || { log "FAIL $how: no countdown notification"; notif_dump | grep -A30 "pkg=$PKG" | head -60 >>"$RES/results.txt"; return 1; }
+  if [ -z "$end" ] || [ $((end - e0)) -lt 14000 ] || [ $((end - e0)) -gt 16000 ]; then log "FAIL $how: +15s moved the countdown by $((${end:-0} - e0)) ms"; return 1; fi
+  log "PASS $how: +15s moved the countdown by $((end - e0)) ms"
   notif_dump | awk '/pkg=com.gymtracker.app/ && /id=7311/ {f=1} f {print} f && /^ *NotificationRecord/ && !/id=7311/ {exit}' | grep -E "chronometerCountDown|showChronometer|flags=|vis=|channel=" | head -6 >"$RES/countdown.txt"
   grep -qE "chronometerCountDown=(Boolean \\()?true" "$RES/countdown.txt" || { log "FAIL $how: countdown is not an Android count-down chronometer"; cat "$RES/countdown.txt" >>"$RES/results.txt"; return 1; }
   adb shell dumpsys alarm | grep -B2 -A6 "$PKG" | grep -m3 -iE "ALARM_CLOCK|RTC_WAKEUP|alarmClock" >>"$RES/results.txt" || true
