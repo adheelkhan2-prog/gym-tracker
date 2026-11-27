@@ -27,12 +27,18 @@ appId: com.gymtracker.app
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: shot-complete
-# Done is the last thing on the page: scroll down to it (it can't be centred).
-- scrollUntilVisible:
-    element:
-      id: "complete-done"
-    direction: DOWN
-    timeout: 60000
+# Done is the last thing on the page: plain swipes from mid-screen until it shows (scrollUntilVisible
+# threw inside Maestro here, and a swipe from the bottom edge can be taken as the Home gesture).
+- repeat:
+    while:
+      notVisible:
+        id: "complete-done"
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 25%
+          duration: 500
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
