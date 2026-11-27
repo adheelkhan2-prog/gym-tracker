@@ -95,56 +95,61 @@ export function endTrigger(endsAt: number, sound: boolean) {
   };
 }
 
-/** Start (or restart, e.g. after +15s) the rest notifications for a rest ending at `endsAt`. */
-// Each start (or +15s) gets a number; an older call that finishes late never overwrites a newer one.
-let generation = 0;
+// Starts (+15s restarts) and stops run one after another, in the order they were asked for, so a
+// Skip can never land in the middle of a start and leave its alarm or countdown behind.
+let queue: Promise<void> = Promise.resolve();
+const enqueue = (op: () => Promise<void>) => {
+  queue = queue.then(op, op).catch(() => {});
+  return queue;
+};
 
-export async function startRestNotification(endsAt: number, next: string, sound: boolean) {
-  if (!supported) return;
-  const me = ++generation;
-  await stopRestNotification(false);
-  await ensureChannels();
-  if (me !== generation) return;
-  await Notifications.scheduleNotificationAsync({
-    identifier: END_ID,
-    content: {
-      title: 'Rest is over',
-      body: `Next: ${next}`,
-      sound: sound ? 'default' : false,
-      vibrate: VIBRATE,
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      color: color.accent,
-      data: { rest: true },
-    },
-    trigger: endTrigger(endsAt, sound),
-  }).catch(() => {});
-  if (me !== generation) return;
-  // (A newer start that comes in meanwhile reposts the countdown under the same id after this.)
-  if (RestAlarm && (await RestAlarm.showCountdown(endsAt, 'Resting', `Next: ${next}`, LIVE_CHANNEL, color.accent).catch(() => false))) return;
-  if (me !== generation) return;
-  await showLive(endsAt, next).catch(() => {});
-  if (me !== generation) return;
-  if (ticker) clearInterval(ticker);
-  ticker = setInterval(() => {
-    if (Date.now() >= endsAt) {
-      if (ticker) clearInterval(ticker);
-      ticker = null;
-      Notifications.dismissNotificationAsync(LIVE_ID).catch(() => {});
-      return;
-    }
-    showLive(endsAt, next).catch(() => {});
-  }, 1000);
+/** Start (or restart, e.g. after +15s) the rest notifications for a rest ending at `endsAt`. */
+export function startRestNotification(endsAt: number, next: string, sound: boolean) {
+  if (!supported) return Promise.resolve();
+  return enqueue(async () => {
+    await clearAll();
+    await ensureChannels();
+    await Notifications.scheduleNotificationAsync({
+      identifier: END_ID,
+      content: {
+        title: 'Rest is over',
+        body: `Next: ${next}`,
+        sound: sound ? 'default' : false,
+        vibrate: VIBRATE,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        color: color.accent,
+        data: { rest: true },
+      },
+      trigger: endTrigger(endsAt, sound),
+    }).catch(() => {});
+    if (RestAlarm && (await RestAlarm.showCountdown(endsAt, 'Resting', `Next: ${next}`, LIVE_CHANNEL, color.accent).catch(() => false))) return;
+    await showLive(endsAt, next).catch(() => {});
+    ticker = setInterval(() => {
+      if (Date.now() >= endsAt) {
+        if (ticker) clearInterval(ticker);
+        ticker = null;
+        Notifications.dismissNotificationAsync(LIVE_ID).catch(() => {});
+        return;
+      }
+      showLive(endsAt, next).catch(() => {});
+    }, 1000);
+  });
 }
 
-/** Remove the countdown and cancel the end alert (rest skipped, or the workout closed). */
-export async function stopRestNotification(fromUser = true) {
-  if (fromUser) generation++;
+async function clearAll() {
   if (ticker) clearInterval(ticker);
   ticker = null;
-  if (!supported) return;
   await Promise.all([
     Notifications.cancelScheduledNotificationAsync(END_ID).catch(() => {}),
     Notifications.dismissNotificationAsync(LIVE_ID).catch(() => {}),
     RestAlarm?.cancelCountdown().catch(() => {}),
   ]);
+}
+
+/** Remove the countdown and cancel the end alert (rest skipped, or the workout closed). */
+export function stopRestNotification() {
+  if (ticker) clearInterval(ticker);
+  ticker = null;
+  if (!supported) return Promise.resolve();
+  return enqueue(clearAll);
 }

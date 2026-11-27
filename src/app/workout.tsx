@@ -415,8 +415,9 @@ function ExerciseCard({
     const r = logged[i];
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
-    // Typed for this set earlier today (saved, not yet logged): exactly as typed.
-    if (r && (r.reps || r.weight || r.load)) return { ...r, done: false };
+    // Typed for this set earlier today (saved, not yet logged): exactly as typed, if it's in the
+    // mode the switch is on now (Pin or kg).
+    if (r && (r.reps || r.weight || r.load) && (r.load?.pin !== undefined) === (lt === 'stack')) return { ...r, done: false };
     const loggedBefore = logged.slice(0, i).some((x) => x.done);
     const st2 = logged === rows ? state : { ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets: logged } } } };
     const load = !loggedBefore && target && target.reason !== 'first' ? fromTarget(target, kind, unit, lt) : suggestSet(st2, id, plan, date, i).set;

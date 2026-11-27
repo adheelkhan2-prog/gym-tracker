@@ -420,7 +420,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             .then((loaded) => {
               const now = latest.current;
               const base = loaded ?? DEFAULT_STATE;
-              const merged = { ...base, logs: mergeLogs(base.logs, now.logs).logs, sessions: { ...now.sessions, ...base.sessions } };
+              // What was done meanwhile wins (its sets, finished workouts, ticks); the saved data
+              // fills in everything else.
+              const merged: State = {
+                ...base,
+                logs: mergeLogs(now.logs, base.logs).logs,
+                sessions: { ...base.sessions, ...now.sessions },
+                taken: { ...base.taken, ...now.taken },
+                warmups: { ...base.warmups, ...now.warmups },
+              };
               blocked.current = false;
               setSaveBlocked(false);
               latest.current = merged;
@@ -695,7 +703,13 @@ export const loggedSetCount = (logs: State['logs'], date: string) =>
 /** Sets the plan had for the workout done on `date` (the session's day, else that weekday's). */
 function plannedSetCount(state: Pick<State, 'logs' | 'sessions'> & Partial<State>, date: string) {
   if (state.programId === undefined) return 0;
-  const full = state as State;
+  const day = dayOfDate(state as State, date);
+  return day ? day.exercises.reduce((n, e) => n + e.sets, 0) : 0;
+}
+
+/** The plan day trained on `date`: its session's, else the one whose exercises match the log best. */
+export function dayOfDate(full: State, date: string): WorkoutDay | undefined {
+  const state = full;
   let day = dayById(full, state.sessions[date]?.dayId);
   if (!day) {
     // No session saved (e.g. an older save): the plan day whose exercises match the logged ones best
@@ -711,7 +725,7 @@ function plannedSetCount(state: Pick<State, 'logs' | 'sessions'> & Partial<State
     }
     if (!day && !activeProgram(full).rotation) day = dayById(full, state.week?.[dateFromKey(date).getDay()]);
   }
-  return day ? day.exercises.reduce((n, e) => n + e.sets, 0) : 0;
+  return day;
 }
 
 /**

@@ -24,6 +24,7 @@ import {
   dateFromKey,
   dayById,
   dayHasWork,
+  dayOfDate,
   finishedOn,
   formatDate,
   programById,
@@ -54,7 +55,8 @@ export default function TodayScreen() {
   // alarms). Only shown when something is actually missing; always reachable again in Settings.
   const [restSetup, setRestSetup] = useState(false);
   useEffect(() => {
-    if (state.restSetupAsked) return;
+    // (Not while saved data can't be read: the answer couldn't be saved, so it would ask again.)
+    if (state.restSetupAsked || saveBlocked) return;
     let live = true;
     restSetupStatus()
       .then((st) => {
@@ -67,7 +69,7 @@ export default function TodayScreen() {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [saveBlocked]);
   // A switch booked for "next Monday" kicks in when that day arrives.
   useEffect(() => update((s) => applyPending(s, date)), [date, update]);
   const which = todayDayId(state, date, weekday, picked?.id);
@@ -133,7 +135,7 @@ export default function TodayScreen() {
         .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
         // Your training weekdays, plus any other day you trained on (it counts too).
         .filter((x) => dayHasWork(state, state.week[x.wd]) || trainedOn(state, x.d))
-        .map((x) => ({ ...x, id: (dayHasWork(state, state.week[x.wd]) ? state.week[x.wd] : state.sessions[x.d]?.dayId) ?? '' }));
+        .map((x) => ({ ...x, id: (dayHasWork(state, state.week[x.wd]) ? state.week[x.wd] : dayOfDate(state, x.d)?.id) ?? '' }));
   const passDone = pass.filter((x) => trainedOn(state, x.d)).length;
   // One pass through the plan is the goal; training more never reads "6 of 5".
   const scheduledCount = program.rotation ? Math.min(7, program.days.length) : pass.filter((x) => dayHasWork(state, state.week[x.wd])).length;
