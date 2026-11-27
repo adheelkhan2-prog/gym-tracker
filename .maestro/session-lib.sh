@@ -34,6 +34,8 @@ diagnose() {
   maestro hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|resource-id)" *: *"[^"]+"' | grep -v 'systemui\|inputmethod' | head -80 >>"$RES/results.txt"
   log "--- app log ---"
   adb logcat -d -s ReactNativeJS:V AndroidRuntime:E DEBUG:F | tail -60 >>"$RES/results.txt"
+  log "--- why the app stopped (if it did) ---"
+  adb logcat -d | grep -iE "lowmemorykiller|Killing .*gymtracker|ActivityManager: Process com.gymtracker.app|has died|ANR in com.gymtracker|Force stopping com.gymtracker|START u0.*HOME" | tail -12 >>"$RES/results.txt"
   log "--- last steps ---"
   find "$RES/dbg" -name maestro.log -print0 2>/dev/null | xargs -0 -r grep -h "onCommandFinished" | grep -v "Apply configuration" | tail -14 | sed 's/.*onCommandFinished: //' | cut -c1-160 >>"$RES/results.txt"
   log "--- taps ---"
@@ -62,7 +64,7 @@ rest_check() {
   end=$(countdown_when)
   [ -n "$end" ] || { log "FAIL $how: no countdown notification"; notif_dump | grep -A30 "pkg=$PKG" | head -60 >>"$RES/results.txt"; return 1; }
   notif_dump | awk '/pkg=com.gymtracker.app/ && /id=7311/ {f=1} f {print} f && /^ *NotificationRecord/ && !/id=7311/ {exit}' | grep -E "chronometerCountDown|showChronometer|flags=|vis=|channel=" | head -6 >"$RES/countdown.txt"
-  grep -q "chronometerCountDown=true" "$RES/countdown.txt" || { log "FAIL $how: countdown is not an Android count-down chronometer"; cat "$RES/countdown.txt" >>"$RES/results.txt"; return 1; }
+  grep -qE "chronometerCountDown=(Boolean \\()?true" "$RES/countdown.txt" || { log "FAIL $how: countdown is not an Android count-down chronometer"; cat "$RES/countdown.txt" >>"$RES/results.txt"; return 1; }
   adb shell dumpsys alarm | grep -B2 -A6 "$PKG" | grep -m3 -iE "ALARM_CLOCK|RTC_WAKEUP|alarmClock" >>"$RES/results.txt" || true
   if [ "$how" = rest-off ]; then
     adb shell input keyevent KEYCODE_SLEEP; sleep 1
