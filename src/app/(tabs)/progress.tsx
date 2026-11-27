@@ -344,7 +344,7 @@ const s = themed(() =>
   StyleSheet.create({
     kicker: { ...type.label, color: color.accentText },
     megaRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
-    mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
+    mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.keyNum, fontVariant: ['tabular-nums'] },
     megaUnit: { fontFamily: font.display, fontSize: size.h2, color: color.muted },
     pinNote: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted, marginTop: space.xs },
     changeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

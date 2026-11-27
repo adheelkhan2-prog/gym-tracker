@@ -115,6 +115,22 @@ function Spotlight({ width, height }: { width: number; height: number }) {
   );
 }
 
+/** A soft warm crimson glow across the top of the page (light mode; dark has its own red glow). */
+function TopGlow({ width, height }: { width: number; height: number }) {
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="topglow" cx="50%" cy="-4%" rx="95%" ry="34%">
+          <Stop offset="0" stopColor={color.glowTop} stopOpacity={1} />
+          <Stop offset="0.55" stopColor={color.glowTop} stopOpacity={0.45} />
+          <Stop offset="1" stopColor={color.glowTop} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Rect x={0} y={0} width={width} height={height} fill="url(#topglow)" />
+    </Svg>
+  );
+}
+
 /**
  * Screen background: near-black, one spotlight from above, slow dark smoke drifting through it,
  * a very faint blood-red glow far back, film grain and a vignette. Smoke rests under reduce motion.
@@ -144,6 +160,7 @@ export function Backdrop({ children, intensity = 1, stage = false }: { children:
           <Blob size={mid} tint={color.smoke} opacity={0.38 * intensity} />
         </Drift>
         <Spotlight width={width} height={height} />
+        {currentScheme() === 'light' && <TopGlow width={width} height={height} />}
         {/* Paper (light) gets a whisper of grain and no vignette; the dark room keeps both. */}
         <Image source={GRAIN} resizeMode="repeat" style={[StyleSheet.absoluteFill, { opacity: currentScheme() === 'light' ? 0.025 : 0.05 }]} />
         {currentScheme() === 'dark' && <Vignette width={width} height={height} />}

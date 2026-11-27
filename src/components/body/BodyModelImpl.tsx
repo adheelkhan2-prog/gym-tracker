@@ -22,6 +22,8 @@ const FRAMING = {
   upper: { target: new THREE.Vector3(0, 0.38, 0), distance: 1.7 },
   full: { target: new THREE.Vector3(0, 0.0, 0), distance: 4.3 },
   torso: { target: new THREE.Vector3(0, 0.3, 0), distance: 2.3 },
+  /** Head to hips, with a margin: the upper body fully in view (the finish screen). */
+  upperBody: { target: new THREE.Vector3(0, 0.5, 0), distance: 2.5 },
 };
 
 /**

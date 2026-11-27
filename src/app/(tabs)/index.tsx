@@ -33,7 +33,7 @@ import {
   useStore,
   weekKeys,
 } from '../../store';
-import { bottomClearance, color, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
+import { bottomClearance, color, currentScheme, floating, font, leading, motion, radius, size, space, themed, touch, type } from '../../theme';
 import { WARMUP, dayProgress, nextInRotation, subtitleOf, titleOf, todayDayId } from '../../workout';
 import { perfMark } from '../../perf';
 
@@ -188,7 +188,7 @@ export default function TodayScreen() {
                     {subtitleOf(day)}
                   </Text>
                 </View>
-                <Ring progress={progress.total ? progress.done / progress.total : 0} size={RING} stroke={4} track={color.surface3}>
+                <Ring progress={progress.total ? progress.done / progress.total : 0} size={RING} stroke={currentScheme() === 'light' ? 8 : 4} track={color.ringTrack}>
                   <CountUp to={progress.done} style={[s.ringNum, progress.done > 0 && { color: color.accent }]} />
                   <Text style={s.ringOf}>of {progress.total}</Text>
                 </Ring>
@@ -249,8 +249,14 @@ export default function TodayScreen() {
                 style={[s.passTile, sel && s.passSel]}
               >
                 <Text style={[s.passDay, sel && s.passDaySel]}>{WEEKDAY_SHORT[wd]}</Text>
-                {/* Small markers only: ✓ for a finished day, a dot for today. The selection is the strong highlight. */}
-                {done ? <Icon name="check" size={16} color={color.accent} /> : <View style={[s.passDot, isToday && s.passDotToday]} />}
+                {/* ✓ for a trained day (solid crimson in light mode), a dot for today. */}
+                {done ? (
+                  <View style={[s.passDone, !sel && { backgroundColor: color.doneBg }]}>
+                    <Icon name="check" size={16} color={sel ? color.selCheck : color.doneFg} />
+                  </View>
+                ) : (
+                  <View style={[s.passDot, isToday && s.passDotToday, sel && isToday && { backgroundColor: color.selFg }]} />
+                )}
               </Press>
             );
           })}
@@ -392,7 +398,9 @@ export default function TodayScreen() {
           onLayout={(e) => setCtaH(e.nativeEvent.layout.height)}
         >
           <LinearGradient colors={[color.fadeFrom, color.bg, color.bg]} locations={[0, 0.4, 1]} style={s.ctaFade} pointerEvents="none" />
-          <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && !finished && progress.allDone ? finish : openWorkout} />
+          <View style={{ zIndex: 1, position: 'relative' }}>
+            <Button size="lg" label={trainToday ? `Train ${titleOf(day)} today` : cta} iconRight="arrowRight" onPress={!trainToday && !finished && progress.allDone ? finish : openWorkout} />
+          </View>
         </View>
       )}
       {restSetup && <RestSetupSheet onClose={() => setRestSetup(false)} />}
@@ -431,13 +439,13 @@ const s = themed(() => StyleSheet.create({
   dayTag: { ...type.label },
   dayTitle: { fontFamily: font.display, fontSize: size.display, lineHeight: leading.display, letterSpacing: -0.6, color: color.text, marginTop: space.sm },
   focus: { ...type.bodyMuted, marginTop: space.xs },
-  ringNum: { fontFamily: font.display, fontSize: size.h2, color: color.text, fontVariant: ['tabular-nums'] },
+  ringNum: { fontFamily: font.display, fontSize: size.h2, color: color.keyNum, fontVariant: ['tabular-nums'] },
   ringOf: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.subtle },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xl, paddingTop: space.lg, borderTopWidth: 1, borderTopColor: color.line },
   metaText: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted },
   metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: color.subtle },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: space.x4, marginBottom: space.md },
-  sectionCount: { fontFamily: font.bodySemi, fontSize: size.small, color: color.subtle, fontVariant: ['tabular-nums'] },
+  sectionCount: { fontFamily: font.bodySemi, fontSize: size.small, color: color.countFg, fontVariant: ['tabular-nums'] },
   pass: { flexDirection: 'row', gap: space.sm },
   passTile: {
     flex: 1,
@@ -450,8 +458,9 @@ const s = themed(() => StyleSheet.create({
     justifyContent: 'center',
     gap: space.sm,
   },
-  passSel: { borderColor: color.accent, borderWidth: 2, backgroundColor: color.accentDim },
-  passDaySel: { color: color.text },
+  passSel: { borderColor: color.selEdge, borderWidth: 2, backgroundColor: color.selBg },
+  passDaySel: { color: color.selFg },
+  passDone: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   passDotToday: { backgroundColor: color.accent },
   passDay: { fontFamily: font.bodyBold, fontSize: size.label, color: color.subtle, letterSpacing: 0.4 },
   passDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: color.surface3 },

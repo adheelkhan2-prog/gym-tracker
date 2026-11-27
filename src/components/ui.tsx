@@ -225,9 +225,11 @@ export function Button({
       ? color.subtle
       : variant === 'solid'
         ? color.onAccent
-        : variant === 'default' || variant === 'link'
-          ? color.accentText // label text: the AA-safe red; the edge stays true crimson
-          : color.text;
+        : variant === 'default'
+          ? color.btnPrimaryFg // dark: the AA-safe red on charcoal; light: white on solid crimson
+          : variant === 'link'
+            ? color.accentText
+            : color.text;
   // Warnings/deletes: amber icon + white label on an amber-tinted panel; never the red accent.
   const iconFg = variant === 'destructive' ? color.warn : fg;
   const h = sz === 'sm' ? touch.min : sz === 'lg' ? touch.primary + space.sm : touch.primary;
@@ -238,7 +240,7 @@ export function Button({
     variant === 'secondary' && { backgroundColor: color.glassSolid, borderWidth: 1, borderColor: color.glassBorder },
     variant === 'outline' && { borderWidth: 1, borderColor: color.glassBorder },
     variant === 'destructive' && { backgroundColor: color.warnDim, borderWidth: 1, borderColor: color.warnEdge },
-    disabled && variant === 'default' && { borderColor: color.glassBorder },
+    disabled && variant === 'default' && { borderColor: color.glassBorder, backgroundColor: color.surface2 },
     disabled && variant === 'solid' && { opacity: 0.6 },
   ];
   const inner = (
@@ -391,9 +393,9 @@ export function Switch({
 export function Flame({ count, label }: { count: number; label: string }) {
   const lit = count > 0;
   return (
-    <View style={s.flame} accessibilityLabel={`${count} day ${label} streak`}>
-      <Icon name="flame" size={18} color={lit ? color.accent : color.subtle} filled={lit} />
-      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.text : color.subtle }]}>{count}</Text>
+    <View style={[s.flame, lit && { backgroundColor: color.flameBg, borderColor: color.flameEdge }]} accessibilityLabel={`${count} day ${label} streak`}>
+      <Icon name="flame" size={18} color={lit ? color.flameIcon : color.subtle} filled={lit} />
+      <Text style={[type.num, { fontSize: size.h3, color: lit ? color.flameFg : color.subtle }]}>{count}</Text>
     </View>
   );
 }
@@ -462,7 +464,7 @@ const s = themed(() => StyleSheet.create({
   card: { padding: space.xl },
   btn: { borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
   btnText: { fontFamily: font.bodyBlack, fontSize: size.body, letterSpacing: 0.3 },
-  btnPrimary: { backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.accentEdge },
+  btnPrimary: { backgroundColor: color.btnPrimaryBg, borderWidth: 1, borderColor: color.btnPrimaryEdge },
   iconBtn: {
     width: touch.min,
     height: touch.min,

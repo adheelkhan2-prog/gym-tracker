@@ -67,6 +67,26 @@ const DARK = {
   // Switches: white knob on crimson when on, on grey when off.
   knob: '#FFFFFF',
   switchOff: '#5A5A63',
+  // Per-theme roles of the crimson. Dark: thin edges and glows on charcoal. Light: solid crimson
+  // fills with white, crimson labels and key numbers (all AA).
+  label: '#A2A2AC', // section labels ("TODAY · FRI", "TOTAL VOLUME")
+  keyNum: '#F2F2F5', // key numbers (volume, ring count, week count)
+  countFg: '#A2A2AC', // small counts beside labels ("4 of 5")
+  btnPrimaryBg: '#121215', // Start workout / Next exercise
+  btnPrimaryFg: '#FF6676',
+  btnPrimaryEdge: 'rgba(224,36,58,0.62)',
+  selBg: 'rgba(224,36,58,0.10)', // selected day chip
+  selFg: '#F2F2F5',
+  selEdge: '#E0243A',
+  selCheck: '#E0243A',
+  doneBg: 'transparent', // a logged day's ✓ (week strip)
+  doneFg: '#E0243A',
+  flameBg: '#1D1D22', // streak flame pill (when lit)
+  flameEdge: 'rgba(255,255,255,0.13)',
+  flameFg: '#F2F2F5',
+  flameIcon: '#E0243A',
+  ringTrack: '#313138',
+  glowTop: 'rgba(224,36,58,0)', // warm crimson glow at the top of the page (dark has its own red glow)
 };
 
 export type Palette = { [K in keyof typeof DARK]: string };
@@ -122,6 +142,25 @@ const LIGHT: Palette = {
   body3d: '#ECE8E2',
   knob: '#FFFFFF',
   switchOff: '#A8A29A',
+  // Light keeps its red: solid crimson with white text (6.3:1), crimson labels (6.1:1 on bg).
+  label: '#AE0E28',
+  keyNum: '#B70F2A',
+  countFg: '#AE0E28',
+  btnPrimaryBg: '#C8102E',
+  btnPrimaryFg: '#FFFFFF',
+  btnPrimaryEdge: '#C8102E',
+  selBg: '#C8102E',
+  selFg: '#FFFFFF',
+  selEdge: '#C8102E',
+  selCheck: '#FFFFFF',
+  doneBg: '#C8102E',
+  doneFg: '#FFFFFF',
+  flameBg: '#C8102E',
+  flameEdge: '#C8102E',
+  flameFg: '#FFFFFF',
+  flameIcon: '#FFFFFF',
+  ringTrack: 'rgba(200,16,46,0.16)',
+  glowTop: 'rgba(200,16,46,0.22)',
 };
 
 export type Scheme = 'dark' | 'light';
@@ -141,6 +180,7 @@ export function applyScheme(scheme: Scheme) {
   current = scheme;
   Object.assign(color, PALETTES[scheme]);
   gradient.sheen = [color.sheenTop, 'rgba(255,255,255,0)'] as const;
+  gradient.accent = [color.accent, color.accent] as const;
   version++;
   return true;
 }
@@ -265,7 +305,7 @@ export const type = themed(() => ({
     fontSize: size.label,
     letterSpacing: 1.8,
     textTransform: 'uppercase' as const,
-    color: color.subtle,
+    color: color.label,
   },
   num: { fontFamily: font.display, fontVariant: ['tabular-nums' as const], color: color.text },
 }));

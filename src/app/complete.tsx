@@ -27,6 +27,9 @@ import { titleOf } from '../workout';
 import { color, font, leading, motion, radius, size, space, themed, type } from '../theme';
 import { pctChange, pinSetsOn, pinSetsText, previousSameDay, volumeOn } from '../totals';
 
+/** Muscles seen from behind (the model faces them at yaw π). */
+const BACK = new Set<MuscleId>(['posterior_delt', 'rotator_cuff', 'triceps_long', 'triceps_lateral', 'triceps_medial', 'upper_lats', 'lower_lats', 'teres_major', 'rhomboids', 'upper_traps', 'mid_traps', 'lower_traps', 'erector_spinae', 'neck_extensors', 'forearm_extensors', 'glute_max', 'glute_med', 'medial_hamstrings', 'lateral_hamstrings', 'gastrocnemius', 'soleus']);
+
 // Choreography (ms after open). One tap anywhere jumps to the end.
 const T = { muscles: 900, perMuscle: 170, afterMuscles: 250, stats: 650, prGap: 650 };
 
@@ -173,6 +176,16 @@ export default function CompleteScreen() {
     return () => clearTimeout(t);
   }, []);
   const trained = useMemo(() => new Set(data.muscles.map(([m]) => m)), [data.muscles]);
+  // Face the side that did most of the work: the back for a back day, else the front.
+  const startYaw = useMemo(() => {
+    let back = 0;
+    let front = 0;
+    for (const [m, n] of data.muscles) {
+      if (BACK.has(m)) back += n;
+      else front += n;
+    }
+    return back > front ? Math.PI : 0;
+  }, [data.muscles]);
   const describe = useCallback((m: MuscleId) => `${MUSCLE_LABEL[m]}${trained.has(m) ? ' · trained today' : ''}`, [trained]);
 
   const copy = line(data.prs.length ? FINISH_PR : FINISH, date + data.sets);
@@ -195,7 +208,7 @@ export default function CompleteScreen() {
         {/* Hero: the body you just trained */}
         <View style={{ marginTop: space.sm }}>
           {show3d ? (
-            <BodyModel paint={paint} pulses={pulses} height={420} framing="full" intro tint={color.accent} describe={describe} showHint={false} />
+            <BodyModel paint={paint} pulses={pulses} height={420} framing="upperBody" startYaw={startYaw} intro tint={color.accent} describe={describe} showHint={false} />
           ) : (
             <View style={{ height: 420 }} />
           )}
@@ -323,7 +336,7 @@ const s = themed(() => StyleSheet.create({
   mChipText: { fontFamily: font.bodyBold, fontSize: size.label, color: color.text },
   kicker: { ...type.label, color: color.accentText, marginTop: space.xxl },
   megaRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
-  mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
+  mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.keyNum, fontVariant: ['tabular-nums'] },
   megaUnit: { fontFamily: font.display, fontSize: size.h2, color: color.muted },
   changeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xs },
   arrow: { width: 30, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
