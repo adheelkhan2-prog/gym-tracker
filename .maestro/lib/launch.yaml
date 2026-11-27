@@ -20,6 +20,8 @@ appId: com.gymtracker.app
     commands:
       - tapOn:
           id: "rest-setup-close"
+          # The sheet slides away on the first tap; a retry would land on the tab bar under it.
+          retryTapIfNoChange: false
       - waitForAnimationToEnd:
           timeout: 1500
 - runFlow: no-errors.yaml
