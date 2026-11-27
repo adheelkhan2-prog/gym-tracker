@@ -96,10 +96,15 @@ export function endTrigger(endsAt: number, sound: boolean) {
 }
 
 /** Start (or restart, e.g. after +15s) the rest notifications for a rest ending at `endsAt`. */
+// Each start (or +15s) gets a number; an older call that finishes late never overwrites a newer one.
+let generation = 0;
+
 export async function startRestNotification(endsAt: number, next: string, sound: boolean) {
   if (!supported) return;
-  await stopRestNotification();
+  const me = ++generation;
+  await stopRestNotification(false);
   await ensureChannels();
+  if (me !== generation) return;
   await Notifications.scheduleNotificationAsync({
     identifier: END_ID,
     content: {
@@ -113,8 +118,13 @@ export async function startRestNotification(endsAt: number, next: string, sound:
     },
     trigger: endTrigger(endsAt, sound),
   }).catch(() => {});
+  if (me !== generation) return;
+  // (A newer start that comes in meanwhile reposts the countdown under the same id after this.)
   if (RestAlarm && (await RestAlarm.showCountdown(endsAt, 'Resting', `Next: ${next}`, LIVE_CHANNEL, color.accent).catch(() => false))) return;
+  if (me !== generation) return;
   await showLive(endsAt, next).catch(() => {});
+  if (me !== generation) return;
+  if (ticker) clearInterval(ticker);
   ticker = setInterval(() => {
     if (Date.now() >= endsAt) {
       if (ticker) clearInterval(ticker);
@@ -127,7 +137,8 @@ export async function startRestNotification(endsAt: number, next: string, sound:
 }
 
 /** Remove the countdown and cancel the end alert (rest skipped, or the workout closed). */
-export async function stopRestNotification() {
+export async function stopRestNotification(fromUser = true) {
+  if (fromUser) generation++;
   if (ticker) clearInterval(ticker);
   ticker = null;
   if (!supported) return;

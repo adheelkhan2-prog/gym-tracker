@@ -10,8 +10,8 @@ const parse = (v: string | undefined) => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** A set that was ticked as logged and has any number on it (reps, seconds, a weight or a pin). */
-export const isLoggedSet = (s: SetEntry) => !!s.done && ((parse(s.reps) ?? 0) > 0 || parse(s.weight) !== null || s.load?.pin !== undefined);
+/** A set that was ticked as logged with its reps (or seconds); the weight or pin may be missing. */
+export const isLoggedSet = (s: SetEntry) => !!s.done && (parse(s.reps) ?? 0) > 0;
 
 const loggedIn = (log: { sets?: SetEntry[] } | undefined) => (log?.sets ?? []).filter(isLoggedSet).length;
 

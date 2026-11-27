@@ -7,7 +7,7 @@ import { PROGRAMS, type Program } from './data/programs';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 import { logCrash } from './crash';
 import { PERF } from './perf';
-import { isLoggedSet, restoreFrom } from './restore';
+import { isLoggedSet, mergeLogs, restoreFrom } from './restore';
 import { bigHistory } from './perfHistory';
 
 export type { Unit } from './load';
@@ -381,6 +381,8 @@ type Ctx = {
   /** Apply a change and write it to storage now (not after the usual short delay). Use before
    * anything heavy that could crash, e.g. the workout-complete celebration. */
   commit: (fn: (s: State) => State) => Promise<void>;
+  /** Saved data couldn't be read: nothing is saved until it can be (shown on Today). */
+  saveBlocked: boolean;
 };
 const StoreContext = createContext<Ctx | null>(null);
 
@@ -393,6 +395,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // calls in the same tap compose in order and commit() saves exactly what's shown.
   const latest = useRef(state);
   const blocked = useRef(false);
+  const [saveBlocked, setSaveBlocked] = useState(false);
 
   useEffect(() => {
     loadState()
@@ -404,11 +407,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setReady(true);
       })
       .catch((e) => {
-        // Storage itself failed to read: run on defaults for now, but never save over the data
-        // that couldn't be read (it may be fine on the next start).
+        // Storage itself failed to read: run on defaults, never save over the data that couldn't
+        // be read, say so on screen, and keep trying to read it. Once it reads, what was done in
+        // the meantime is merged in and saving resumes.
         blocked.current = true;
+        setSaveBlocked(true);
         logCrash('error', e, 'reading saved data');
         setReady(true);
+        let tries = 0;
+        const retry = () => {
+          loadState()
+            .then((loaded) => {
+              const now = latest.current;
+              const base = loaded ?? DEFAULT_STATE;
+              const merged = { ...base, logs: mergeLogs(base.logs, now.logs).logs, sessions: { ...now.sessions, ...base.sessions } };
+              blocked.current = false;
+              setSaveBlocked(false);
+              latest.current = merged;
+              setState(merged);
+            })
+            .catch(() => {
+              if (++tries < 20) setTimeout(retry, 3000);
+            });
+        };
+        setTimeout(retry, 3000);
       });
   }, []);
 
@@ -432,7 +454,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     if (!blocked.current) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
-  const value = useMemo(() => ({ state, ready, update, commit }), [state, ready, update, commit]);
+  const value = useMemo(() => ({ state, ready, update, commit, saveBlocked }), [state, ready, update, commit, saveBlocked]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

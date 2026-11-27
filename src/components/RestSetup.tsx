@@ -24,7 +24,8 @@ export async function restSetupStatus(): Promise<RestSetupStatus> {
   return { battery, exact, notify, oem: maker === 'huawei' || maker === 'honor' };
 }
 
-export const restSetupDone = (s: RestSetupStatus) => s.battery && s.exact && s.notify;
+/** Nothing left to ask (Huawei / Honor always get the sheet once, for their own App launch step). */
+export const restSetupDone = (s: RestSetupStatus) => s.battery && s.exact && s.notify && !s.oem;
 
 export function RestSetupSheet({ onClose }: { onClose: () => void }) {
   const [st, setSt] = useState<RestSetupStatus | null>(null);
@@ -44,7 +45,7 @@ export function RestSetupSheet({ onClose }: { onClose: () => void }) {
       subtitle="So “Rest is over” buzzes at 0:00, even with the screen off."
       onClose={onClose}
       testID="rest-setup"
-      footer={<Button variant="ghost" label={st && restSetupDone(st) ? 'Done' : 'Not now'} onPress={onClose} testID="rest-setup-close" />}
+      footer={<Button variant="ghost" label={st && st.battery && st.exact && st.notify ? 'Done' : 'Not now'} onPress={onClose} testID="rest-setup-close" />}
     >
       <View style={{ gap: space.md }}>
         <Step

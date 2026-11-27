@@ -132,11 +132,18 @@ export function stepOf(what: 'pin' | 'weight' | 'reps' | 'secs', unit: Unit, dum
  * The reps (or seconds) set `i` is pre-filled with: what you did on set `i` last session, else the
  * plan's target. Only ever a reps value: never a weight, a pin or another set's typing.
  */
-export function prefillReps(state: State, exerciseId: string, plan: PlannedExercise | undefined, date: string, i: number): string {
+export function prefillReps(state: State, exerciseId: string, plan: PlannedExercise | undefined, date: string, i: number, load?: SetEntry): string {
   const prev = previousSession(state.logs, exerciseId, date);
-  const last = prev?.sets[i]?.reps;
-  if (last && (num(last) ?? 0) > 0) return String(num(last));
+  const lastSet = prev?.sets[i];
+  const last = lastSet?.reps;
   const top = plan ? targetTop(plan.target) : null;
   const bottom = plan ? targetBottom(plan.target) : null;
+  if (last && (num(last) ?? 0) > 0) {
+    // A step up in load (heavier kg, or a higher pin) starts again at the bottom of the range.
+    const upKg = load && lastSet && kgOf(load) !== null && kgOf(lastSet) !== null && kgOf(load)! > kgOf(lastSet)!;
+    const upPin = load?.load?.pin !== undefined && lastSet?.load?.pin !== undefined && load.load.pin > lastSet.load.pin;
+    if ((upKg || upPin) && bottom !== null) return String(bottom);
+    return String(num(last));
+  }
   return String(top ?? bottom ?? '');
 }

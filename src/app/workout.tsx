@@ -420,8 +420,9 @@ function ExerciseCard({
     const loggedBefore = logged.slice(0, i).some((x) => x.done);
     const st2 = logged === rows ? state : { ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets: logged } } } };
     const load = !loggedBefore && target && target.reason !== 'first' ? fromTarget(target, kind, unit, lt) : suggestSet(st2, id, plan, date, i).set;
-    // Reps: last session's same set, else the plan's target.
-    return { ...load, reps: prefillReps(state, id, plan, date, i) };
+    // Reps: last session's same set, else the plan's target. Only when the load goes up from last
+    // time (a step up) do the reps start again at the bottom of the range.
+    return { ...load, reps: prefillReps(state, id, plan, date, i, load) };
   };
   const valueOf = (i: number) => rowValue(i, rows);
   const nextRow = (i: number, logged: SetEntry[]) => rowValue(i, logged);
@@ -852,7 +853,6 @@ function NumBox({
         // No cursor over the old number (it showed as "3|1"): it appears once you type, after the
         // digits, and stays at the end.
         caretHidden={text === ''}
-        selection={{ start: text.length, end: text.length }}
         maxFontSizeMultiplier={1.2}
         onChangeText={(t) => {
           setText(t);

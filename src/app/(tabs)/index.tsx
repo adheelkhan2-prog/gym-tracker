@@ -38,7 +38,7 @@ import { WARMUP, dayProgress, nextInRotation, subtitleOf, titleOf, todayDayId } 
 import { perfMark } from '../../perf';
 
 export default function TodayScreen() {
-  const { state, update, commit } = useStore();
+  const { state, update, commit, saveBlocked } = useStore();
   const reduce = useReducedMotion();
   const insets = useSafeAreaInsets();
   // Real heights, measured: the tab bar (incl. gesture-bar inset) and the floating main button.
@@ -261,6 +261,15 @@ export default function TodayScreen() {
             );
           })}
         </View>
+
+        {saveBlocked && (
+          <Glass style={[s.card, s.row]} r={radius.xl} testID="save-blocked">
+            <Icon name="alert" size={20} color={color.warn} />
+            <Text style={[s.rowText, { flex: 1 }]}>
+              Your saved workouts couldn’t be read just now, so nothing is being saved. Still trying; if this stays, close and reopen the app.
+            </Text>
+          </Glass>
+        )}
 
         {!!state.restoreNote?.dates.length && (
           <Glass style={[s.card, s.row]} r={radius.xl} testID="restore-note">

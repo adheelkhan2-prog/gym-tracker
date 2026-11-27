@@ -98,6 +98,11 @@ describe('set pre-fill', () => {
     expect(prefillReps(s, 'flat_bench', plan, '2026-11-23', 2)).toBe('10');
     expect(prefillReps(st(), 'flat_bench', plan, '2026-11-23', 0)).toBe('10');
   });
+  test('a step up in weight starts again at the bottom of the range; the same weight keeps last reps', () => {
+    const s = st({ logs: { '2026-11-16': { flat_bench: { sets: [kg(60, 10)] } } } });
+    expect(prefillReps(s, 'flat_bench', plan, '2026-11-23', 0, kg(62.5, 10, false))).toBe('8');
+    expect(prefillReps(s, 'flat_bench', plan, '2026-11-23', 0, kg(60, 10, false))).toBe('10');
+  });
 });
 
 describe('volume (kg) counts only sets logged in kg', () => {
