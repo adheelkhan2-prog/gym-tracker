@@ -71,7 +71,7 @@ while [ $SECONDS -lt $END ]; do
     else
       adb logcat -c
       # shellcheck disable=SC2086
-      run_flows quick ${flows:-nav start log scroll page swap calendar finish} || status=FAILED
+      run_flows quick ${flows:-nav start log stepper scroll page swap calendar finish} || status=FAILED
       crashes || status=FAILED
     fi
     log "RESULT $id: $status"

@@ -8,6 +8,7 @@ appId: com.gymtracker.app
       - runFlow: nav.yaml
       - runFlow: start.yaml
       - runFlow: log.yaml
+      - runFlow: stepper.yaml
       - runFlow: scroll.yaml
       - runFlow: page.yaml
       - runFlow: swap.yaml

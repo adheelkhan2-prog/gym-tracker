@@ -1,6 +1,6 @@
 import { router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -14,6 +14,7 @@ import { Burst, Flash } from '../components/motion';
 import { RestTimer } from '../components/RestRing';
 import { Sheet } from '../components/Sheet';
 import { Stepper } from '../components/Stepper';
+import { PageSwipe, Tap } from '../components/Tap';
 import { Badge, Button, IconButton, Press } from '../components/ui';
 import { crumb, logCrash } from '../crash';
 import { EQUIPMENT_LABEL, EXERCISES } from '../data/exercises';
@@ -22,7 +23,7 @@ import { swapsFor } from '../data/swaps';
 import { haptic } from '../feedback';
 import { fmtKg, fromKg, loadTypeOf, loadTypesFor, round1, type LoadType } from '../load';
 import { restCarry } from '../restCarry';
-import { missingFor, stepOf, suggestSet, weightIn } from '../sets';
+import { missingFor, prefillReps, stepOf, suggestSet, weightIn } from '../sets';
 import { bestBefore, dayById, hasLoggedSets, kgOf, prMetric, todayKey, useStore, type SetEntry, type State } from '../store';
 import { color, fmtClock, font, motion, radius, size, space, themed, touch, type } from '../theme';
 import { setText, slotStatuses, swapSlot, titleOf, type SlotStatus } from '../workout';
@@ -217,6 +218,7 @@ export default function WorkoutScreen() {
       </Press>
 
       <VideoPoolProvider current={videoOf(at)} next={videoOf(at + 1)} hold={hold} onSheet={setVideoSheet}>
+        <PageSwipe.Provider value={pan}>
         <GestureDetector gesture={pan}>
           <Animated.View style={[{ flex: 1 }, dragStyle]}>
             <Animated.View key={`${at}-${st.exerciseId}`} entering={reduce ? undefined : (dir > 0 ? SlideInRight : SlideInLeft).duration(motion.base)} style={{ flex: 1 }}>
@@ -238,6 +240,7 @@ export default function WorkoutScreen() {
             </Animated.View>
           </Animated.View>
         </GestureDetector>
+        </PageSwipe.Provider>
       </VideoPoolProvider>
 
       {/* Previous / Next (Finish on the last page), in thumb reach. */}
@@ -411,9 +414,12 @@ function ExerciseCard({
     const r = rows[i];
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
+    // Typed for this set earlier today (saved, not yet logged): exactly as typed.
+    if (r && (r.reps || r.weight || r.load)) return { ...r, done: false };
     const loggedBefore = rows.slice(0, i).some((x) => x.done);
-    if (!loggedBefore && target && target.reason !== 'first') return fromTarget(target, kind, unit, lt);
-    return suggestSet(state, id, plan, date, i).set;
+    const load = !loggedBefore && target && target.reason !== 'first' ? fromTarget(target, kind, unit, lt) : suggestSet(state, id, plan, date, i).set;
+    // Reps: last session's same set, else the plan's target.
+    return { ...load, reps: prefillReps(state, id, plan, date, i) };
   };
   const setDraft = (i: number, v: SetEntry) => {
     setDrafts((d) => ({ ...d, [i]: v }));
@@ -504,7 +510,14 @@ function ExerciseCard({
           ? `Next: ${EXERCISES[nextSt.exerciseId].name}`
           : 'Last sets done'
         : // The same value the next row will show: what you typed there, else the suggestion.
-          `Set ${doneNow + 1} · ${setText(drafts[i + 1] ?? suggestSet({ ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets } } } }, id, plan, date, i + 1).set, kind, unit)}`,
+          `Set ${doneNow + 1} · ${setText(
+            drafts[i + 1] ?? {
+              ...suggestSet({ ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets } } } }, id, plan, date, i + 1).set,
+              reps: prefillReps(state, id, plan, date, i + 1),
+            },
+            kind,
+            unit,
+          )}`,
       dayDone,
     });
   };
@@ -549,7 +562,7 @@ function ExerciseCard({
               // Log by: a small Pin | kg switch, remembered per exercise.
               <View style={s.lb} accessibilityRole="radiogroup" accessibilityLabel={`Log ${ex.name} by`}>
                 {(['stack', 'weight'] as LoadType[]).map((t) => (
-                  <Press
+                  <Tap
                     key={t}
                     onPress={() => {
                       if (lt === t) return;
@@ -557,15 +570,18 @@ function ExerciseCard({
                       update((st2) => ({ ...st2, loadTypes: { ...st2.loadTypes, [id]: t } }));
                       setDrafts(() => ({}));
                     }}
-                    style={[s.lbItem, lt === t && s.lbOn]}
+                    style={({ pressed }) => [s.lbItem, lt === t && s.lbOn, pressed && lt !== t && s.lbPressed]}
+                    hitSlop={{ top: 10, bottom: 10, left: 2, right: 2 }}
+                    android_disableSound
                     accessibilityRole="radio"
                     accessibilityState={{ checked: lt === t }}
                     accessibilityLabel={t === 'stack' ? 'Machine pin' : `Weight in ${unit}`}
                     testID={`logby-${t === 'stack' ? 'pin' : 'kg'}-${n}`}
-                    scaleTo={1}
                   >
-                    <Text style={[s.lbText, lt === t && s.lbTextOn]}>{t === 'stack' ? 'Pin' : unit}</Text>
-                  </Press>
+                    <Text style={[s.lbText, lt === t && s.lbTextOn]} maxFontSizeMultiplier={1.2}>
+                      {t === 'stack' ? 'Pin' : unit}
+                    </Text>
+                  </Tap>
                 ))}
               </View>
             ) : (
@@ -768,16 +784,17 @@ function SetRow({
             testID={`reps-${slotN}-${i}`}
           />
         </Stepper>
-        <Press
+        <Tap
           onPress={onLog}
-          style={[s.check, logged && s.checkDone]}
+          android_disableSound
+          style={({ pressed }) => [s.check, logged && s.checkDone, pressed && s.checkPressed]}
           accessibilityRole="button"
           accessibilityState={{ checked: logged }}
           accessibilityLabel={logged ? `Set ${label} of ${exName} logged. Tap to undo` : `Log set ${label} of ${exName}`}
           testID={`log-${slotN}-${i}`}
         >
           <Icon name="check" size={22} color={logged ? color.onAccent : color.text} />
-        </Press>
+        </Tap>
       </View>
       {warn && (
         <View style={s.missing} accessibilityLiveRegion="polite">
@@ -835,6 +852,11 @@ function NumBox({
       <TextInput
         autoFocus
         value={text}
+        // No cursor over the old number (it showed as "3|1"): it appears once you type, after the
+        // digits, and stays at the end.
+        caretHidden={text === ''}
+        selection={{ start: text.length, end: text.length }}
+        maxFontSizeMultiplier={1.2}
         onChangeText={(t) => {
           setText(t);
           onChangeText(t);
@@ -856,7 +878,7 @@ function NumBox({
   }
   const flat = StyleSheet.flatten(style) as TextStyle;
   return (
-    <Pressable
+    <Tap
       onPress={
         editable
           ? () => {
@@ -871,11 +893,21 @@ function NumBox({
       accessibilityLabel={`${accessibilityLabel}: ${value || 'empty'}`}
       accessibilityHint={editable ? 'Double tap to type a new number' : undefined}
       testID={testID}
+      android_disableSound
     >
-      <Text style={[s.boxText, { fontFamily: flat.fontFamily, fontSize: flat.fontSize }, !value && { color: placeholderTextColor }]} numberOfLines={1}>
+      {/* Shrinks to fit instead of cutting the number (or the "—") down to "…". */}
+      <Text
+        style={[s.boxText, { fontFamily: flat.fontFamily, fontSize: flat.fontSize }, !value && { color: placeholderTextColor }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+        maxFontSizeMultiplier={1.2}
+        ellipsizeMode="clip"
+        testID={`${testID}-value`}
+      >
         {value || placeholder}
       </Text>
-    </Pressable>
+    </Tap>
   );
 }
 
@@ -957,6 +989,7 @@ const s = themed(() =>
     lb: { flexDirection: 'row', borderRadius: radius.pill, backgroundColor: color.surface2, padding: 2, borderWidth: 1, borderColor: color.glassBorder },
     lbItem: { minHeight: 28, minWidth: 40, paddingHorizontal: space.sm, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
     lbOn: { backgroundColor: color.accent },
+    lbPressed: { backgroundColor: color.glassPressed },
     lbText: { fontFamily: font.bodyBold, fontSize: size.tiny, color: color.muted, letterSpacing: 0.3 },
     lbTextOn: { color: color.onAccent },
     num: { minHeight: touch.min, color: color.text, textAlign: 'center', fontFamily: font.display, fontSize: size.h3, paddingHorizontal: 0 },
@@ -1008,6 +1041,7 @@ const s = themed(() =>
       backgroundColor: color.surface3,
     },
     checkDone: { backgroundColor: color.accent },
+    checkPressed: { opacity: 0.75 },
     missing: {
       flexDirection: 'row',
       alignItems: 'center',

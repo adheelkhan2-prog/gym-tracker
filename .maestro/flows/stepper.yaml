@@ -1,0 +1,55 @@
+# − / + on every set row of the first exercise, with real taps; then the Pin | kg switch on the
+# first exercise that has one.
+appId: com.gymtracker.app
+---
+- runFlow: ../lib/begin-workout.yaml
+- runFlow:
+    file: ../lib/stepper-row.yaml
+    env: { CARD: "0", SET: "0", PAGE: "1" }
+- runFlow:
+    file: ../lib/stepper-row.yaml
+    env: { CARD: "0", SET: "1", PAGE: "1" }
+- runFlow:
+    file: ../lib/stepper-row.yaml
+    env: { CARD: "0", SET: "2", PAGE: "1" }
+- evalScript: ${output.page = 0}
+- repeat:
+    times: 6
+    commands:
+      - runFlow:
+          when:
+            true: ${output.page >= 0}
+          commands:
+            - runFlow:
+                when:
+                  visible:
+                    id: "logby-pin-${output.page}"
+                commands:
+                  - tapOn:
+                      id: "logby-pin-${output.page}"
+                  - assertVisible:
+                      id: "logby-pin-${output.page}"
+                      checked: true
+                  - tapOn:
+                      id: "logby-kg-${output.page}"
+                  - assertVisible:
+                      id: "logby-kg-${output.page}"
+                      checked: true
+                  - tapOn:
+                      id: "logby-pin-${output.page}"
+                  - assertVisible:
+                      id: "logby-pin-${output.page}"
+                      checked: true
+                  - runFlow:
+                      file: ../lib/stepper-row.yaml
+                      env: { CARD: "${output.page}", SET: "0", PAGE: "${output.page + 1}" }
+                  - evalScript: ${output.page = -1}
+            - runFlow:
+                when:
+                  true: ${output.page >= 0}
+                commands:
+                  - tapOn:
+                      id: "next-exercise"
+                  - evalScript: ${output.page = output.page + 1}
+- assertTrue: ${output.page == -1}
+- runFlow: ../lib/no-errors.yaml

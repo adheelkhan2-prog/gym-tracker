@@ -1,10 +1,14 @@
 // − [number] + for a set row: tap − / + to step, press and hold to repeat quickly with a light
 // haptic tick. The number in the middle (children) can still be tapped to type.
 import React, { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { haptic } from '../feedback';
 import { color, radius, themed, touch } from '../theme';
 import { Icon } from './icons';
+import { Tap } from './Tap';
+
+/** A hold stops by itself after this many steps, even if the release is somehow never seen. */
+const MAX_REPEATS = 80;
 
 /**
  * − [number] +. Tap − / + to step; press and hold to repeat quickly with a light haptic tick. The
@@ -37,6 +41,12 @@ export function Stepper({
 function HoldButton({ dir, onStep, label, testID }: { dir: 1 | -1; onStep: (dir: 1 | -1) => void; label: string; testID: string }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
+  const left = useRef(0);
+  // The newest onStep, so a running repeat never steps from a stale value.
+  const step = useRef(onStep);
+  useEffect(() => {
+    step.current = onStep;
+  }, [onStep]);
   const stop = () => {
     held.current = false;
     if (timer.current) clearTimeout(timer.current);
@@ -45,37 +55,38 @@ function HoldButton({ dir, onStep, label, testID }: { dir: 1 | -1; onStep: (dir:
   useEffect(() => stop, []);
   const repeat = (delay: number) => {
     timer.current = setTimeout(() => {
-      if (!held.current) return;
+      if (!held.current || --left.current <= 0) return stop();
       haptic.tap();
-      onStep(dir);
+      step.current(dir);
       repeat(Math.max(60, delay * 0.85));
     }, delay);
   };
   return (
-    <Pressable
+    <Tap
       // A tap steps once. Press and hold: after a short pause it repeats, a little faster each
       // time, until you let go (a quick tap can never leave a repeat running).
       onPress={() => {
         haptic.tap();
-        onStep(dir);
+        step.current(dir);
       }}
       delayLongPress={350}
       onLongPress={() => {
         stop();
         held.current = true;
+        left.current = MAX_REPEATS;
         haptic.tap();
-        onStep(dir);
+        step.current(dir);
         repeat(110);
       }}
       onPressOut={stop}
+      android_disableSound
       style={({ pressed }) => [s.stepBtn, pressed && s.stepBtnOn]}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={4}
       testID={testID}
     >
-      <Icon name={dir > 0 ? 'plus' : 'minus'} size={16} color={color.text} />
-    </Pressable>
+      <Icon name={dir > 0 ? 'plus' : 'minus'} size={18} color={color.text} />
+    </Tap>
   );
 }
 
@@ -93,7 +104,7 @@ const s = themed(() =>
       overflow: 'hidden',
     },
     stepBoxDone: { justifyContent: 'center' },
-    stepBtn: { width: 34, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+    stepBtn: { width: 40, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
     stepBtnOn: { backgroundColor: color.glassPressed },
     inputWarn: { borderColor: color.warnEdge, backgroundColor: color.warnDim },
   }),

@@ -127,3 +127,16 @@ export function stepOf(what: 'pin' | 'weight' | 'reps' | 'secs', unit: Unit, dum
   return unit === 'kg' ? (small ? 1 : 2.5) : small ? 2 : 5;
 }
 
+
+/**
+ * The reps (or seconds) set `i` is pre-filled with: what you did on set `i` last session, else the
+ * plan's target. Only ever a reps value: never a weight, a pin or another set's typing.
+ */
+export function prefillReps(state: State, exerciseId: string, plan: PlannedExercise | undefined, date: string, i: number): string {
+  const prev = previousSession(state.logs, exerciseId, date);
+  const last = prev?.sets[i]?.reps;
+  if (last && (num(last) ?? 0) > 0) return String(num(last));
+  const top = plan ? targetTop(plan.target) : null;
+  const bottom = plan ? targetBottom(plan.target) : null;
+  return String(top ?? bottom ?? '');
+}

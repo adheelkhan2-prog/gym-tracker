@@ -1,0 +1,77 @@
+# Real taps on set ${SET} of card ${CARD}: typing replaces the value, every − / + tap steps once,
+# a hold repeats and then stops, and no tap moves to another exercise.
+appId: com.gymtracker.app
+---
+- runFlow:
+    file: scroll-to.yaml
+    env:
+      ID: "log-${CARD}-${SET}"
+# Reps: type 10 over the pre-filled value (it must replace it, never append).
+- tapOn:
+    id: "reps-${CARD}-${SET}"
+- inputText: "10"
+- pressKey: Enter
+- assertVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: "10"
+- tapOn:
+    id: "reps-${CARD}-${SET}-plus"
+- assertVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: "11"
+- tapOn:
+    id: "reps-${CARD}-${SET}-plus"
+- assertVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: "12"
+- tapOn:
+    id: "reps-${CARD}-${SET}-minus"
+- assertVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: "11"
+- tapOn:
+    id: "reps-${CARD}-${SET}-minus"
+- tapOn:
+    id: "reps-${CARD}-${SET}-minus"
+- assertVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: "9"
+# Hold +: it repeats (more than one step)...
+- longPressOn:
+    id: "reps-${CARD}-${SET}-plus"
+- assertNotVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: "(9|10)"
+# ...and stops when let go: the value stays put.
+- copyTextFrom:
+    id: "reps-${CARD}-${SET}-value"
+- evalScript: ${output.held = maestro.copiedText}
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    id: "reps-${CARD}-${SET}-value"
+    text: ${output.held}
+# Weight / pin: + then − returns to where it started.
+- runFlow:
+    when:
+      visible:
+        id: "weight-${CARD}-${SET}-plus"
+    commands:
+      - tapOn:
+          id: "weight-${CARD}-${SET}"
+      - inputText: "40"
+      - pressKey: Enter
+      - assertVisible:
+          id: "weight-${CARD}-${SET}-value"
+          text: "40"
+      - tapOn:
+          id: "weight-${CARD}-${SET}-plus"
+      - assertNotVisible:
+          id: "weight-${CARD}-${SET}-value"
+          text: "40"
+      - tapOn:
+          id: "weight-${CARD}-${SET}-minus"
+      - assertVisible:
+          id: "weight-${CARD}-${SET}-value"
+          text: "40"
+- assertVisible: "Exercise ${PAGE} of .*"
