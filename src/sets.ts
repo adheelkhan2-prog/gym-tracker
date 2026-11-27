@@ -134,13 +134,16 @@ export function stepOf(what: 'pin' | 'weight' | 'reps' | 'secs', unit: Unit, dum
  */
 export function prefillReps(state: State, exerciseId: string, plan: PlannedExercise | undefined, date: string, i: number, load?: SetEntry): string {
   const prev = previousSession(state.logs, exerciseId, date);
-  const lastSet = prev?.sets[i];
-  const last = lastSet?.reps;
+  // Reps come from last session's set i only; the load comparison falls back to its last set, as
+  // the suggestion's load does for an extra set.
+  const lastSet = prev ? (prev.sets[i] ?? prev.sets[prev.sets.length - 1]) : undefined;
+  const last = prev?.sets[i]?.reps;
   const top = plan ? targetTop(plan.target) : null;
   const bottom = plan ? targetBottom(plan.target) : null;
   if (last && (num(last) ?? 0) > 0) {
     // A step up in load (heavier kg, or a higher pin) starts again at the bottom of the range.
-    const upKg = load && lastSet && kgOf(load) !== null && kgOf(lastSet) !== null && kgOf(load)! > kgOf(lastSet)!;
+    // (Over half a kilo: a weight shown in lb converts back to a hair over the same kg.)
+    const upKg = load && lastSet && kgOf(load) !== null && kgOf(lastSet) !== null && kgOf(load)! > kgOf(lastSet)! + 0.5;
     const upPin = load?.load?.pin !== undefined && lastSet?.load?.pin !== undefined && load.load.pin > lastSet.load.pin;
     if ((upKg || upPin) && bottom !== null) return String(bottom);
     return String(num(last));

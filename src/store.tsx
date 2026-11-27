@@ -122,18 +122,21 @@ const OLD_IDS: Record<string, string> = {
 export async function loadState(): Promise<State | null> {
   let raw: string | null = null;
   let state: State | null = null;
+  let fromV1 = false;
   try {
     raw = (await readKey(STORAGE_KEY)) ?? (await readKey(V2_KEY));
     if (raw) state = applyPending(migrate(JSON.parse(raw), false));
     else {
       raw = await readKey(OLD_KEY);
+      fromV1 = !!raw;
       if (raw) state = migrate(JSON.parse(raw), true);
       // Speed-check builds only (never set in normal builds): start with a big history.
       else if (PERF) return bigHistory(DEFAULT_STATE);
     }
   } catch (e) {
     if (e instanceof StorageReadError) throw e;
-    if (raw) await AsyncStorage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw).catch(() => {});
+    // (A copy of the oldest save format says so in its name, to be read as that format later.)
+    if (raw) await AsyncStorage.setItem(`${BACKUP_PREFIX}${fromV1 ? 'v1-' : ''}${Date.now()}`, raw).catch(() => {});
     state = null;
   }
   // Workouts kept in older copies on the phone (a backup of data that once couldn't be read, or an
@@ -167,7 +170,8 @@ async function readKey(key: string) {
  */
 async function restoreBackups(state: State | null): Promise<State | null> {
   const cleared = state?.historyClearedAt ?? 0;
-  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(BACKUP_PREFIX) && (Number(k.slice(BACKUP_PREFIX.length)) || 0) > cleared);
+  const stamp = (k: string) => Number(k.slice(BACKUP_PREFIX.length).replace(/^v1-/, '')) || 0;
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(BACKUP_PREFIX) && stamp(k) > cleared);
   const base = state ?? null;
   const todo = keys.filter((k) => !(base?.restored ?? []).includes(k));
   if (!todo.length) return state;
@@ -175,7 +179,7 @@ async function restoreBackups(state: State | null): Promise<State | null> {
   for (const key of todo) {
     try {
       const raw = await AsyncStorage.getItem(key);
-      copies.push({ key, state: raw ? migrate(JSON.parse(raw), false) : { logs: {}, sessions: {} } });
+      copies.push({ key, state: raw ? migrate(JSON.parse(raw), key.startsWith(`${BACKUP_PREFIX}v1-`)) : { logs: {}, sessions: {} } });
     } catch {
       // A copy that can't be read stays where it is; it is marked as tried and adds nothing.
       copies.push({ key, state: { logs: {}, sessions: {} } });
@@ -429,11 +433,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 Object.entries(now).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify((DEFAULT_STATE as Record<string, unknown>)[k])),
               ) as Partial<State>;
               const cleared = !!now.historyClearedAt;
+              // Per exercise, the version with more logged sets wins; sessions keep a finish.
+              const logs = cleared ? now.logs : mergeLogs(now.logs, base.logs).logs;
+              if (!cleared)
+                for (const [d, day] of Object.entries(base.logs))
+                  for (const [id, l] of Object.entries(day))
+                    if ((l.sets ?? []).filter(isLoggedSet).length > (logs[d]?.[id]?.sets ?? []).filter(isLoggedSet).length) logs[d] = { ...logs[d], [id]: l };
+              const sessions = { ...base.sessions };
+              for (const [d, ses] of Object.entries(now.sessions)) {
+                const b = base.sessions[d];
+                sessions[d] = b
+                  ? { ...b, ...ses, startedAt: Math.min(b.startedAt ?? Infinity, ses.startedAt ?? Infinity) || undefined, finishedAt: Math.max(b.finishedAt ?? 0, ses.finishedAt ?? 0) || undefined }
+                  : ses;
+              }
               const merged: State = {
                 ...base,
                 ...changed,
-                logs: cleared ? now.logs : mergeLogs(now.logs, base.logs).logs,
-                sessions: cleared ? now.sessions : { ...base.sessions, ...now.sessions },
+                logs,
+                sessions: cleared ? now.sessions : sessions,
                 taken: { ...base.taken, ...now.taken },
                 warmups: cleared ? now.warmups : { ...base.warmups, ...now.warmups },
               };

@@ -30,6 +30,9 @@ import { pctChange, pinSetsOn, pinSetsText, previousSameDay, volumeOn } from '..
 /** Muscles seen from behind (the model faces them at yaw π). */
 const BACK = new Set<MuscleId>(['posterior_delt', 'rotator_cuff', 'triceps_long', 'triceps_lateral', 'triceps_medial', 'upper_lats', 'lower_lats', 'teres_major', 'rhomboids', 'upper_traps', 'mid_traps', 'lower_traps', 'erector_spinae', 'neck_extensors', 'forearm_extensors', 'glute_max', 'glute_med', 'medial_hamstrings', 'lateral_hamstrings', 'gastrocnemius', 'soleus']);
 
+/** Leg and hip muscles: a day that works them shows the whole body. */
+const LEGS = new Set<MuscleId>(['glute_max', 'glute_med', 'hip_rotators', 'hip_flexors', 'adductors', 'rectus_femoris', 'vastus_group', 'medial_hamstrings', 'lateral_hamstrings', 'gastrocnemius', 'soleus', 'tibialis_anterior']);
+
 // Choreography (ms after open). One tap anywhere jumps to the end.
 const T = { muscles: 900, perMuscle: 170, afterMuscles: 250, stats: 650, prGap: 650 };
 
@@ -186,6 +189,12 @@ export default function CompleteScreen() {
     }
     return back > front ? Math.PI : 0;
   }, [data.muscles]);
+  // The upper body, unless legs did a real share of the work (then the whole body).
+  const framing = useMemo(() => {
+    const total = data.muscles.reduce((n, [, x]) => n + x, 0);
+    const legs = data.muscles.filter(([m]) => LEGS.has(m)).reduce((n, [, x]) => n + x, 0);
+    return total > 0 && legs / total > 0.3 ? 'full' : 'upperBody';
+  }, [data.muscles]);
   const describe = useCallback((m: MuscleId) => `${MUSCLE_LABEL[m]}${trained.has(m) ? ' · trained today' : ''}`, [trained]);
 
   const copy = line(data.prs.length ? FINISH_PR : FINISH, date + data.sets);
@@ -208,7 +217,7 @@ export default function CompleteScreen() {
         {/* Hero: the body you just trained */}
         <View style={{ marginTop: space.sm }}>
           {show3d ? (
-            <BodyModel paint={paint} pulses={pulses} height={420} framing="upperBody" startYaw={startYaw} intro tint={color.accent} describe={describe} showHint={false} />
+            <BodyModel paint={paint} pulses={pulses} height={420} framing={framing} startYaw={startYaw} intro tint={color.accent} describe={describe} showHint={false} />
           ) : (
             <View style={{ height: 420 }} />
           )}
