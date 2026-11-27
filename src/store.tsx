@@ -175,12 +175,14 @@ async function restoreBackups(state: State | null): Promise<State | null> {
   for (const key of todo) {
     try {
       const raw = await AsyncStorage.getItem(key);
-      if (raw) copies.push({ key, state: migrate(JSON.parse(raw), false) });
+      copies.push({ key, state: raw ? migrate(JSON.parse(raw), false) : { logs: {}, sessions: {} } });
     } catch {
-      // An unreadable copy stays where it is; it just can't add anything.
+      // A copy that can't be read stays where it is; it is marked as tried and adds nothing.
+      copies.push({ key, state: { logs: {}, sessions: {} } });
     }
   }
-  if (!copies.length) return state;
+  // Nothing to bring back and nothing saved yet: a fresh start (the copies are tried again later).
+  if (!base && copies.every((c) => !Object.keys(c.state.logs ?? {}).length)) return null;
   return restoreFrom(base ?? { ...DEFAULT_STATE, restored: [] }, copies);
 }
 
@@ -420,14 +422,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             .then((loaded) => {
               const now = latest.current;
               const base = loaded ?? DEFAULT_STATE;
-              // What was done meanwhile wins (its sets, finished workouts, ticks); the saved data
-              // fills in everything else.
+              // What was done meanwhile wins: settings changed from the defaults, its sets,
+              // finished workouts and ticks; the saved data fills in everything else. A history
+              // deleted meanwhile stays deleted.
+              const changed = Object.fromEntries(
+                Object.entries(now).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify((DEFAULT_STATE as Record<string, unknown>)[k])),
+              ) as Partial<State>;
+              const cleared = !!now.historyClearedAt;
               const merged: State = {
                 ...base,
-                logs: mergeLogs(now.logs, base.logs).logs,
-                sessions: { ...base.sessions, ...now.sessions },
+                ...changed,
+                logs: cleared ? now.logs : mergeLogs(now.logs, base.logs).logs,
+                sessions: cleared ? now.sessions : { ...base.sessions, ...now.sessions },
                 taken: { ...base.taken, ...now.taken },
-                warmups: { ...base.warmups, ...now.warmups },
+                warmups: cleared ? now.warmups : { ...base.warmups, ...now.warmups },
               };
               blocked.current = false;
               setSaveBlocked(false);
@@ -435,7 +443,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               setState(merged);
             })
             .catch(() => {
-              if (++tries < 20) setTimeout(retry, 3000);
+              // Keep trying for as long as the app runs (every 3 s at first, then every 30 s).
+              setTimeout(retry, Math.min(30000, 3000 * ++tries));
             });
         };
         setTimeout(retry, 3000);
@@ -718,7 +727,8 @@ export function dayOfDate(full: State, date: string): WorkoutDay | undefined {
     let best = 0;
     for (const d of activeProgram(full).days) {
       const hit = d.exercises.filter((e) => e.options.some((o) => logged.includes(o)) || logged.includes(full.swaps?.[e.slot] ?? '')).length;
-      if (hit > best) {
+      // Only a clear match: the day holds at least 3 in 4 of the exercises logged.
+      if (hit > best && hit >= Math.ceil(logged.length * 0.75)) {
         best = hit;
         day = d;
       }

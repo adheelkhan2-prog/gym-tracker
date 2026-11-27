@@ -60,9 +60,8 @@ export default function TodayScreen() {
     let live = true;
     restSetupStatus()
       .then((st) => {
-        if (!live) return;
         update((s) => ({ ...s, restSetupAsked: true }));
-        if (!restSetupDone(st)) setRestSetup(true);
+        if (live && !restSetupDone(st)) setRestSetup(true);
       })
       .catch(() => {});
     return () => {
@@ -135,7 +134,8 @@ export default function TodayScreen() {
         .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
         // Your training weekdays, plus any other day you trained on (it counts too).
         .filter((x) => dayHasWork(state, state.week[x.wd]) || trainedOn(state, x.d))
-        .map((x) => ({ ...x, id: (dayHasWork(state, state.week[x.wd]) ? state.week[x.wd] : dayOfDate(state, x.d)?.id) ?? '' }));
+                // A trained day previews what was trained; an untrained one its scheduled day.
+        .map((x) => ({ ...x, id: (trainedOn(state, x.d) ? dayOfDate(state, x.d)?.id : null) ?? (dayHasWork(state, state.week[x.wd]) ? state.week[x.wd] : '') ?? '' }));
   const passDone = pass.filter((x) => trainedOn(state, x.d)).length;
   // One pass through the plan is the goal; training more never reads "6 of 5".
   const scheduledCount = program.rotation ? Math.min(7, program.days.length) : pass.filter((x) => dayHasWork(state, state.week[x.wd])).length;

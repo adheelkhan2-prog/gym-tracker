@@ -45,7 +45,7 @@ export function RestSetupSheet({ onClose }: { onClose: () => void }) {
       subtitle="So “Rest is over” buzzes at 0:00, even with the screen off."
       onClose={onClose}
       testID="rest-setup"
-      footer={<Button variant="ghost" label={st && st.battery && st.exact && st.notify ? 'Done' : 'Not now'} onPress={onClose} testID="rest-setup-close" />}
+      footer={<Button variant="ghost" label={st && st.battery && st.exact && st.notify && !st.oem ? 'Done' : 'Not now'} onPress={onClose} testID="rest-setup-close" />}
     >
       <View style={{ gap: space.md }}>
         <Step
