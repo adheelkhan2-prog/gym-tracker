@@ -1,0 +1,6 @@
+request r8-final-2 (full) at 6893d6d, session up 154 min
+no app change since b5fa7cb: reusing the installed build
+PASS online full
+app network bytes during the online run: 0
+PASS airplane airplane
+RESULT r8-final-2: OK
