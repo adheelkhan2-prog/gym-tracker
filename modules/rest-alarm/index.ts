@@ -2,8 +2,8 @@
 import { requireOptionalNativeModule } from 'expo';
 
 type RestAlarm = {
-  /** Ongoing notification counting down to `endsAt` (epoch ms), drawn by Android (no app updates). */
-  showCountdown(endsAt: number, title: string, body: string, channelId: string, color: string): Promise<void>;
+  /** Ongoing notification counting down to `endsAt` (epoch ms), drawn by Android (no app updates). False below Android 8. */
+  showCountdown(endsAt: number, title: string, body: string, channelId: string, color: string): Promise<boolean>;
   cancelCountdown(): Promise<void>;
   /** True when Android's battery optimisation leaves this app alone. */
   isIgnoringBatteryOptimizations(): Promise<boolean>;

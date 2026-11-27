@@ -410,17 +410,21 @@ function ExerciseCard({
    * What row i shows: what you logged, else what you typed, else this week's target until a set is
    * logged today (so the rows match the "Target this week" line), then your previous set.
    */
-  const valueOf = (i: number): SetEntry => {
-    const r = rows[i];
+  /** Row i's value given these logged rows (the same rule before and right after logging a set). */
+  const rowValue = (i: number, logged: SetEntry[]): SetEntry => {
+    const r = logged[i];
     if (r?.done) return r;
     if (drafts[i]) return drafts[i];
     // Typed for this set earlier today (saved, not yet logged): exactly as typed.
     if (r && (r.reps || r.weight || r.load)) return { ...r, done: false };
-    const loggedBefore = rows.slice(0, i).some((x) => x.done);
-    const load = !loggedBefore && target && target.reason !== 'first' ? fromTarget(target, kind, unit, lt) : suggestSet(state, id, plan, date, i).set;
+    const loggedBefore = logged.slice(0, i).some((x) => x.done);
+    const st2 = logged === rows ? state : { ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets: logged } } } };
+    const load = !loggedBefore && target && target.reason !== 'first' ? fromTarget(target, kind, unit, lt) : suggestSet(st2, id, plan, date, i).set;
     // Reps: last session's same set, else the plan's target.
     return { ...load, reps: prefillReps(state, id, plan, date, i) };
   };
+  const valueOf = (i: number) => rowValue(i, rows);
+  const nextRow = (i: number, logged: SetEntry[]) => rowValue(i, logged);
   const setDraft = (i: number, v: SetEntry) => {
     setDrafts((d) => ({ ...d, [i]: v }));
     if (missing?.i === i) setMissing(null);
@@ -510,14 +514,7 @@ function ExerciseCard({
           ? `Next: ${EXERCISES[nextSt.exerciseId].name}`
           : 'Last sets done'
         : // The same value the next row will show: what you typed there, else the suggestion.
-          `Set ${doneNow + 1} · ${setText(
-            drafts[i + 1] ?? {
-              ...suggestSet({ ...state, logs: { ...state.logs, [date]: { ...state.logs[date], [id]: { ...log, sets } } } }, id, plan, date, i + 1).set,
-              reps: prefillReps(state, id, plan, date, i + 1),
-            },
-            kind,
-            unit,
-          )}`,
+          `Set ${doneNow + 1} · ${setText(nextRow(i + 1, sets), kind, unit)}`,
       dayDone,
     });
   };

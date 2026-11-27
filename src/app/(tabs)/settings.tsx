@@ -195,7 +195,7 @@ export default function SettingsScreen() {
                 icon="trash"
                 label="Delete"
                 onPress={() => {
-                  update((st) => ({ ...st, logs: {}, sessions: {}, warmups: {} }));
+                  update((st) => ({ ...st, logs: {}, sessions: {}, warmups: {}, restoreNote: null, historyClearedAt: Date.now() }));
                   setConfirmDelete(false);
                 }}
               />

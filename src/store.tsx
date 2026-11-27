@@ -5,6 +5,7 @@ import type { MuscleId } from './data/muscles';
 import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
 import { PROGRAMS, type Program } from './data/programs';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
+import { logCrash } from './crash';
 import { PERF } from './perf';
 import { isLoggedSet, restoreFrom } from './restore';
 import { bigHistory } from './perfHistory';
@@ -64,6 +65,8 @@ export type State = {
   restored?: string[];
   /** Dates whose workouts were brought back from an older copy; shown once on Today. */
   restoreNote?: { dates: string[] } | null;
+  /** When "Delete workout history" was used: older copies from before it are never merged back. */
+  historyClearedAt?: number;
   /** The first-launch "keep the rest timer on time" question was shown. */
   restSetupAsked?: boolean;
 };
@@ -128,7 +131,8 @@ export async function loadState(): Promise<State | null> {
       // Speed-check builds only (never set in normal builds): start with a big history.
       else if (PERF) return bigHistory(DEFAULT_STATE);
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof StorageReadError) throw e;
     if (raw) await AsyncStorage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw).catch(() => {});
     state = null;
   }
@@ -141,25 +145,37 @@ export async function loadState(): Promise<State | null> {
   }
 }
 
-/** Read one key, trying once more if storage hiccups (a failed read must not look like "no data"). */
+/** Thrown when storage itself can't be read (not "no data"): the app must not save over it. */
+export class StorageReadError extends Error {}
+
+/** Read one key, retrying a few times if storage hiccups. A read that keeps failing throws. */
 async function readKey(key: string) {
-  try {
-    return await AsyncStorage.getItem(key);
-  } catch {
-    return AsyncStorage.getItem(key);
+  for (let i = 0; ; i++) {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (e) {
+      if (i >= 3) throw new StorageReadError(String(e));
+      await new Promise((r) => setTimeout(r, 150 * (i + 1)));
+    }
   }
 }
 
+/**
+ * Copies kept when saved data couldn't be read (`unreadable-backup-<time>`) are the only ones merged:
+ * an older version's save (v1/v2) is a snapshot from before later edits and deletes, so merging it
+ * would bring deleted workouts back. Copies from before "Delete workout history" are skipped too.
+ */
 async function restoreBackups(state: State | null): Promise<State | null> {
-  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(BACKUP_PREFIX) || k === V2_KEY || k === OLD_KEY);
+  const cleared = state?.historyClearedAt ?? 0;
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(BACKUP_PREFIX) && (Number(k.slice(BACKUP_PREFIX.length)) || 0) > cleared);
   const base = state ?? null;
-  const todo = keys.filter((k) => !(base?.restored ?? []).includes(k) && !(k === V2_KEY && !base));
+  const todo = keys.filter((k) => !(base?.restored ?? []).includes(k));
   if (!todo.length) return state;
   const copies: { key: string; state: Pick<State, 'logs' | 'sessions'> }[] = [];
   for (const key of todo) {
     try {
       const raw = await AsyncStorage.getItem(key);
-      if (raw) copies.push({ key, state: migrate(JSON.parse(raw), key === OLD_KEY) });
+      if (raw) copies.push({ key, state: migrate(JSON.parse(raw), false) });
     } catch {
       // An unreadable copy stays where it is; it just can't add anything.
     }
@@ -376,19 +392,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // The newest state, always: every change is computed from it at once, so update() and commit()
   // calls in the same tap compose in order and commit() saves exactly what's shown.
   const latest = useRef(state);
+  const blocked = useRef(false);
 
   useEffect(() => {
-    loadState().then((loaded) => {
-      if (loaded) {
-        latest.current = loaded;
-        setState(loaded);
-      }
-      setReady(true);
-    });
+    loadState()
+      .then((loaded) => {
+        if (loaded) {
+          latest.current = loaded;
+          setState(loaded);
+        }
+        setReady(true);
+      })
+      .catch((e) => {
+        // Storage itself failed to read: run on defaults for now, but never save over the data
+        // that couldn't be read (it may be fine on the next start).
+        blocked.current = true;
+        logCrash('error', e, 'reading saved data');
+        setReady(true);
+      });
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || blocked.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
@@ -405,7 +430,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     latest.current = next;
     setState(next);
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (!blocked.current) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
   const value = useMemo(() => ({ state, ready, update, commit }), [state, ready, update, commit]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -647,8 +672,23 @@ export const loggedSetCount = (logs: State['logs'], date: string) =>
 
 /** Sets the plan had for the workout done on `date` (the session's day, else that weekday's). */
 function plannedSetCount(state: Pick<State, 'logs' | 'sessions'> & Partial<State>, date: string) {
-  const id = state.sessions[date]?.dayId ?? (state.week ? state.week[dateFromKey(date).getDay()] : null);
-  const day = state.programId !== undefined ? dayById(state as State, id) : undefined;
+  if (state.programId === undefined) return 0;
+  const full = state as State;
+  let day = dayById(full, state.sessions[date]?.dayId);
+  if (!day) {
+    // No session saved (e.g. an older save): the plan day whose exercises match the logged ones best
+    // (a rotating plan has no weekday to go by).
+    const logged = Object.keys(state.logs[date] ?? {});
+    let best = 0;
+    for (const d of activeProgram(full).days) {
+      const hit = d.exercises.filter((e) => e.options.some((o) => logged.includes(o)) || logged.includes(full.swaps?.[e.slot] ?? '')).length;
+      if (hit > best) {
+        best = hit;
+        day = d;
+      }
+    }
+    if (!day && !activeProgram(full).rotation) day = dayById(full, state.week?.[dateFromKey(date).getDay()]);
+  }
   return day ? day.exercises.reduce((n, e) => n + e.sets, 0) : 0;
 }
 
@@ -663,7 +703,8 @@ export function dayStatus(state: Pick<State, 'logs' | 'sessions'> & Partial<Stat
   if (state.sessions[date]?.finishedAt) return 'finished';
   if (date >= today) return 'partial';
   const planned = plannedSetCount(state, date);
-  return planned > 0 && n >= Math.ceil(planned * 0.75) ? 'finished' : 'partial';
+  // No plan to compare with: a full-length session (12+ sets) counts as finished.
+  return n >= (planned > 0 ? Math.ceil(planned * 0.75) : 12) ? 'finished' : 'partial';
 }
 
 /** The workout on `date` was finished (see dayStatus): the only thing that shows a day as Done. */

@@ -1,11 +1,17 @@
-// Bringing back workouts from older copies of the saved data that are still on the phone: a copy
-// kept when saved data couldn't be read once (`unreadable-backup-*`), and the saves of older app
-// versions (v2, v1), which are never deleted. Each copy is merged once; nothing is ever removed.
+// Bringing back workouts from a copy of the saved data kept on the phone when it once couldn't be
+// read (`unreadable-backup-*`): the app had started fresh, so those workouts were missing. Each copy
+// is merged once, only where today's data has nothing for that exercise; nothing is ever removed.
 import type { DayLog, SetEntry, State } from './store';
 
+/** A number as typed ("62,5" counts as 62.5), else null. */
+const parse = (v: string | undefined) => {
+  if (v === undefined || v.trim() === '') return null;
+  const n = Number(v.replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
 /** A set that was ticked as logged and has any number on it (reps, seconds, a weight or a pin). */
-export const isLoggedSet = (s: SetEntry) =>
-  !!s.done && ((Number(s.reps) || 0) > 0 || (s.weight !== '' && Number.isFinite(Number(s.weight))) || s.load?.pin !== undefined);
+export const isLoggedSet = (s: SetEntry) => !!s.done && ((parse(s.reps) ?? 0) > 0 || parse(s.weight) !== null || s.load?.pin !== undefined);
 
 const loggedIn = (log: { sets?: SetEntry[] } | undefined) => (log?.sets ?? []).filter(isLoggedSet).length;
 
@@ -21,7 +27,8 @@ export function mergeLogs(current: State['logs'], copy: State['logs']): { logs: 
     const next: DayLog = { ...(logs[date] ?? {}) };
     for (const [id, log] of Object.entries(day ?? {})) {
       if (!log || !Array.isArray(log.sets) || !loggedIn(log)) continue;
-      if (loggedIn(next[id]) > 0) continue; // today's data wins wherever it has sets
+      // Today's data wins wherever it has anything for that exercise (even unticked typing).
+      if (next[id]) continue;
       next[id] = { ...log, sets: log.sets.map((s) => ({ ...s })) };
       gained = true;
     }

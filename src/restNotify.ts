@@ -113,10 +113,7 @@ export async function startRestNotification(endsAt: number, next: string, sound:
     },
     trigger: endTrigger(endsAt, sound),
   }).catch(() => {});
-  if (RestAlarm) {
-    await RestAlarm.showCountdown(endsAt, 'Resting', `Next: ${next}`, LIVE_CHANNEL, color.accent).catch(() => {});
-    return;
-  }
+  if (RestAlarm && (await RestAlarm.showCountdown(endsAt, 'Resting', `Next: ${next}`, LIVE_CHANNEL, color.accent).catch(() => false))) return;
   await showLive(endsAt, next).catch(() => {});
   ticker = setInterval(() => {
     if (Date.now() >= endsAt) {

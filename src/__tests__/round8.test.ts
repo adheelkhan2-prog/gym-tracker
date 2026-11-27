@@ -4,7 +4,7 @@ import { dayMark as calendarMarkFor } from '../calendar';
 import { PROGRAMS } from '../data/programs';
 import { mergeLogs } from '../restore';
 import { prefillReps } from '../sets';
-import { BACKUP_PREFIX, DEFAULT_STATE, STORAGE_KEY, dayStatus, loadState, trainedOn, trainingStreak, weekSummary, type State } from '../store';
+import { BACKUP_PREFIX, DEFAULT_STATE, STORAGE_KEY, StorageReadError, dayStatus, loadState, trainedOn, trainingStreak, weekSummary, type State } from '../store';
 
 const kg = (w: number, r: number, done = true) => ({ weight: String(w), reps: String(r), done, u: 'kg' as const });
 const st = (extra: Partial<State> = {}): State => ({ ...DEFAULT_STATE, unit: 'kg', ...extra });
@@ -123,5 +123,28 @@ describe('rest timer alert', () => {
     expect(t).toMatchObject({ delivery: 'alarmClock', channelId: 'rest-end-alarm' });
     expect((t.date as Date).getTime()).toBe(1_800_000_000_000);
     expect(endTrigger(1, false).channelId).toBe('rest-end-vibrate');
+  });
+});
+
+describe('restoring never undoes a delete, and a failed read never looks like no data', () => {
+  test('backups from before "Delete workout history" are never merged back', async () => {
+    const backup = st({ logs: { '2026-11-24': { db_row: { sets: [kg(30, 10)] } } } });
+    await AsyncStorage.setItem(`${BACKUP_PREFIX}1000`, JSON.stringify(backup));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(st({ logs: {}, historyClearedAt: 2000 })));
+    const s = (await loadState())!;
+    expect(s.logs).toEqual({});
+    expect(s.restoreNote ?? null).toBeNull();
+  });
+
+  test('an older version’s save (v2) is never merged into the current one', async () => {
+    await AsyncStorage.setItem('gym-tracker/state/v2', JSON.stringify(st({ logs: { '2026-10-01': { flat_bench: { sets: [kg(50, 8)] } } } })));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(st({ logs: { '2026-11-26': { flat_bench: { sets: [kg(70, 8)] } } } })));
+    expect(Object.keys((await loadState())!.logs)).toEqual(['2026-11-26']);
+  });
+
+  test('storage that keeps failing to read throws (the app then never saves over it)', async () => {
+    const spy = jest.spyOn(AsyncStorage, 'getItem').mockRejectedValue(new Error('io'));
+    await expect(loadState()).rejects.toBeInstanceOf(StorageReadError);
+    spy.mockRestore();
   });
 });

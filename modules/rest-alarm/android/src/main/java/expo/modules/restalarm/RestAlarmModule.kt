@@ -31,28 +31,28 @@ class RestAlarmModule : Module() {
   private val notifications: NotificationManager
     get() = androidContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+  /**
+   * Returns false (and shows nothing) below Android 8, where a notification can't remove itself at
+   * 0:00: the app then keeps its own updated countdown instead.
+   */
   @JS
-  suspend fun showCountdown(endsAt: Double, title: String, body: String, channelId: String, color: String): Unit = withContext(Dispatchers.Main) {
+  suspend fun showCountdown(endsAt: Double, title: String, body: String, channelId: String, color: String): Boolean = withContext(Dispatchers.Main) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return@withContext false
     val ctx = androidContext
     val end = endsAt.toLong()
     val left = end - System.currentTimeMillis()
     if (left <= 0) {
       notifications.cancel(COUNTDOWN_ID)
-      return@withContext
+      return@withContext true
     }
-    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      if (notifications.getNotificationChannel(channelId) == null) {
-        val ch = NotificationChannel(channelId, "Rest timer (countdown)", NotificationManager.IMPORTANCE_LOW)
-        ch.setSound(null, null)
-        ch.enableVibration(false)
-        ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-        notifications.createNotificationChannel(ch)
-      }
-      Notification.Builder(ctx, channelId).setTimeoutAfter(left)
-    } else {
-      @Suppress("DEPRECATION")
-      Notification.Builder(ctx).setPriority(Notification.PRIORITY_LOW)
+    if (notifications.getNotificationChannel(channelId) == null) {
+      val ch = NotificationChannel(channelId, "Rest timer (countdown)", NotificationManager.IMPORTANCE_LOW)
+      ch.setSound(null, null)
+      ch.enableVibration(false)
+      ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+      notifications.createNotificationChannel(ch)
     }
+    val builder = Notification.Builder(ctx, channelId).setTimeoutAfter(left)
     builder
       .setSmallIcon(smallIcon(ctx))
       .setContentTitle(title)
@@ -69,6 +69,7 @@ class RestAlarmModule : Module() {
       .setColor(runCatching { Color.parseColor(color) }.getOrDefault(Color.RED))
     openApp(ctx)?.let { builder.setContentIntent(it) }
     notifications.notify(COUNTDOWN_ID, builder.build())
+    true
   }
 
   @JS
