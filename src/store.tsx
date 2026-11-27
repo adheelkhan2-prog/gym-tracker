@@ -6,6 +6,7 @@ import { DEFAULT_WEEK, type WorkoutDay } from './data/program';
 import { PROGRAMS, type Program } from './data/programs';
 import { loadTypesFor, stackKg, toKg, type LoadInfo, type LoadType, type MachineSetup, type Unit } from './load';
 import { PERF } from './perf';
+import { isLoggedSet, restoreFrom } from './restore';
 import { bigHistory } from './perfHistory';
 
 export type { Unit } from './load';
@@ -59,6 +60,10 @@ export type State = {
   /** Exercise -> a video you recorded or imported (a file in this app's storage on the phone, never
    * bundled or uploaded), with the part that loops; replaces the bundled video. */
   userVideos: Record<string, OwnVideo>;
+  /** Older copies of the saved data already merged back in (see restore.ts), so each is merged once. */
+  restored?: string[];
+  /** Dates whose workouts were brought back from an older copy; shown once on Today. */
+  restoreNote?: { dates: string[] } | null;
 };
 
 export const DEFAULT_STATE: State = {
@@ -111,18 +116,54 @@ const OLD_IDS: Record<string, string> = {
  */
 export async function loadState(): Promise<State | null> {
   let raw: string | null = null;
+  let state: State | null = null;
   try {
-    raw = (await AsyncStorage.getItem(STORAGE_KEY)) ?? (await AsyncStorage.getItem(V2_KEY));
-    if (raw) return applyPending(migrate(JSON.parse(raw), false));
-    raw = await AsyncStorage.getItem(OLD_KEY);
-    if (raw) return migrate(JSON.parse(raw), true);
-    // Speed-check builds only (never set in normal builds): start with a big history.
-    if (PERF) return bigHistory(DEFAULT_STATE);
-    return null;
+    raw = (await readKey(STORAGE_KEY)) ?? (await readKey(V2_KEY));
+    if (raw) state = applyPending(migrate(JSON.parse(raw), false));
+    else {
+      raw = await readKey(OLD_KEY);
+      if (raw) state = migrate(JSON.parse(raw), true);
+      // Speed-check builds only (never set in normal builds): start with a big history.
+      else if (PERF) return bigHistory(DEFAULT_STATE);
+    }
   } catch {
     if (raw) await AsyncStorage.setItem(`${BACKUP_PREFIX}${Date.now()}`, raw).catch(() => {});
-    return null;
+    state = null;
   }
+  // Workouts kept in older copies on the phone (a backup of data that once couldn't be read, or an
+  // older version's save) come back, once each, wherever today's data has none.
+  try {
+    return await restoreBackups(state);
+  } catch {
+    return state;
+  }
+}
+
+/** Read one key, trying once more if storage hiccups (a failed read must not look like "no data"). */
+async function readKey(key: string) {
+  try {
+    return await AsyncStorage.getItem(key);
+  } catch {
+    return AsyncStorage.getItem(key);
+  }
+}
+
+async function restoreBackups(state: State | null): Promise<State | null> {
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(BACKUP_PREFIX) || k === V2_KEY || k === OLD_KEY);
+  const base = state ?? null;
+  const todo = keys.filter((k) => !(base?.restored ?? []).includes(k) && !(k === V2_KEY && !base));
+  if (!todo.length) return state;
+  const copies: { key: string; state: Pick<State, 'logs' | 'sessions'> }[] = [];
+  for (const key of todo) {
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) copies.push({ key, state: migrate(JSON.parse(raw), key === OLD_KEY) });
+    } catch {
+      // An unreadable copy stays where it is; it just can't add anything.
+    }
+  }
+  if (!copies.length) return state;
+  return restoreFrom(base ?? { ...DEFAULT_STATE, restored: [] }, copies);
 }
 
 /** Turn a saved state from any version into the current shape. */
@@ -594,13 +635,38 @@ export function editSet(state: State, id: string, { date, i }: { date: string; i
 
 /** At least one finished set (with its numbers) was logged on `date`. */
 export const hasLoggedSets = (logs: State['logs'], date: string) =>
-  Object.entries(logs[date] ?? {}).some(([id, l]) => doneSets(l, kindOf(id)).length > 0);
+  Object.values(logs[date] ?? {}).some((l) => (l?.sets ?? []).some(isLoggedSet));
 
-/** The workout on `date` was finished with sets logged: the only thing that shows a day as Done. */
-export const finishedOn = (state: Pick<State, 'logs' | 'sessions'>, date: string) =>
-  !!state.sessions[date]?.finishedAt && hasLoggedSets(state.logs, date);
+/** Sets ticked as logged on `date` (any exercise, any number on them). */
+export const loggedSetCount = (logs: State['logs'], date: string) =>
+  Object.values(logs[date] ?? {}).reduce((n, l) => n + (l?.sets ?? []).filter(isLoggedSet).length, 0);
 
-/** A day counts as trained when any set was finished on it. */
+/** Sets the plan had for the workout done on `date` (the session's day, else that weekday's). */
+function plannedSetCount(state: Pick<State, 'logs' | 'sessions'> & Partial<State>, date: string) {
+  const id = state.sessions[date]?.dayId ?? (state.week ? state.week[dateFromKey(date).getDay()] : null);
+  const day = state.programId !== undefined ? dayById(state as State, id) : undefined;
+  return day ? day.exercises.reduce((n, e) => n + e.sets, 0) : 0;
+}
+
+/**
+ * How a day went, from the sets actually logged: 'finished' (Finish tapped, or on a past day most
+ * of the plan's sets logged: at least 3 in 4), 'partial' (some sets) or null (none). A workout that
+ * was never closed with Finish (e.g. the app crashed) still counts. Today is finished only by Finish.
+ */
+export function dayStatus(state: Pick<State, 'logs' | 'sessions'> & Partial<State>, date: string, today = todayKey()): 'finished' | 'partial' | null {
+  const n = loggedSetCount(state.logs, date);
+  if (!n) return null;
+  if (state.sessions[date]?.finishedAt) return 'finished';
+  if (date >= today) return 'partial';
+  const planned = plannedSetCount(state, date);
+  return planned > 0 && n >= Math.ceil(planned * 0.75) ? 'finished' : 'partial';
+}
+
+/** The workout on `date` was finished (see dayStatus): the only thing that shows a day as Done. */
+export const finishedOn = (state: Pick<State, 'logs' | 'sessions'> & Partial<State>, date: string, today = todayKey()) =>
+  dayStatus(state, date, today) === 'finished';
+
+/** A day counts as trained when any set was logged on it (finished or not). */
 export const trainedOn = (state: Pick<State, 'logs'>, date: string) => hasLoggedSets(state.logs, date);
 
 /** True when the weekday's slot holds a workout day (with at least one exercise). */

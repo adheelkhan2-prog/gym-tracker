@@ -112,11 +112,13 @@ export default function TodayScreen() {
         .map((d) => ({ d, wd: dateFromKey(d).getDay(), id: (trainedOn(state, d) ? state.sessions[d]?.dayId : d === date ? which.scheduled : null) ?? '' }))
     : weekKeys(date)
         .map((d) => ({ d, wd: dateFromKey(d).getDay() }))
-        .filter((x) => dayHasWork(state, state.week[x.wd]))
-        .map((x) => ({ ...x, id: state.week[x.wd]! }));
+        // Your training weekdays, plus any other day you trained on (it counts too).
+        .filter((x) => dayHasWork(state, state.week[x.wd]) || trainedOn(state, x.d))
+        .map((x) => ({ ...x, id: (dayHasWork(state, state.week[x.wd]) ? state.week[x.wd] : state.sessions[x.d]?.dayId) ?? '' }));
   const passDone = pass.filter((x) => trainedOn(state, x.d)).length;
-  // Rotating plans: one pass through the rotation is the goal; training more never reads "5 of 3".
-  const passPlanned = program.rotation ? Math.max(passDone, Math.min(7, program.days.length)) : pass.length;
+  // One pass through the plan is the goal; training more never reads "6 of 5".
+  const scheduledCount = program.rotation ? Math.min(7, program.days.length) : pass.filter((x) => dayHasWork(state, state.week[x.wd])).length;
+  const passPlanned = Math.max(passDone, scheduledCount);
   const shownWd = picked ? picked.wd : weekday;
   const mins = progress ? Math.round(progress.total * 2.6) : 0;
   // Looking at another day (a preview, or a past day in the strip): the button only ever trains that
@@ -234,6 +236,17 @@ export default function TodayScreen() {
             );
           })}
         </View>
+
+        {!!state.restoreNote?.dates.length && (
+          <Glass style={[s.card, s.row]} r={radius.xl} testID="restore-note">
+            <Icon name="check" size={20} color={color.accent} />
+            <Text style={[s.rowText, { flex: 1 }]}>
+              Brought back {state.restoreNote.dates.length === 1 ? 'a workout' : `${state.restoreNote.dates.length} workouts`} from an older copy on this phone:{' '}
+              {state.restoreNote.dates.map((d) => `${WEEKDAY_SHORT[dateFromKey(d).getDay()]} ${formatDate(d)}`).join(', ')}
+            </Text>
+            <Button size="sm" variant="ghost" label="OK" accessibilityLabel="Dismiss the restored workouts note" onPress={() => update((st) => ({ ...st, restoreNote: null }))} />
+          </Glass>
+        )}
 
         {state.supplements.length > 0 && !suppsDone && (
           <Glass style={[s.card, s.row]} r={radius.xl}>
