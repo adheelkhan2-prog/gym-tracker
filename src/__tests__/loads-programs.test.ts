@@ -21,7 +21,7 @@ import {
 } from '../load';
 import { DEFAULT_STATE, applyPending, exerciseHistory, kgOf, migrate, plateToKg, prCountsByDate, setKg, trainingStreak, type SetEntry, type State } from '../store';
 import { loadText, visiblePlans } from '../workout';
-import { volumeOn } from '../totals';
+import { pinSetsOn, volumeOn } from '../totals';
 
 const set = (weight: string, reps: string, u: 'kg' | 'lb', load?: SetEntry['load']): SetEntry => ({ weight, reps, done: true, u, load });
 
@@ -117,11 +117,13 @@ describe('PRs, charts and volume use the right numbers', () => {
     expect(h.map((p) => Math.round(p.top * 10) / 10)).toEqual([60, 61.2, 59]);
   });
 
-  test('pin-only sets chart and count in volume once the machine is set up', () => {
+  test('pin-only sets chart once the machine is set up, but never count as kg volume', () => {
     const machines = { lat_pulldown: { perPlate: 7 } };
     expect(exerciseHistory(logs, 'lat_pulldown', machines.lat_pulldown)[0].top).toBe(49);
-    expect(volumeOn({ ...DEFAULT_STATE, logs, machines }, '2026-11-17')).toBe(490);
-    expect(volumeOn({ ...DEFAULT_STATE, logs, machines: {} }, '2026-11-17')).toBe(0);
+    const withMachines: State = { ...DEFAULT_STATE, logs, machines };
+    expect(volumeOn(withMachines, '2026-11-17')).toBe(0);
+    expect(pinSetsOn(withMachines, '2026-11-17')).toBeGreaterThan(0);
+    expect(exerciseHistory(logs, 'lat_pulldown', machines.lat_pulldown)[0].volume).toBe(0);
   });
 
   test('switching kg/lb changes no stored number, so PRs and volume stay the same', () => {

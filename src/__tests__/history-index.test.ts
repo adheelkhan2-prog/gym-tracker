@@ -149,7 +149,8 @@ function oldExerciseHistory(logs: State['logs'], exerciseId: string, machine?: M
         const w = kgFor(s) ?? 0;
         const r = num(s.reps)!;
         if (kind === 'weight_time' || kind === 'time') seconds += r;
-        else volume += kind === 'reps' ? r : w * r;
+        // (Round 8: kg volume counts weight sets only, never machine-pin sets.)
+        else volume += kind === 'reps' ? r : s.load?.pin === undefined && s.load?.t !== 'stack' ? (num(s.weight) === null ? 0 : (kgFor({ ...s, load: undefined }) ?? 0)) * r : 0;
         const better = metric(s) > metric(top) || (metric(s) === metric(top) && r > num(top.reps)!);
         if (better) top = s;
         if (kind === 'weight_reps') e1rm = Math.max(e1rm, est1RM(w, r));

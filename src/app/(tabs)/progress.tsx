@@ -15,7 +15,7 @@ import { MUSCLE_LABEL, type MuscleId } from '../../data/muscles';
 import { fromKg, loadTypeOf, round1 } from '../../load';
 import { activeProgram, addDays, allHistories, formatDate, todayKey, useStore, weekKeys, weeklyMuscleSets, weekSummary } from '../../store';
 import { bottomClearance, color, font, heat, leading, motion, radius, size, space, themed, type } from '../../theme';
-import { pctChange, volumeOn } from '../../totals';
+import { pctChange, pinSetsOn, pinSetsText, volumeOn } from '../../totals';
 import { exerciseFor, visiblePlans } from '../../workout';
 import { WEEKDAY_SHORT } from '../../data/program';
 import { perfMark } from '../../perf';
@@ -56,6 +56,7 @@ export default function ProgressScreen() {
     ),
   );
   const change = pctChange(vol, volLast);
+  const pinSets = thisWeek.reduce((n, d) => n + pinSetsOn(state, d), 0);
 
   // ----- Muscle heat map -----
   const muscleSets = useMemo(() => weeklyMuscleSets(state), [state]);
@@ -161,6 +162,11 @@ export default function ProgressScreen() {
             <CountUp to={vol} style={[s.mega, { fontSize: vol >= 100000 ? size.numXL : width < 380 ? size.mega : size.giga }]} />
             <Text style={s.megaUnit}>{unit}</Text>
           </View>
+          {pinSets > 0 && (
+            <Text style={s.pinNote} testID="progress-pin-sets">
+              {pinSetsText(pinSets)} by machine pin (not in the kg total)
+            </Text>
+          )}
           {change !== null && (
             <View style={s.changeRow}>
               <View style={[s.arrow, { backgroundColor: up ? color.accent : color.surface3 }]}>
@@ -340,6 +346,7 @@ const s = themed(() =>
     megaRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
     mega: { fontFamily: font.display, lineHeight: leading.giga, letterSpacing: -4, color: color.text, fontVariant: ['tabular-nums'] },
     megaUnit: { fontFamily: font.display, fontSize: size.h2, color: color.muted },
+    pinNote: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted, marginTop: space.xs },
     changeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
     arrow: { width: 28, height: 28, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
     changeText: { fontFamily: font.bodyBold, fontSize: size.body, color: color.text },

@@ -9,7 +9,6 @@ import {
   dayById,
   dayHasWork,
   dayRecords,
-  doneSets,
   finishedOn,
   kgOf,
   prMetric,
@@ -18,7 +17,8 @@ import {
   type SetEntry,
   type State,
 } from './store';
-import { volumeOn } from './totals';
+import { isLoggedSet } from './restore';
+import { pinSetsOn, volumeOn } from './totals';
 
 /**
  * PRs on a day: kg (or reps / seconds) records as in the weekly tracker, plus machine-pin records
@@ -59,7 +59,7 @@ export function dayMark(state: Pick<State, 'logs' | 'sessions'>, date: string): 
   return finishedOn(state, date) ? 'done' : 'partial';
 }
 
-export type MonthSummary = { workouts: number; volume: number; prs: number; longestStreak: number };
+export type MonthSummary = { workouts: number; volume: number; pinSets: number; prs: number; longestStreak: number };
 
 /**
  * Workouts done, total volume (kg), PRs and the longest training streak in the month. A streak
@@ -70,6 +70,7 @@ export function monthSummary(state: State, y: number, m: number, today = todayKe
   const rotation = !!activeProgram(state).rotation;
   let workouts = 0;
   let volume = 0;
+  let pinSets = 0;
   let prs = 0;
   let run = 0;
   let best = 0;
@@ -78,6 +79,7 @@ export function monthSummary(state: State, y: number, m: number, today = todayKe
     if (trainedOn(state, d)) {
       workouts++;
       volume += volumeOn(state, d);
+      pinSets += pinSetsOn(state, d);
       prs += dayPRs(state, d).size;
       run++;
       gap = 0;
@@ -87,7 +89,7 @@ export function monthSummary(state: State, y: number, m: number, today = todayKe
       if (rotation ? ++gap >= 3 : scheduled) run = 0;
     }
   }
-  return { workouts, volume: Math.round(volume), prs, longestStreak: best };
+  return { workouts, volume: Math.round(volume), pinSets, prs, longestStreak: best };
 }
 
 export type SessionSet = { i: number; set: SetEntry; pr: boolean };
@@ -97,6 +99,8 @@ export type DaySession = {
   prs: number;
   minutes: number | null;
   volume: number;
+  /** Sets logged by machine pin (never part of the kg volume). */
+  pinSets: number;
   finished: boolean;
   supps: boolean;
 };
@@ -107,13 +111,14 @@ export function daySession(state: State, date: string): DaySession {
   const day = dayById(state, ses?.dayId);
   const prTop = dayPRs(state, date);
   const exercises = Object.entries(state.logs[date] ?? {})
-    .filter(([id, l]) => EXERCISES[id] && doneSets(l, EXERCISES[id].kind).length > 0)
+    .filter(([id, l]) => EXERCISES[id] && (l?.sets ?? []).some(isLoggedSet))
     .map(([id, l]) => {
       const kind = EXERCISES[id].kind;
       let marked = false;
       const sets = l.sets
         .map((set, i) => ({ i, set }))
-        .filter(({ set }) => doneSets({ sets: [set] }, kind).length > 0)
+        // Every set ticked as logged, even one saved without all its numbers (it counts as trained).
+        .filter(({ set }) => isLoggedSet(set))
         .map(({ i, set }) => {
           // The first set that reached the day's record gets the trophy.
           const rec = prTop.get(id);
@@ -130,6 +135,7 @@ export function daySession(state: State, date: string): DaySession {
     prs: prTop.size,
     minutes,
     volume: volumeOn(state, date),
+    pinSets: pinSetsOn(state, date),
     finished: finishedOn(state, date),
     supps: allTaken(state, date),
   };

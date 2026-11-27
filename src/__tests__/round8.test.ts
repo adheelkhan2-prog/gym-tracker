@@ -99,3 +99,19 @@ describe('set pre-fill', () => {
     expect(prefillReps(st(), 'flat_bench', plan, '2026-11-23', 0)).toBe('10');
   });
 });
+
+describe('volume (kg) counts only sets logged in kg', () => {
+  const pin = (p: number, r: number) => ({ weight: '', reps: String(r), done: true, u: 'kg' as const, load: { t: 'stack' as const, pin: p } });
+  test('pin numbers are never kg, even with an old kg-per-plate setting; they are counted apart', () => {
+    const { pinSetsOn, volumeOn } = jest.requireActual('../totals') as typeof import('../totals');
+    const { daySession, monthSummary } = jest.requireActual('../calendar') as typeof import('../calendar');
+    const s = st({
+      machines: { lat_pulldown: { perPlate: 7 } },
+      logs: { '2026-11-24': { flat_bench: { sets: [kg(60, 10)] }, lat_pulldown: { sets: [pin(7, 12), pin(8, 10)] }, pec_deck: { sets: [{ ...pin(5, 12), weight: '35' }] } } },
+    });
+    expect(volumeOn(s, '2026-11-24')).toBe(600);
+    expect(pinSetsOn(s, '2026-11-24')).toBe(3);
+    expect(daySession(s, '2026-11-24')).toMatchObject({ volume: 600, pinSets: 3 });
+    expect(monthSummary(s, 2026, 10, '2026-11-27')).toMatchObject({ volume: 600, pinSets: 3 });
+  });
+});

@@ -56,6 +56,8 @@ run_flows() {
       grep -vE 'libcuda|cuInit|h264|^$|Waiting for flows|analytics' "$RES/maestro.out" | tail -8 >>"$RES/results.txt"
       diagnose "$tag-$f"; ok=1
     fi
+    # Screenshots a flow takes on purpose (takeScreenshot: shot-...) go out with the results.
+    for p in shot-*.png; do [ -f "$p" ] && mv "$p" "$RES/$tag-$p"; done
   done
   return $ok
 }
@@ -76,7 +78,7 @@ network_bytes() {
 }
 
 publish() {
-  (cd "$RES" && rm -rf .git && git init -q && git checkout -q -b e2e-results && git add results.txt && { ls fail-*.png >/dev/null 2>&1 && git add fail-*.png; true; } && git -c user.name=e2e-session -c user.email=e2e@localhost commit -qm "e2e results: $1" && git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" e2e-results) || echo "publish failed"
+  (cd "$RES" && rm -rf .git && git init -q && git checkout -q -b e2e-results && git add results.txt && { ls fail-*.png >/dev/null 2>&1 && git add fail-*.png; true; } && { ls ./*shot-*.png >/dev/null 2>&1 && git add ./*shot-*.png; true; } && git -c user.name=e2e-session -c user.email=e2e@localhost commit -qm "e2e results: $1" && git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" e2e-results) || echo "publish failed"
 }
 
 

@@ -38,7 +38,7 @@ while [ $SECONDS -lt $END ]; do
   if [ -n "$id" ] && [ "$id" != "$last" ]; then
     last="$id"
     [ "$id" = stop ] && { echo "stop requested"; break; }
-    rm -f "$RES"/fail-*.png; : >"$RES/results.txt"
+    rm -f "$RES"/fail-*.png "$RES"/*shot-*.png; : >"$RES/results.txt"
     want=$(git rev-parse "origin/$BRANCH"); git checkout -q -f "$want"
     # The test logic comes from the commit under test, so fixing it never needs a new emulator.
     # shellcheck source=/dev/null

@@ -573,7 +573,9 @@ function historyPoint(date: string, log: ExerciseLog | undefined, kind: LogKind,
     const r = num(s.reps)!;
     const m = loadedKind ? w : r;
     if (kind === 'weight_time' || kind === 'time') seconds += r;
-    else volume += kind === 'reps' ? r : w * r;
+    // Volume in kg counts weight sets only; a machine pin is never a kg number.
+    else if (kind === 'reps') volume += r;
+    else if (s.load?.pin === undefined && s.load?.t !== 'stack') volume += (kgOf(s) ?? 0) * r;
     // The top set: the highest metric, then the most reps.
     if (m > topM || (m === topM && r > topR)) {
       topM = m;

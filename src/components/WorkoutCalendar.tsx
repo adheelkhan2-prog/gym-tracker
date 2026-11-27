@@ -10,6 +10,7 @@ import { EXERCISES } from '../data/exercises';
 import { haptic } from '../feedback';
 import { fmtKg, fromKg } from '../load';
 import { allTaken, dateFromKey, formatDate, todayKey, useStore } from '../store';
+import { pinSetsText } from '../totals';
 import { color, font, radius, size, space, themed, touch, type } from '../theme';
 import { Glass } from './glass';
 import { Icon } from './icons';
@@ -120,6 +121,11 @@ export function WorkoutCalendar({ onOpenDay }: { onOpenDay: (date: string) => vo
         <Stat label="PRs" value={String(summary.prs)} />
         <Stat label="Best streak" value={`${summary.longestStreak} d`} />
       </View>
+      {summary.pinSets > 0 && (
+        <Text style={s.pinNote} testID="calendar-pin-sets">
+          {pinSetsText(summary.pinSets)} by machine pin this month, not in the kg volume
+        </Text>
+      )}
     </View>
   );
 }
@@ -154,6 +160,7 @@ export function DaySheet({ date, onClose }: { date: string; onClose: () => void 
             <Fact icon="flag" text={ses.finished ? 'Finished' : 'Partial'} />
             {ses.minutes !== null && <Fact icon="clock" text={`${ses.minutes} min`} />}
             {ses.volume > 0 && <Fact icon="chart" text={`${Math.round(fromKg(ses.volume, state.unit)).toLocaleString()} ${state.unit}`} />}
+            {ses.pinSets > 0 && <Fact icon="chart" text={`${ses.pinSets} pin set${ses.pinSets === 1 ? '' : 's'}`} />}
             {ses.prs > 0 && <Fact icon="trophy" text={`${ses.prs} PR${ses.prs > 1 ? 's' : ''}`} />}
             {ses.supps && <Fact icon="flask" text="Supps taken" />}
           </View>
@@ -197,6 +204,7 @@ const s = themed(() =>
     supp: { width: 5, height: 5, borderRadius: 1, backgroundColor: color.muted },
     legend: { flexDirection: 'row', alignItems: 'center', gap: space.xs, justifyContent: 'center', marginTop: space.sm },
     legendText: { fontFamily: font.bodySemi, fontSize: size.tiny, color: color.muted, marginRight: space.sm },
+    pinNote: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted, marginTop: space.xs },
     summary: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
     stat: { flex: 1, paddingVertical: space.md, paddingHorizontal: space.sm, alignItems: 'center' },
     statNum: { fontFamily: font.display, fontSize: size.h3, color: color.text, fontVariant: ['tabular-nums'] },

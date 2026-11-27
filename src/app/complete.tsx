@@ -12,11 +12,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BodyModel, type PaintMap, type PulseMap, type Snapshot } from '../components/body/BodyModel';
+import { BodyModel, type PaintMap, type PulseMap } from '../components/body/BodyModel';
 import { Backdrop, Glass } from '../components/glass';
 import { Icon } from '../components/icons';
 import { Burst, CountUp, Flash } from '../components/motion';
-import { ShareSheet } from '../components/ShareSheet';
 import { Badge, Button, StatusBarShade } from '../components/ui';
 import { FINISH, FINISH_PR, line } from '../copy';
 import { EXERCISES } from '../data/exercises';
@@ -26,7 +25,7 @@ import { fmtKg, fromKg, round1 } from '../load';
 import { bestBefore, dayById, doneSets, formatDate, prSetsOn, todayKey, trainingStreak, useStore } from '../store';
 import { titleOf } from '../workout';
 import { color, font, leading, motion, radius, size, space, themed, type } from '../theme';
-import { pctChange, previousSameDay, volumeOn } from '../totals';
+import { pctChange, pinSetsOn, pinSetsText, previousSameDay, volumeOn } from '../totals';
 
 // Choreography (ms after open). One tap anywhere jumps to the end.
 const T = { muscles: 900, perMuscle: 170, afterMuscles: 250, stats: 650, prGap: 650 };
@@ -38,7 +37,6 @@ export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const { width } = useWindowDimensions();
-  const snapshotRef = useRef<Snapshot | null>(null);
 
   const data = useMemo(() => {
     const session = state.sessions[date];
@@ -77,7 +75,9 @@ export default function CompleteScreen() {
       };
     });
     const mins = session?.startedAt && session.finishedAt ? Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60000)) : null;
-    return { dayId, muscles, sets, volume, change, prevDate, prs, mins };
+    // Machine-pin sets are never kg: shown next to the volume, not added to it.
+    const pinSets = pinSetsOn(state, date);
+    return { dayId, muscles, sets, volume, change, prevDate, prs, mins, pinSets };
   }, [state, date]);
 
   // ---------- Timeline ----------
@@ -175,12 +175,6 @@ export default function CompleteScreen() {
   const trained = useMemo(() => new Set(data.muscles.map(([m]) => m)), [data.muscles]);
   const describe = useCallback((m: MuscleId) => `${MUSCLE_LABEL[m]}${trained.has(m) ? ' · trained today' : ''}`, [trained]);
 
-  const [share, setShare] = useState<{ img: string | null } | null>(null);
-  const openShare = async () => {
-    const img = (await snapshotRef.current?.().catch(() => null)) ?? null;
-    setShare({ img });
-  };
-
   const copy = line(data.prs.length ? FINISH_PR : FINISH, date + data.sets);
   const enter = (delay: number) => (reduce || skipped ? undefined : FadeInDown.delay(delay).springify().damping(15));
 
@@ -201,7 +195,7 @@ export default function CompleteScreen() {
         {/* Hero: the body you just trained */}
         <View style={{ marginTop: space.sm }}>
           {show3d ? (
-            <BodyModel paint={paint} pulses={pulses} height={420} framing="full" intro tint={color.accent} snapshotRef={snapshotRef} describe={describe} showHint={false} />
+            <BodyModel paint={paint} pulses={pulses} height={420} framing="full" intro tint={color.accent} describe={describe} showHint={false} />
           ) : (
             <View style={{ height: 420 }} />
           )}
@@ -228,6 +222,11 @@ export default function CompleteScreen() {
                 <CountUp to={data.volume > 0 ? data.volume : data.sets} duration={1100} style={[s.mega, { fontSize: data.volume >= 100000 ? size.numXL : width < 380 ? size.mega : size.giga }]} skip={skipped} />
                 <Text style={s.megaUnit}>{data.volume > 0 ? state.unit : 'sets'}</Text>
               </View>
+              {data.volume > 0 && data.pinSets > 0 && (
+                <Text style={s.pinNote} testID="complete-pin-sets">
+                  {pinSetsText(data.pinSets)} by machine pin (not in the kg total)
+                </Text>
+              )}
               {data.change !== null && (
                 <View style={s.changeRow}>
                   <Animated.View style={[s.arrow, { backgroundColor: up ? color.accent : color.surface3 }, arrowStyle]}>
@@ -301,12 +300,7 @@ export default function CompleteScreen() {
         {(skipped || t >= tActions) && (
           <Animated.View entering={enter(300)} style={[s.pad, { marginTop: space.xxl }]}>
             <Text style={s.copy}>{copy}</Text>
-            <View style={s.actions}>
-              <View style={{ flex: 1 }}>
-                <Button size="lg" icon="share" label="Share" onPress={openShare} />
-              </View>
-              <Button size="lg" variant="secondary" label="Done" onPress={() => router.dismissTo('/')} testID="complete-done" />
-            </View>
+            <Button size="lg" variant="solid" label="Done" onPress={() => router.dismissTo('/')} testID="complete-done" />
           </Animated.View>
         )}
       </ScrollView>
@@ -314,21 +308,6 @@ export default function CompleteScreen() {
 
       <Flash fire={flash} />
       <Burst burst={burst} x={burstAt.x} y={burstAt.y} colors={[color.accent, color.accentPressed, color.text]} />
-      {share && (
-        <ShareSheet
-          onClose={() => setShare(null)}
-          data={{
-            title: (dayById(state, data.dayId) ? titleOf(dayById(state, data.dayId)!) : 'Workout'),
-            date: formatDate(date),
-            volume: data.volume.toLocaleString(),
-            unit: state.unit,
-            sets: data.sets,
-            minutes: data.mins,
-            prs: data.prs.map((p) => ({ name: p.name, value: p.value })),
-            bodyImage: share.img,
-          }}
-        />
-      )}
       </View>
     </Backdrop>
   );
@@ -359,7 +338,7 @@ const s = themed(() => StyleSheet.create({
   prDelta: { fontFamily: font.bodyBold, fontSize: size.small, color: color.accentText },
   prValue: { fontFamily: font.display, fontSize: size.h2, color: color.text },
   copy: { fontFamily: font.display, fontSize: size.h2, lineHeight: leading.h2, color: color.text, marginBottom: space.lg },
-  actions: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
+  pinNote: { fontFamily: font.bodySemi, fontSize: size.small, color: color.muted, marginTop: space.xs },
 }));
 
 // One bad screen shows a recovery panel for that screen only; it never takes the app down.
